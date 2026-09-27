@@ -337,7 +337,6 @@
       lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
     }
   }
-  }
 
   async function submitScore(data) {
     try {
