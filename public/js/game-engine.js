@@ -412,13 +412,7 @@ class BumperGameEngine {
     const inp = this._getInputVector();
     this.player.update(dt, inp.x, inp.z, arenaRadius);
 
-    // Heavy Cyber Sweeper collision check
-    const playerHit = this.arena.checkHazardCollision(this.player);
-    if (playerHit) {
-      this.cameraShake = Math.max(this.cameraShake, 0.48);
-      this._spawnSparks(playerHit.x, playerHit.z, 0xFF3300);
-      this._spawnSparks(playerHit.x, playerHit.z, 0xFFCC00);
-    }
+
 
     // Power-up check
     const pu = this.arena.checkPickups(this.player);
@@ -447,18 +441,20 @@ class BumperGameEngine {
     const allCrafts = [this.player, ...this.aiManager.getCrafts()];
     this.aiManager.update(dt, allCrafts, arenaRadius, this.arena);
 
-    // Heavy Cyber Sweeper collision check for bots
-    this.aiManager.bots.forEach(b => {
-      const botHit = this.arena.checkHazardCollision(b.craft);
-      if (botHit) {
-        this.cameraShake = Math.max(this.cameraShake, 0.35);
-        this._spawnSparks(botHit.x, botHit.z, 0xFF3300);
-        this._spawnSparks(botHit.x, botHit.z, 0xFFCC00);
-      }
-    });
+
 
     // 4. ELASTIC BUMPER COLLISIONS BETWEEN ALL CRAFTS
     this._resolveBumperCollisions(allCrafts);
+
+    // 4.5. SOLID IMPENETRABLE CYBER SWEEPER & PILLAR COLLISION (Final physics pass)
+    allCrafts.forEach(c => {
+      const hit = this.arena.checkHazardCollision(c);
+      if (hit) {
+        this.cameraShake = Math.max(this.cameraShake, c === this.player ? 0.48 : 0.35);
+        this._spawnSparks(hit.x, hit.z, 0xFF3300);
+        this._spawnSparks(hit.x, hit.z, 0xFFCC00);
+      }
+    });
 
     // 5. Check Knockout Credit
     allCrafts.forEach(c => {
