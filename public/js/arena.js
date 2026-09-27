@@ -418,52 +418,60 @@ class ArenaColosseum {
 
     let hitOccurred = false;
     let hitSpeed = 0;
-    const craftRadius = character.radius || 1.15;
+    const craftRadius = character.radius || 1.10;
 
     // ============================================================
-    // 1. SOLID CENTRAL HYDRAULIC PILLAR (Instant Repel at 0, 0)
+    // 1. SOLID CENTRAL HYDRAULIC PILLAR (Physical radius: 1.65m)
+    // Only triggers if character actually drives into the central metal hub!
     // ============================================================
-    const pillarMinDist = 2.80;
+    const pillarMinDist = 1.65;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
 
     if (distCenter < pillarMinDist) {
       const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
       const nz = distCenter > 0.001 ? (character.z / distCenter) : 0;
 
-      // Clean separation buffer
-      character.x = nx * (pillarMinDist + 0.18);
-      character.z = nz * (pillarMinDist + 0.18);
+      // Soft clamp to physical pillar surface
+      character.x = nx * (pillarMinDist + 0.08);
+      character.z = nz * (pillarMinDist + 0.08);
       character.group.position.set(character.x, character.y, character.z);
 
-      // Immediate energetic bounce outward: NO delay!
-      character.vx = nx * 22.0;
-      character.vz = nz * 22.0;
-      character.knockbackTimer = 0.35;
+      // Bounce velocity away from central pillar
+      character.vx = nx * 14.0;
+      character.vz = nz * 14.0;
 
       if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.30;
-        character.squashX = 1.45;
-        character.squashY = 0.65;
-        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.8);
+        character.hazardHitCooldown = 0.35;
+        character.squashX = 1.35;
+        character.squashY = 0.70;
+        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
         hitOccurred = true;
-        hitSpeed = 22.0;
+        hitSpeed = 14.0;
       }
     }
 
     // ============================================================
-    // 2. SOLID ROTATING HEAVY CYBER SWEEPER BAR (Instant Explosive Launch)
+    // 2. SOLID ROTATING HEAVY CYBER SWEEPER BAR (100% Three.js Synchronized)
+    // Three.js makeRotationY(theta):
+    // x_world = lx * cos(theta) + lz * sin(theta)
+    // z_world = -lx * sin(theta) + lz * cos(theta)
+    // Inverse (World to Local):
+    // lx = x_world * cos(theta) - z_world * sin(theta)
+    // lz = x_world * sin(theta) + z_world * cos(theta)
     // ============================================================
-    const angle = this.hazardGroup.rotation.y;
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
+    const theta = this.hazardGroup.rotation.y;
+    const cosA = Math.cos(theta);
+    const sinA = Math.sin(theta);
 
-    // Transform to bar local space
-    const lx = character.x * cosA + character.z * sinA;
-    const lz = -character.x * sinA + character.z * cosA;
+    // Exact inverse transform from world space into bar local space:
+    const lx = character.x * cosA - character.z * sinA;
+    const lz = character.x * sinA + character.z * cosA;
 
-    const L_half = 5.35;
-    const W_half = 0.35;
+    // Bar dimensions: length 10.6m (half 5.3m), thickness 0.68m (half 0.34m)
+    const L_half = 5.30;
+    const W_half = 0.34;
 
+    // Closest point on the unrotated solid box in local space:
     const cx = Math.max(-L_half, Math.min(L_half, lx));
     const cz = Math.max(-W_half, Math.min(W_half, lz));
 
@@ -471,67 +479,72 @@ class ArenaColosseum {
     const dz = lz - cz;
     const distSq = dx * dx + dz * dz;
 
-    if (character.y <= 1.8 && (distSq < craftRadius * craftRadius || (dx === 0 && dz === 0))) {
+    // Check collision only when craft actually contacts the bar:
+    const effectiveRadius = craftRadius * 0.95;
+    if (character.y <= 1.8 && (distSq < effectiveRadius * effectiveRadius || (dx === 0 && dz === 0))) {
       let nx_loc = 0;
       let nz_loc = 0;
       let overlap = 0;
 
       if (dx === 0 && dz === 0) {
+        // Deep inside box - shortest exit is along local Z (thickness)
         nz_loc = lz >= 0 ? 1 : -1;
         nx_loc = 0;
-        overlap = W_half + craftRadius - Math.abs(lz);
+        overlap = W_half + effectiveRadius - Math.abs(lz);
       } else {
         const dist = Math.sqrt(distSq);
         nx_loc = dx / dist;
         nz_loc = dz / dist;
-        overlap = craftRadius - dist;
+        overlap = effectiveRadius - dist;
       }
 
-      // 1. HARD IMMEDIATE EXIT SEPARATION (with 0.32m clearance buffer)
-      // Craft is immediately placed outside the bar so it never sticks or lags
-      const exitBuffer = 0.32;
+      // Hard immediate separation to place craft safely on outer surface:
+      const exitBuffer = 0.12;
       const lx_new = lx + nx_loc * (overlap + exitBuffer);
       const lz_new = lz + nz_loc * (overlap + exitBuffer);
 
-      character.x = lx_new * cosA - lz_new * sinA;
-      character.z = lx_new * sinA + lz_new * cosA;
+      // Exact Three.js Local to World transform:
+      character.x = lx_new * cosA + lz_new * sinA;
+      character.z = -lx_new * sinA + lz_new * cosA;
       character.group.position.set(character.x, character.y, character.z);
 
       // Contact normal in world space:
-      const nx_world = nx_loc * cosA - nz_loc * sinA;
-      const nz_world = nx_loc * sinA + nz_loc * cosA;
+      const nx_world = nx_loc * cosA + nz_loc * sinA;
+      const nz_world = -nx_loc * sinA + nz_loc * cosA;
 
-      // 2. INSTANTANEOUS EXPLOSIVE KINETIC LAUNCH:
+      // Linear sweep velocity of the bar point in world space:
+      // x(t) = L*cos(w*t) -> dx/dt = w*z
+      // z(t) = -L*sin(w*t) -> dz/dt = -w*x
       const omega = this.hazardAngularSpeed || 1.08;
+      const vBarX = omega * character.z;
+      const vBarZ = -omega * character.x;
+
       const rCenter = Math.sqrt(character.x * character.x + character.z * character.z);
       const tipFactor = Math.min(1.0, rCenter / L_half);
 
-      // Tangential velocity of the sweeping bar:
-      const tangentX = -character.z / (rCenter || 1);
-      const tangentZ = character.x / (rCenter || 1);
+      // Tangential direction of the sweep:
+      const tangentX = (rCenter > 0.001) ? (vBarX / (omega * rCenter)) : 0;
+      const tangentZ = (rCenter > 0.001) ? (vBarZ / (omega * rCenter)) : -1;
 
-      // Launch speed: 25 m/s at hub to 36 m/s at outer tips!
-      const launchSpeed = 25.0 + (tipFactor * 12.0);
+      // Launch velocity: 22 m/s near hub up to 32 m/s at outer tips
+      const launchSpeed = 22.0 + (tipFactor * 10.0);
 
-      // Launch direction: strong sweep tangent + outward normal push
-      let launchDirX = tangentX * 0.75 + nx_world * 0.60;
-      let launchDirZ = tangentZ * 0.75 + nz_world * 0.60;
+      // Direction: sweep tangent + outward normal push away from the bar
+      let launchDirX = tangentX * 0.70 + nx_world * 0.50;
+      let launchDirZ = tangentZ * 0.70 + nz_world * 0.50;
       const launchLen = Math.sqrt(launchDirX * launchDirX + launchDirZ * launchDirZ) || 1;
       launchDirX /= launchLen;
       launchDirZ /= launchLen;
 
-      // Apply explosive impulse immediately:
+      // Apply launch impulse:
       character.vx = launchDirX * launchSpeed;
       character.vz = launchDirZ * launchSpeed;
+      character.knockbackTimer = 0.38;
 
-      // Trigger high-speed knockback state:
-      character.knockbackTimer = 0.42;
-
-      // 3. AUDIO, VFX & IMPACT REACTION
       if (character.hazardHitCooldown <= 0) {
         character.hazardHitCooldown = 0.30;
-        character.squashX = 1.65;
-        character.squashY = 0.55;
+        character.squashX = 1.55;
+        character.squashY = 0.60;
 
         const smackLines = ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
         const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
@@ -540,7 +553,7 @@ class ArenaColosseum {
         if (HexAudio && HexAudio.sfxSweeperSmack) {
           HexAudio.sfxSweeperSmack();
         } else if (HexAudio && HexAudio.sfxBump) {
-          HexAudio.sfxBump(2.2);
+          HexAudio.sfxBump(2.0);
         }
 
         hitOccurred = true;

@@ -573,8 +573,7 @@ class BumperGameEngine {
 
             const impulseMag = -(1 + restitution) * velAlongNormal / (1 / A.mass + 1 / B.mass) + bonusImpulse;
 
-            A.knockbackTimer = 0.18; B.knockbackTimer = 0.18;
-          A.vx -= (impulseMag / A.mass) * nx;
+            A.vx -= (impulseMag / A.mass) * nx;
             A.vz -= (impulseMag / A.mass) * nz;
             B.vx += (impulseMag / B.mass) * nx;
             B.vz += (impulseMag / B.mass) * nz;

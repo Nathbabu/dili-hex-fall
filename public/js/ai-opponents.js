@@ -55,24 +55,22 @@ class AIBumperBot {
       return;
     }
 
-    // 1.5. CYBER SWEEPER DANGER CHECK: Avoid getting smacked by the rotating heavy sweeper
-    if (arena && arena.hazardGroup && myDistFromCenter < 5.8) {
-      const sweeperAngle = (arena.hazardGroup.rotation.y) % (Math.PI * 2);
-      const botAngle = Math.atan2(this.craft.x, this.craft.z);
-      let angleDiff = botAngle - sweeperAngle;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    // 1.5. CYBER SWEEPER DANGER CHECK: Proactively steer away if close to center
+    if (arena && arena.hazardGroup && myDistFromCenter < 5.2) {
+      const theta = arena.hazardGroup.rotation.y;
+      const cosA = Math.cos(theta);
+      const sinA = Math.sin(theta);
+      const lx = this.craft.x * cosA - this.craft.z * sinA;
+      const lz = this.craft.x * sinA + this.craft.z * cosA;
 
-      // If sweeper is sweeping toward bot within ~50 degrees behind:
-      if (angleDiff > 0 && angleDiff < 0.88) {
-        // Steer outward away from the center to clear the bar!
+      // If within 1.8m in front of the sweeping bar:
+      if (Math.abs(lx) < 5.4 && lz > -0.5 && lz < 1.8) {
+        // Steer away in local normal direction
         const awayX = this.craft.x / (myDistFromCenter || 1);
         const awayZ = this.craft.z / (myDistFromCenter || 1);
-        this.steerX = awayX * 1.5;
-        this.steerZ = awayZ * 1.5;
-
-        // Tactical evasion dash if available
-        if (Math.random() < 0.45) {
+        this.steerX = awayX * 1.6;
+        this.steerZ = awayZ * 1.6;
+        if (Math.random() < 0.35) {
           this.craft.triggerDash();
         }
         return;
