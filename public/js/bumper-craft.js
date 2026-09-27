@@ -225,10 +225,13 @@ class BumperCraft {
       return img;
     };
 
+    // Authentic Fight Game Poses: No jumping or Superman flying!
     this.baseImages = {
-      jump: loadImg('jump'),
-      rocket: loadImg('rocket'),
-      fall: loadImg('fall')
+      fight:   loadImg('fight'),   // Ground Combat Brawler Stance (default)
+      ram:     loadImg('ram'),     // Ground Ram Charge / Heavy Punch
+      hit:     loadImg('hit'),     // Reeling Dizzy Impact Stance
+      victory: loadImg('victory'), // Champion Smug Taunt Stance
+      fall:    loadImg('fall')     // Tumbling off platform edge
     };
   }
 
@@ -397,17 +400,25 @@ class BumperCraft {
     const ctx = this.faceCtx;
     ctx.clearRect(0, 0, 512, 512);
 
-    // 1. Pick Pose: Rocket pose on Dash/Rocket boost, Fall pose when falling, Jump pose for cruising
-    let pose = 'jump';
-    if (!this.grounded) pose = 'fall';
-    else if (this.isDashing || this.hasRocket) pose = 'rocket';
+    // 1. Authentic Ground Combat Fighter Poses:
+    // NO jumping or Superman flying! All poses are grounded arena combat brawler poses!
+    let pose = 'fight';
+    if (!this.grounded) {
+      pose = 'fall'; // Falling off arena platform
+    } else if (this.isDashing || this.hasRocket || this.currentEmotion === 'dash' || this.currentEmotion === 'emp') {
+      pose = 'ram'; // Heavy ground ram tackle charge
+    } else if (this.currentEmotion === 'hit') {
+      pose = 'hit'; // Reeling impact stance with cartoon dizzy eyes
+    } else if (this.currentEmotion === 'kill' || this.currentEmotion === 'celebrate') {
+      pose = 'victory'; // Champion hands-on-hips smug taunt & wink
+    }
 
-    const baseImg = this.baseImages[pose];
+    const baseImg = this.baseImages[pose] || this.baseImages.fight;
     if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
-      // Draw authentic Dili mascot image filling the canvas
       ctx.drawImage(baseImg, 0, 0, 512, 512);
+    } else if (this.baseImages.fight && this.baseImages.fight.complete) {
+      ctx.drawImage(this.baseImages.fight, 0, 0, 512, 512);
     } else {
-      // Temporary silhouette while loading
       ctx.fillStyle = this.suitColorStr;
       ctx.beginPath();
       ctx.ellipse(256, 256, 160, 180, 0, 0, Math.PI * 2);
@@ -415,194 +426,10 @@ class BumperCraft {
       return;
     }
 
-    // 2. Dynamic Expressions for the 'jump' pose:
-    // In 'jump' pose, Dili's face pill screen inside the glass helmet is at:
-    // Center ~ (238, 168), Width ~ 58, Height ~ 32.
-    // If emotion is not idle or if blinking, modify the eyes/mouth inside the face screen!
-    const emo = this.currentEmotion;
-
-    if (pose === 'jump') {
-      const fx = 238;
-      const fy = 168;
-
-      if (emo === 'hit') {
-        // DIZZY / KNOCKOUT FACE: Cute cartoon spiral or cross eyes with squiggly mouth
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(-0.1); // Match helmet face angle
-
-        // Cover original eyes softly with screen background
-        ctx.fillStyle = this.screenColorStr;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
-        else ctx.rect(-26, -14, 52, 28);
-        ctx.fill();
-
-        // Cute black cross eyes (✕  ✕)
-        ctx.strokeStyle = '#05111a';
-        ctx.lineWidth = 3.2;
-        ctx.lineCap = 'round';
-
-        // Left eye
-        ctx.beginPath();
-        ctx.moveTo(-16, -6); ctx.lineTo(-8, 2);
-        ctx.moveTo(-8, -6); ctx.lineTo(-16, 2);
-        ctx.stroke();
-
-        // Right eye
-        ctx.beginPath();
-        ctx.moveTo(8, -6); ctx.lineTo(16, 2);
-        ctx.moveTo(16, -6); ctx.lineTo(8, 2);
-        ctx.stroke();
-
-        // Wobbly squiggly mouth
-        ctx.beginPath();
-        ctx.moveTo(-10, 8);
-        ctx.quadraticCurveTo(-5, 5, 0, 8);
-        ctx.quadraticCurveTo(5, 11, 10, 8);
-        ctx.stroke();
-
-        ctx.restore();
-
-        // Floating cartoon impact stars above helmet
-        ctx.font = '22px sans-serif';
-        ctx.fillText('💫', fx - 10, fy - 65);
-
-      } else if (emo === 'near_edge') {
-        // PANIC FACE: Wide round eyes looking down at the edge, sweat drop on helmet
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(-0.1);
-
-        ctx.fillStyle = this.screenColorStr;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
-        else ctx.rect(-26, -14, 52, 28);
-        ctx.fill();
-
-        // Cute wide round shocked eyes (⊙ ⊙) looking down
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-12, -2, 6, 0, Math.PI * 2);
-        ctx.arc(12, -2, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Pupils shifted down
-        ctx.fillStyle = '#05111a';
-        ctx.beginPath();
-        ctx.arc(-12, 1, 3, 0, Math.PI * 2);
-        ctx.arc(12, 1, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Nervous wavy open mouth
-        ctx.strokeStyle = '#05111a';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(-8, 9);
-        ctx.lineTo(-4, 11);
-        ctx.lineTo(0, 9);
-        ctx.lineTo(4, 11);
-        ctx.lineTo(8, 9);
-        ctx.stroke();
-
-        ctx.restore();
-
-        // Comic sweat droplet on the side of the glass bubble helmet
-        ctx.font = '26px sans-serif';
-        ctx.fillText('💧', fx + 65, fy - 20);
-
-      } else if (emo === 'kill') {
-        // SMUG VICTORY WINK: Cute anime mascot wink with golden sparkle
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(-0.1);
-
-        ctx.fillStyle = this.screenColorStr;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
-        else ctx.rect(-26, -14, 52, 28);
-        ctx.fill();
-
-        // Left eye: cute wink arch (⌒)
-        ctx.strokeStyle = '#05111a';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(-12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
-        ctx.stroke();
-
-        // Right eye: open smiling star eye
-        ctx.fillStyle = '#05111a';
-        ctx.beginPath();
-        ctx.arc(12, -2, 5.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Cat-like smug smile (:3)
-        ctx.beginPath();
-        ctx.moveTo(-8, 6);
-        ctx.quadraticCurveTo(-4, 10, 0, 7);
-        ctx.quadraticCurveTo(4, 10, 8, 6);
-        ctx.stroke();
-
-        ctx.restore();
-
-        // Star sparkle on helmet
-        ctx.font = '20px sans-serif';
-        ctx.fillText('✨', fx + 42, fy - 35);
-
-      } else if (emo === 'celebrate') {
-        // STAR EYES (Crystal picked up)
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(-0.1);
-
-        ctx.fillStyle = this.screenColorStr;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
-        else ctx.rect(-26, -14, 52, 28);
-        ctx.fill();
-
-        // Golden stars in eyes
-        ctx.font = 'bold 15px sans-serif';
-        ctx.fillStyle = '#ffdd00';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('★', -12, -3);
-        ctx.fillText('★', 12, -3);
-
-        // Big happy open smile
-        ctx.strokeStyle = '#05111a';
-        ctx.lineWidth = 2.8;
-        ctx.beginPath();
-        ctx.arc(0, 5, 8, 0.1 * Math.PI, 0.9 * Math.PI);
-        ctx.stroke();
-
-        ctx.restore();
-
-      } else if (this.isBlinking) {
-        // NATURAL CUTE BLINK: Soft closed eyelid arcs over the eyes
-        ctx.save();
-        ctx.translate(fx, fy);
-        ctx.rotate(-0.1);
-
-        ctx.fillStyle = this.screenColorStr;
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-24, -12, 48, 16, 6);
-        else ctx.rect(-24, -12, 48, 16);
-        ctx.fill();
-
-        // Closed smiling eyes (⌒  ⌒)
-        ctx.strokeStyle = '#05111a';
-        ctx.lineWidth = 3.2;
-        ctx.beginPath();
-        ctx.arc(-12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
-        ctx.stroke();
-
-        ctx.restore();
-      }
+    // 2. Comic Floating Overlays (Floating outside/above helmet, never obscuring 3D face)
+    if (this.currentEmotion === 'near_edge') {
+      ctx.font = '32px sans-serif';
+      ctx.fillText('💧', 340, 150);
     }
 
     this.compositeTexture.needsUpdate = true;
@@ -913,7 +740,8 @@ class BumperCraft {
     this.group.position.set(this.x, this.y, this.z);
 
     // Dynamic Sprite scale with squash, stretch, and horizontal flip
-    const flipX = (inputX < -0.1 ? -1 : 1);
+    if (inputX < -0.1) this.lastFlipX = -1; else if (inputX > 0.1) this.lastFlipX = 1;
+    const flipX = this.lastFlipX || 1;
     this.diliSprite.scale.set(
       2.2 * this.squashX * flipX,
       2.2 * this.squashY,

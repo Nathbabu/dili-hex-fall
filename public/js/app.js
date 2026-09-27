@@ -116,7 +116,7 @@
 
       const info = suitQuotes[selectedSuit] || suitQuotes.mint;
       if (mascotPreviewImg) {
-        mascotPreviewImg.src = `assets/characters/dili-jump-cutout-${selectedSuit}.png`;
+        mascotPreviewImg.src = `assets/characters/dili-fight-cutout-${selectedSuit}.png`;
         mascotPreviewImg.style.filter = `drop-shadow(0 8px 18px ${info.color}66)`;
       }
       if (mascotRing) {
