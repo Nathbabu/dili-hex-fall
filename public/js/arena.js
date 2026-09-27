@@ -437,8 +437,9 @@ class ArenaColosseum {
       character.group.position.set(character.x, character.y, character.z);
 
       // Bounce velocity away from central pillar
-      character.vx = nx * 14.0;
-      character.vz = nz * 14.0;
+      character.vx = nx * 8.5;
+      character.vz = nz * 8.5;
+      character.knockbackTimer = 0.15;
 
       if (character.hazardHitCooldown <= 0) {
         character.hazardHitCooldown = 0.35;
@@ -499,7 +500,7 @@ class ArenaColosseum {
       }
 
       // Hard immediate separation to place craft safely on outer surface:
-      const exitBuffer = 0.12;
+      const exitBuffer = 0.08;
       const lx_new = lx + nx_loc * (overlap + exitBuffer);
       const lz_new = lz + nz_loc * (overlap + exitBuffer);
 
@@ -526,12 +527,12 @@ class ArenaColosseum {
       const tangentX = (rCenter > 0.001) ? (vBarX / (omega * rCenter)) : 0;
       const tangentZ = (rCenter > 0.001) ? (vBarZ / (omega * rCenter)) : -1;
 
-      // Launch velocity: 22 m/s near hub up to 32 m/s at outer tips
-      const launchSpeed = 22.0 + (tipFactor * 10.0);
+      // Balanced launch velocity: 10.5 m/s near hub to 14.5 m/s at outer tips (clean ~3m knockback)
+      const launchSpeed = 10.5 + (tipFactor * 4.0);
 
       // Direction: sweep tangent + outward normal push away from the bar
-      let launchDirX = tangentX * 0.70 + nx_world * 0.50;
-      let launchDirZ = tangentZ * 0.70 + nz_world * 0.50;
+      let launchDirX = tangentX * 0.65 + nx_world * 0.45;
+      let launchDirZ = tangentZ * 0.65 + nz_world * 0.45;
       const launchLen = Math.sqrt(launchDirX * launchDirX + launchDirZ * launchDirZ) || 1;
       launchDirX /= launchLen;
       launchDirZ /= launchLen;
@@ -539,7 +540,7 @@ class ArenaColosseum {
       // Apply launch impulse:
       character.vx = launchDirX * launchSpeed;
       character.vz = launchDirZ * launchSpeed;
-      character.knockbackTimer = 0.38;
+      character.knockbackTimer = 0.22;
 
       if (character.hazardHitCooldown <= 0) {
         character.hazardHitCooldown = 0.30;

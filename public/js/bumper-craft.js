@@ -656,8 +656,8 @@ class BumperCraft {
     if (this.knockbackTimer > 0) {
       this.knockbackTimer -= dt;
       // High-speed glide during knockback: no topSpeed clamp, smooth friction!
-      this.vx *= Math.pow(0.965, dt * 60);
-      this.vz *= Math.pow(0.965, dt * 60);
+      this.vx *= Math.pow(0.94, dt * 60);
+      this.vz *= Math.pow(0.94, dt * 60);
 
       // Jet exhaust flame active during knockback flight
       this.leftFlame.scale.set(1.0, 1.0, 1.6);
