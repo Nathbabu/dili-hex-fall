@@ -94,12 +94,44 @@
     audioIcon.textContent = isUnmuted ? '🔊' : '🔇';
   });
 
+  // Authentic Dlicom Mascot Showcase Controls
+  const mascotPreviewImg = document.getElementById('mascotPreviewImg');
+  const mascotSpeech = document.getElementById('mascotSpeech');
+  const mascotRing = document.getElementById('mascotRing');
+
+  const suitQuotes = {
+    mint:    { quote: '🚀 READY TO SMASH!', color: '#00FFC6' },
+    pink:    { quote: '⚡ HYPER SPEED ENGAGED!', color: '#FF6EC7' },
+    gold:    { quote: '👑 SOVEREIGN TITAN POWER!', color: '#FFD700' },
+    cobalt:  { quote: '🛡️ ENFORCER ONLINE!', color: '#4DA6FF' },
+    crimson: { quote: '🔥 MAXIMUM IMPACT!', color: '#FF3344' }
+  };
+
   // Suit Selection
   suitButtons.forEach(btn => {
     btn.addEventListener('click', () => {
       suitButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedSuit = btn.dataset.suit;
+
+      const info = suitQuotes[selectedSuit] || suitQuotes.mint;
+      if (mascotPreviewImg) {
+        mascotPreviewImg.src = `assets/characters/dili-jump-cutout-${selectedSuit}.png`;
+        mascotPreviewImg.style.filter = `drop-shadow(0 8px 18px ${info.color}66)`;
+      }
+      if (mascotRing) {
+        mascotRing.style.borderColor = info.color;
+        mascotRing.style.boxShadow = `0 0 20px ${info.color}99, inset 0 0 10px ${info.color}66`;
+        mascotRing.style.background = `radial-gradient(ellipse at center, ${info.color}55 0%, transparent 70%)`;
+      }
+      if (mascotSpeech) {
+        mascotSpeech.textContent = info.quote;
+        mascotSpeech.style.borderColor = info.color;
+        mascotSpeech.style.boxShadow = `0 0 16px ${info.color}66`;
+      }
+      if (typeof HexAudio !== 'undefined' && HexAudio && HexAudio.sfxVoiceHappy) {
+        HexAudio.sfxVoiceHappy();
+      }
     });
   });
 

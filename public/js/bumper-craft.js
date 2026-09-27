@@ -1,5 +1,5 @@
 // ========================================================
-// DILI: CYBER BUMPERS — Upgraded Expressive Mascot Craft
+// DILI: CYBER BUMPERS — Authentic Dlicom Mascot Gyro-Craft
 // ========================================================
 
 class EmoteBubble {
@@ -22,12 +22,12 @@ class EmoteBubble {
 
     this.sprite = new THREE.Sprite(this.material);
     this.sprite.scale.set(2.4, 1.0, 1);
-    this.sprite.position.set(0, 3.15, 0); // Float directly above Dili & Nameplate
+    this.sprite.position.set(0, 3.2, 0); // Float directly above Dili's ears
     this.parentGroup.add(this.sprite);
 
     this.active = false;
     this.timer = 0;
-    this.duration = 1.7;
+    this.duration = 1.6;
     this.elapsed = 0;
   }
 
@@ -39,13 +39,13 @@ class EmoteBubble {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, 384, 160);
 
-    // Comic Speech Balloon with glowing neon outline
+    // Comic Speech Bubble with neon glow
     ctx.save();
     ctx.shadowColor = color;
     ctx.shadowBlur = 24;
 
     // Dark sleek glassmorphic bubble fill
-    ctx.fillStyle = 'rgba(7, 12, 24, 0.94)';
+    ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
     ctx.beginPath();
     if (ctx.roundRect) {
       ctx.roundRect(16, 16, 352, 104, 22);
@@ -54,18 +54,18 @@ class EmoteBubble {
     }
     ctx.fill();
 
-    // Vibrant Glowing Border
+    // Vibrant glowing border
     ctx.lineWidth = 4.0;
     ctx.strokeStyle = color;
     ctx.stroke();
 
-    // Pointer pointing straight down to character's head
+    // Pointer pointing straight down to Dili's head
     ctx.beginPath();
     ctx.moveTo(192 - 18, 120);
     ctx.lineTo(192, 148);
     ctx.lineTo(192 + 18, 120);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(7, 12, 24, 0.94)';
+    ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
     ctx.fill();
     ctx.stroke();
     ctx.restore();
@@ -85,7 +85,7 @@ class EmoteBubble {
 
     this.texture.needsUpdate = true;
     this.material.opacity = 1;
-    this.sprite.position.y = 3.15;
+    this.sprite.position.y = 3.2;
   }
 
   update(dt) {
@@ -96,9 +96,9 @@ class EmoteBubble {
 
     // Elastic pop animation with gentle upward drift
     const popProgress = Math.min(1, this.elapsed * 8);
-    const popScale = 1.0 + Math.sin(popProgress * Math.PI) * 0.28;
+    const popScale = 1.0 + Math.sin(popProgress * Math.PI) * 0.26;
     this.sprite.scale.set(2.4 * popScale, 1.0 * popScale, 1);
-    this.sprite.position.y = 3.15 + (this.elapsed * 0.22);
+    this.sprite.position.y = 3.2 + (this.elapsed * 0.22);
 
     // Smooth fade out
     if (this.timer <= 0.45) {
@@ -150,7 +150,7 @@ class BumperCraft {
     this.wobbleAngle = 0;
 
     // Emotions & Expressions
-    // States: 'idle', 'dash', 'hit', 'shock', 'near_edge', 'kill', 'emp', 'falling', 'celebrate'
+    // States: 'idle', 'dash', 'hit', 'shock', 'near_edge', 'kill', 'celebrate'
     this.currentEmotion = 'idle';
     this.emotionLockTimer = 0;
     this.blinkTimer = 0;
@@ -174,21 +174,22 @@ class BumperCraft {
 
     // Suit Palette
     this._suitColors = {
-      mint:    { hex: 0x00FFC6, str: '#00FFC6' },
-      pink:    { hex: 0xFF6EC7, str: '#FF6EC7' },
-      gold:    { hex: 0xFFD700, str: '#FFD700' },
-      blue:    { hex: 0x4DA6FF, str: '#4DA6FF' },
-      crimson: { hex: 0xFF3344, str: '#FF3344' }
+      mint:    { hex: 0x00FFC6, str: '#00FFC6', screen: '#00e6b8' },
+      pink:    { hex: 0xFF6EC7, str: '#FF6EC7', screen: '#ff55aa' },
+      gold:    { hex: 0xFFD700, str: '#FFD700', screen: '#ffcc00' },
+      blue:    { hex: 0x4DA6FF, str: '#4DA6FF', screen: '#3399ff' },
+      crimson: { hex: 0xFF3344, str: '#FF3344', screen: '#ff3344' }
     };
     const palette = this._suitColors[this.suitKey] || this._suitColors.mint;
     this.suitColor = palette.hex;
     this.suitColorStr = palette.str;
+    this.screenColorStr = palette.screen;
 
-    // Textures & Images
+    // Textures & Images (Official high-res Dili cutout poses)
     this.baseImages = {};
     this._loadBaseTextures();
 
-    // High-Resolution Face & Cyber Armor Canvas (512x512)
+    // Canvas for Dili Rendering with Dynamic Face Expressions (512x512)
     this.faceCanvas = document.createElement('canvas');
     this.faceCanvas.width = 512;
     this.faceCanvas.height = 512;
@@ -233,12 +234,12 @@ class BumperCraft {
 
   _buildCraft() {
     const suitCol = new THREE.Color(this.suitColor);
-    const darkMetal = new THREE.Color(0x080e1a);
+    const darkMetal = new THREE.Color(0x0a101f);
 
-    // 1. Heavy Multi-ring Bumper Base
+    // 1. Sleek Combat Bumper Gyro-Saucer
     const baseGroup = new THREE.Group();
 
-    // Glowing Neon Torus Bumper
+    // Glowing Neon Torus Bumper Ring
     const ringGeo = new THREE.TorusGeometry(1.10, 0.18, 14, 32);
     const ringMat = new THREE.MeshStandardMaterial({
       color: suitCol,
@@ -252,7 +253,7 @@ class BumperCraft {
     this.bumperRing.position.y = 0.12;
     baseGroup.add(this.bumperRing);
 
-    // Carbon Disc Chassis
+    // Carbon Disc Chassis Platform
     const chassisGeo = new THREE.CylinderGeometry(0.98, 1.04, 0.22, 28);
     const chassisMat = new THREE.MeshStandardMaterial({
       color: darkMetal,
@@ -267,7 +268,7 @@ class BumperCraft {
 
     // 4 Corner Hazard Deflectors
     for (let i = 0; i < 4; i++) {
-      const spikeGeo = new THREE.ConeGeometry(0.13, 0.38, 6);
+      const spikeGeo = new THREE.ConeGeometry(0.12, 0.36, 6);
       const spikeMat = new THREE.MeshStandardMaterial({
         color: suitCol,
         emissive: suitCol,
@@ -283,19 +284,18 @@ class BumperCraft {
 
     // Dual Rear Rocket Exhaust Thrusters
     this.thrusters = new THREE.Group();
-    for (let side of [-0.45, 0.45]) {
-      const tubeGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.42, 12);
-      const tubeMat = new THREE.MeshStandardMaterial({ color: 0x1a2333, metalness: 0.9, roughness: 0.3 });
+    for (let side of [-0.42, 0.42]) {
+      const tubeGeo = new THREE.CylinderGeometry(0.11, 0.15, 0.38, 12);
+      const tubeMat = new THREE.MeshStandardMaterial({ color: 0x141e30, metalness: 0.9, roughness: 0.3 });
       const tube = new THREE.Mesh(tubeGeo, tubeMat);
       tube.rotation.x = Math.PI / 2 + 0.2;
-      tube.position.set(side, 0.22, -0.92);
+      tube.position.set(side, 0.20, -0.92);
       this.thrusters.add(tube);
 
-      // Glowing nozzle ring
-      const nozGeo = new THREE.TorusGeometry(0.13, 0.04, 8, 16);
+      const nozGeo = new THREE.TorusGeometry(0.12, 0.035, 8, 16);
       const nozMat = new THREE.MeshBasicMaterial({ color: this.suitColor });
       const noz = new THREE.Mesh(nozGeo, nozMat);
-      noz.position.set(side, 0.22, -1.1);
+      noz.position.set(side, 0.20, -1.08);
       noz.rotation.x = Math.PI / 2;
       this.thrusters.add(noz);
     }
@@ -304,37 +304,37 @@ class BumperCraft {
     // Exhaust Jet Flame Sprites (animated on movement/dash)
     const flameGeo = new THREE.ConeGeometry(0.18, 0.7, 8);
     const flameMat = new THREE.MeshBasicMaterial({
-      color: 0x00E5FF,
+      color: this.suitColor,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.85
     });
     this.leftFlame = new THREE.Mesh(flameGeo, flameMat);
     this.leftFlame.rotation.x = -Math.PI / 2;
-    this.leftFlame.position.set(-0.45, 0.22, -1.45);
+    this.leftFlame.position.set(-0.42, 0.20, -1.45);
     this.leftFlame.scale.set(0.1, 0.1, 0.1);
     this.thrusters.add(this.leftFlame);
 
     this.rightFlame = new THREE.Mesh(flameGeo, flameMat.clone());
     this.rightFlame.rotation.x = -Math.PI / 2;
-    this.rightFlame.position.set(0.45, 0.22, -1.45);
+    this.rightFlame.position.set(0.42, 0.20, -1.45);
     this.rightFlame.scale.set(0.1, 0.1, 0.1);
     this.thrusters.add(this.rightFlame);
 
     this.group.add(baseGroup);
 
-    // 2. THE UPGRADED DILI CHARACTER (Expressive 3D Sprite with Face Canvas)
+    // 2. THE AUTHENTIC DLICOM DILI MASCOT (High-res 3D Billboard Sprite)
     const diliMat = new THREE.SpriteMaterial({
       map: this.compositeTexture,
       transparent: true,
       alphaTest: 0.02
     });
     this.diliSprite = new THREE.Sprite(diliMat);
-    this.diliSprite.scale.set(2.05, 2.25, 1);
-    this.diliSprite.position.set(0, 1.20, 0);
+    this.diliSprite.scale.set(2.2, 2.2, 1);
+    this.diliSprite.position.set(0, 1.25, 0); // Positioned proudly on the bumper platform
     this.group.add(this.diliSprite);
 
     // 3. Force Shield Sphere
-    const shieldGeo = new THREE.SphereGeometry(1.42, 22, 18);
+    const shieldGeo = new THREE.SphereGeometry(1.45, 22, 18);
     const shieldMat = new THREE.MeshStandardMaterial({
       color: 0x00E5FF,
       emissive: 0x00E5FF,
@@ -344,13 +344,13 @@ class BumperCraft {
       wireframe: true
     });
     this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-    this.shieldMesh.position.y = 1.0;
+    this.shieldMesh.position.y = 1.1;
     this.shieldMesh.visible = false;
     this.group.add(this.shieldMesh);
 
     // 4. Overhead Nameplate
     this.nameSprite = this._createNameBadge(this.pilotName);
-    this.nameSprite.position.set(0, 2.45, 0);
+    this.nameSprite.position.set(0, 2.55, 0);
     this.group.add(this.nameSprite);
 
     this.group.position.set(this.x, this.y, this.z);
@@ -391,427 +391,220 @@ class BumperCraft {
   }
 
   // =============================================================
-  // DYNAMIC DILI COMPOSITOR: COMBAT VISOR, GEAR & EXPRESSIONS
+  // AUTHENTIC DILI MASCOT COMPOSITOR: DYNAMIC NATURAL EXPRESSIONS
   // =============================================================
   _redrawExpressiveDili() {
     const ctx = this.faceCtx;
     ctx.clearRect(0, 0, 512, 512);
 
-    // 1. Base Dili Artwork Layer
+    // 1. Pick Pose: Rocket pose on Dash/Rocket boost, Fall pose when falling, Jump pose for cruising
     let pose = 'jump';
     if (!this.grounded) pose = 'fall';
     else if (this.isDashing || this.hasRocket) pose = 'rocket';
 
     const baseImg = this.baseImages[pose];
     if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
-      ctx.drawImage(baseImg, 32, 42, 448, 448);
+      // Draw authentic Dili mascot image filling the canvas
+      ctx.drawImage(baseImg, 0, 0, 512, 512);
     } else {
+      // Temporary silhouette while loading
       ctx.fillStyle = this.suitColorStr;
       ctx.beginPath();
       ctx.ellipse(256, 256, 160, 180, 0, 0, Math.PI * 2);
       ctx.fill();
+      return;
     }
 
+    // 2. Dynamic Expressions for the 'jump' pose:
+    // In 'jump' pose, Dili's face pill screen inside the glass helmet is at:
+    // Center ~ (238, 168), Width ~ 58, Height ~ 32.
+    // If emotion is not idle or if blinking, modify the eyes/mouth inside the face screen!
     const emo = this.currentEmotion;
-    const suitCol = this.suitColorStr;
 
-    // 2. COMBAT UPGRADE 1: Cyber Shoulder Pauldrons (Left & Right)
-    ctx.save();
-    ctx.fillStyle = '#0a1426';
-    ctx.strokeStyle = suitCol;
-    ctx.lineWidth = 3;
-    ctx.shadowColor = suitCol;
-    ctx.shadowBlur = 10;
+    if (pose === 'jump') {
+      const fx = 238;
+      const fy = 168;
 
-    // Left shoulder plate
-    ctx.beginPath();
-    ctx.moveTo(115, 305);
-    ctx.lineTo(155, 290);
-    ctx.lineTo(145, 335);
-    ctx.lineTo(105, 330);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      if (emo === 'hit') {
+        // DIZZY / KNOCKOUT FACE: Cute cartoon spiral or cross eyes with squiggly mouth
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(-0.1); // Match helmet face angle
 
-    // Right shoulder plate
-    ctx.beginPath();
-    ctx.moveTo(397, 305);
-    ctx.lineTo(357, 290);
-    ctx.lineTo(367, 335);
-    ctx.lineTo(407, 330);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // 3. COMBAT UPGRADE 2: Chestplate Arc Reactor Core
-    ctx.save();
-    ctx.translate(256, 325);
-    ctx.shadowColor = suitCol;
-    ctx.shadowBlur = (this.isDashing || emo === 'emp') ? 22 : 12;
-
-    // Outer dark hexagonal housing
-    ctx.fillStyle = '#070f1e';
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      const rx = Math.cos(a) * 24;
-      const ry = Math.sin(a) * 24;
-      i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = suitCol;
-    ctx.stroke();
-
-    // Inner glowing core
-    ctx.fillStyle = suitCol;
-    ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Reactor energy pulse gleam
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // 4. COMBAT UPGRADE 3: Antenna Booster Plasma Halos
-    ctx.save();
-    ctx.strokeStyle = suitCol;
-    ctx.lineWidth = 3.5;
-    ctx.shadowColor = suitCol;
-    ctx.shadowBlur = (this.isDashing || emo === 'emp') ? 24 : 12;
-
-    // Left & Right Antenna Halos
-    ctx.beginPath();
-    ctx.ellipse(172, 72, 22, 10, -0.2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.ellipse(340, 72, 22, 10, 0.2, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Glowing tip nodes
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(172, 72, 7, 0, Math.PI * 2);
-    ctx.arc(340, 72, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // 5. COMBAT UPGRADE 4: HOLOGRAPHIC CYBER VISOR & DYNAMIC EXPRESSIONS
-    // Visor center is located at (256, 212)
-    ctx.save();
-    ctx.translate(256, 212);
-
-    // Visor Frame with bevel and dark HUD glass
-    ctx.shadowColor = suitCol;
-    ctx.shadowBlur = 14;
-
-    const grad = ctx.createLinearGradient(-84, -42, 84, 42);
-    grad.addColorStop(0, 'rgba(8, 16, 34, 0.92)');
-    grad.addColorStop(1, 'rgba(15, 28, 56, 0.95)');
-    ctx.fillStyle = grad;
-
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(-86, -40, 172, 80, 24);
-    } else {
-      ctx.rect(-86, -40, 172, 80);
-    }
-    ctx.fill();
-
-    ctx.lineWidth = 4.0;
-    ctx.strokeStyle = suitCol;
-    ctx.stroke();
-
-    // Corner Tech Bolts on Visor
-    ctx.fillStyle = '#ffffff';
-    for (let bx of [-72, 72]) {
-      for (let by of [-26, 26]) {
+        // Cover original eyes softly with screen background
+        ctx.fillStyle = this.screenColorStr;
         ctx.beginPath();
-        ctx.arc(bx, by, 3, 0, Math.PI * 2);
+        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
+        else ctx.rect(-26, -14, 52, 28);
         ctx.fill();
-      }
-    }
 
-    // Digital Scanlines across visor
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-    for (let y = -36; y < 36; y += 6) {
-      ctx.fillRect(-80, y, 160, 2);
-    }
+        // Cute black cross eyes (✕  ✕)
+        ctx.strokeStyle = '#05111a';
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
 
-    // -------------------------------------------------------------
-    // DYNAMIC FACIAL EXPRESSIONS RENDERED INSIDE VISOR
-    // -------------------------------------------------------------
-    if (emo === 'dash') {
-      // FIERCE ATTACK EYES (Slanted angular eyes with turbo speed flares)
-      ctx.shadowColor = '#FF3344';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#FFD700';
-
-      // Left sharp battle eye
-      ctx.beginPath();
-      ctx.moveTo(-52, -18);
-      ctx.lineTo(-18, -4);
-      ctx.lineTo(-46, 12);
-      ctx.closePath();
-      ctx.fill();
-
-      // Right sharp battle eye
-      ctx.beginPath();
-      ctx.moveTo(52, -18);
-      ctx.lineTo(18, -4);
-      ctx.lineTo(46, 12);
-      ctx.closePath();
-      ctx.fill();
-
-      // Determined Grin
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(0, 14, 18, 0.1 * Math.PI, 0.9 * Math.PI);
-      ctx.stroke();
-
-      // Turbo Speed Decals (>>>)
-      ctx.font = '900 16px Orbitron';
-      ctx.fillStyle = '#00FFC6';
-      ctx.textAlign = 'center';
-      ctx.fillText('>>>', 0, -20);
-
-    } else if (emo === 'hit') {
-      // DIZZY SPIRAL / KNOCKOUT EYES (Cartoon impact stars & wobbly mouth)
-      ctx.shadowColor = '#FF3344';
-      ctx.shadowBlur = 16;
-      ctx.strokeStyle = '#FF4455';
-      ctx.lineWidth = 4;
-
-      // Left X eye
-      ctx.beginPath();
-      ctx.moveTo(-45, -12); ctx.lineTo(-25, 8);
-      ctx.moveTo(-25, -12); ctx.lineTo(-45, 8);
-      ctx.stroke();
-
-      // Right X eye
-      ctx.beginPath();
-      ctx.moveTo(25, -12); ctx.lineTo(45, 8);
-      ctx.moveTo(45, -12); ctx.lineTo(25, 8);
-      ctx.stroke();
-
-      // Wobbly squiggly mouth
-      ctx.strokeStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.moveTo(-24, 22);
-      ctx.quadraticCurveTo(-12, 16, 0, 22);
-      ctx.quadraticCurveTo(12, 28, 24, 22);
-      ctx.stroke();
-
-      // Floating impact stars above
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('💫', 0, -26);
-
-    } else if (emo === 'shock') {
-      // ELECTRIFIED / LASER BURNED (Wide shocked pupils & zig-zag mouth)
-      ctx.shadowColor = '#00E5FF';
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = '#FFFFFF';
-
-      // Wide shocked ring eyes
-      ctx.beginPath();
-      ctx.arc(-34, -4, 15, 0, Math.PI * 2);
-      ctx.arc(34, -4, 15, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Tiny pinprick shocked pupils
-      ctx.fillStyle = '#FF3344';
-      ctx.beginPath();
-      ctx.arc(-34, -4, 4, 0, Math.PI * 2);
-      ctx.arc(34, -4, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Shocked open "O" mouth
-      ctx.fillStyle = '#0a1020';
-      ctx.strokeStyle = '#00E5FF';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, 20, 10, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-    } else if (emo === 'near_edge') {
-      // PANICKING AT EDGE (Trembling eyes looking down, sweat beads)
-      ctx.shadowColor = '#00E5FF';
-      ctx.shadowBlur = 14;
-
-      // Trembling wide eyes looking downwards
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(-34, -6, 14, 0, Math.PI * 2);
-      ctx.arc(34, -6, 14, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pupils shifted all the way down
-      ctx.fillStyle = '#081224';
-      ctx.beginPath();
-      ctx.arc(-34, 1, 6, 0, Math.PI * 2);
-      ctx.arc(34, 1, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Quivering wavy mouth
-      ctx.strokeStyle = '#00E5FF';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-22, 22);
-      ctx.lineTo(-11, 26);
-      ctx.lineTo(0, 22);
-      ctx.lineTo(11, 26);
-      ctx.lineTo(22, 22);
-      ctx.stroke();
-
-      // Flying sweat drops
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('💧', 64, -20);
-      ctx.fillText('💧', -64, -20);
-
-    } else if (emo === 'kill') {
-      // SMUG VICTORY WINK & SHADES (Knocked rival out)
-      ctx.shadowColor = '#FFD700';
-      ctx.shadowBlur = 18;
-
-      // Left eye: Cool Wink curve
-      ctx.strokeStyle = '#FFD700';
-      ctx.lineWidth = 4.5;
-      ctx.beginPath();
-      ctx.arc(-34, -2, 14, 1.1 * Math.PI, 1.9 * Math.PI);
-      ctx.stroke();
-
-      // Right eye: Sparkling open star pupil
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(34, -2, 14, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(34, -2, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Smug angled smirk
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(-16, 20);
-      ctx.quadraticCurveTo(8, 28, 28, 16);
-      ctx.stroke();
-
-      // Star sparkle twinkle
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('✨', 54, -20);
-
-    } else if (emo === 'celebrate') {
-      // CRYSTAL / STAR EYES
-      ctx.shadowColor = '#00FFC6';
-      ctx.shadowBlur = 18;
-      ctx.font = 'bold 26px sans-serif';
-      ctx.fillStyle = '#FFD700';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('★', -34, -4);
-      ctx.fillText('★', 34, -4);
-
-      // Joyous big smile
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(0, 10, 18, 0.1 * Math.PI, 0.9 * Math.PI);
-      ctx.stroke();
-
-    } else if (emo === 'emp') {
-      // OVERDRIVEN CYBER LIGHTNING EYES
-      ctx.shadowColor = '#00E5FF';
-      ctx.shadowBlur = 24;
-      ctx.font = '900 24px Orbitron';
-      ctx.fillStyle = '#00E5FF';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('[ ⚡  ⚡ ]', 0, -4);
-
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-45, 12, 90, 12);
-
-    } else if (!this.grounded) {
-      // UTTER HORROR FALLING (Screaming into the abyss)
-      ctx.shadowColor = '#FF3344';
-      ctx.shadowBlur = 18;
-
-      // Terrified tiny pin-eyes
-      ctx.fillStyle = '#FF3344';
-      ctx.beginPath();
-      ctx.arc(-34, -8, 6, 0, Math.PI * 2);
-      ctx.arc(34, -8, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Big gaping screaming mouth
-      ctx.fillStyle = '#060a16';
-      ctx.strokeStyle = '#FF3344';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.ellipse(0, 14, 18, 20, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Stream of comic tears flying up
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('💧', -50, -28);
-      ctx.fillText('💧', 50, -28);
-
-    } else {
-      // IDLE / CRUISING PILOT (Confident pilot eyes, blinking & cyber HUD reticle)
-      if (this.isBlinking) {
-        // Closed relaxed blink line
-        ctx.strokeStyle = suitCol;
-        ctx.lineWidth = 3.5;
+        // Left eye
         ctx.beginPath();
-        ctx.moveTo(-46, -2); ctx.lineTo(-22, -2);
-        ctx.moveTo(22, -2);  ctx.lineTo(46, -2);
+        ctx.moveTo(-16, -6); ctx.lineTo(-8, 2);
+        ctx.moveTo(-8, -6); ctx.lineTo(-16, 2);
         ctx.stroke();
-      } else {
-        // Glowing cyan/mint pilot eyes
-        ctx.fillStyle = suitCol;
-        ctx.shadowColor = suitCol;
-        ctx.shadowBlur = 12;
 
+        // Right eye
         ctx.beginPath();
-        ctx.arc(-34, -2, 11, 0, Math.PI * 2);
-        ctx.arc(34, -2, 11, 0, Math.PI * 2);
+        ctx.moveTo(8, -6); ctx.lineTo(16, 2);
+        ctx.moveTo(16, -6); ctx.lineTo(8, 2);
+        ctx.stroke();
+
+        // Wobbly squiggly mouth
+        ctx.beginPath();
+        ctx.moveTo(-10, 8);
+        ctx.quadraticCurveTo(-5, 5, 0, 8);
+        ctx.quadraticCurveTo(5, 11, 10, 8);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Floating cartoon impact stars above helmet
+        ctx.font = '22px sans-serif';
+        ctx.fillText('💫', fx - 10, fy - 65);
+
+      } else if (emo === 'near_edge') {
+        // PANIC FACE: Wide round eyes looking down at the edge, sweat drop on helmet
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(-0.1);
+
+        ctx.fillStyle = this.screenColorStr;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
+        else ctx.rect(-26, -14, 52, 28);
         ctx.fill();
 
-        // Eye highlights
+        // Cute wide round shocked eyes (⊙ ⊙) looking down
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(-31, -5, 4, 0, Math.PI * 2);
-        ctx.arc(37, -5, 4, 0, Math.PI * 2);
+        ctx.arc(-12, -2, 6, 0, Math.PI * 2);
+        ctx.arc(12, -2, 6, 0, Math.PI * 2);
         ctx.fill();
+
+        // Pupils shifted down
+        ctx.fillStyle = '#05111a';
+        ctx.beginPath();
+        ctx.arc(-12, 1, 3, 0, Math.PI * 2);
+        ctx.arc(12, 1, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nervous wavy open mouth
+        ctx.strokeStyle = '#05111a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-8, 9);
+        ctx.lineTo(-4, 11);
+        ctx.lineTo(0, 9);
+        ctx.lineTo(4, 11);
+        ctx.lineTo(8, 9);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Comic sweat droplet on the side of the glass bubble helmet
+        ctx.font = '26px sans-serif';
+        ctx.fillText('💧', fx + 65, fy - 20);
+
+      } else if (emo === 'kill') {
+        // SMUG VICTORY WINK: Cute anime mascot wink with golden sparkle
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(-0.1);
+
+        ctx.fillStyle = this.screenColorStr;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
+        else ctx.rect(-26, -14, 52, 28);
+        ctx.fill();
+
+        // Left eye: cute wink arch (⌒)
+        ctx.strokeStyle = '#05111a';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(-12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
+        ctx.stroke();
+
+        // Right eye: open smiling star eye
+        ctx.fillStyle = '#05111a';
+        ctx.beginPath();
+        ctx.arc(12, -2, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cat-like smug smile (:3)
+        ctx.beginPath();
+        ctx.moveTo(-8, 6);
+        ctx.quadraticCurveTo(-4, 10, 0, 7);
+        ctx.quadraticCurveTo(4, 10, 8, 6);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Star sparkle on helmet
+        ctx.font = '20px sans-serif';
+        ctx.fillText('✨', fx + 42, fy - 35);
+
+      } else if (emo === 'celebrate') {
+        // STAR EYES (Crystal picked up)
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(-0.1);
+
+        ctx.fillStyle = this.screenColorStr;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-26, -14, 52, 28, 8);
+        else ctx.rect(-26, -14, 52, 28);
+        ctx.fill();
+
+        // Golden stars in eyes
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillStyle = '#ffdd00';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', -12, -3);
+        ctx.fillText('★', 12, -3);
+
+        // Big happy open smile
+        ctx.strokeStyle = '#05111a';
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.arc(0, 5, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+        ctx.stroke();
+
+        ctx.restore();
+
+      } else if (this.isBlinking) {
+        // NATURAL CUTE BLINK: Soft closed eyelid arcs over the eyes
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(-0.1);
+
+        ctx.fillStyle = this.screenColorStr;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(-24, -12, 48, 16, 6);
+        else ctx.rect(-24, -12, 48, 16);
+        ctx.fill();
+
+        // Closed smiling eyes (⌒  ⌒)
+        ctx.strokeStyle = '#05111a';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(-12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(12, -2, 6, 1.1 * Math.PI, 1.9 * Math.PI);
+        ctx.stroke();
+
+        ctx.restore();
       }
-
-      // Confident pilot smile
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3.0;
-      ctx.beginPath();
-      ctx.arc(0, 10, 14, 0.15 * Math.PI, 0.85 * Math.PI);
-      ctx.stroke();
-
-      // Tactical HUD reticle in corner
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(-68, -26, 32, 18);
-      ctx.strokeRect(36, -26, 32, 18);
     }
 
-    ctx.restore();
     this.compositeTexture.needsUpdate = true;
   }
 
@@ -834,8 +627,8 @@ class BumperCraft {
     this.dashCooldown = this.dashMaxCooldown;
 
     // Physical Stretch Forward
-    this.squashX = 0.76;
-    this.squashY = 1.38;
+    this.squashX = 0.78;
+    this.squashY = 1.35;
 
     const dashSpeed = 26.5;
     this.vx = Math.sin(this.facing) * dashSpeed;
@@ -885,12 +678,13 @@ class BumperCraft {
   // Called when hit by another craft (light or heavy)
   onImpact(intensity = 1.0) {
     // Physical Squash
-    this.squashX = 1.42 * Math.min(1.6, intensity);
-    this.squashY = 0.68;
+    this.squashX = 1.38 * Math.min(1.5, intensity);
+    this.squashY = 0.70;
 
     if (this.isPlayer && HexAudio && HexAudio.sfxVoiceOof) {
       HexAudio.sfxVoiceOof();
     }
+
     if (intensity >= 1.3) {
       const heavyHits = ['💥 OOF!', '💢 CRUNCH!', '💫 BONK!', '💥 CLANG!'];
       const txt = heavyHits[Math.floor(Math.random() * heavyHits.length)];
@@ -906,9 +700,9 @@ class BumperCraft {
   onLaserShock() {
     this.squashX = 1.3;
     this.squashY = 0.75;
-    const zaps = ['ZAPPED!', 'HOT HOT HOT!', 'SHORT CIRCUIT!', 'SIZZLE!'];
+    const zaps = ['ZAPPED!', 'HOT HOT HOT!', 'OUCH!', 'SIZZLE!'];
     const txt = zaps[Math.floor(Math.random() * zaps.length)];
-    this.setEmotion('shock', 0.9, txt, '⚡');
+    this.setEmotion('hit', 0.9, txt, '⚡');
   }
 
   // Called when this craft knocks a rival out
@@ -953,7 +747,7 @@ class BumperCraft {
       this.shieldTimer = 5.0;
       this.shieldMesh.visible = true;
       HexAudio.sfxPowerUp();
-      this.setEmotion('emp', 1.3, 'FORCEFIELD!', '🛡️');
+      this.setEmotion('celebrate', 1.3, 'FORCEFIELD!', '🛡️');
     }
   }
 
@@ -1005,7 +799,10 @@ class BumperCraft {
 
     if (this.hasRocket) {
       this.rocketTimer -= dt;
-      if (this.rocketTimer <= 0) this.hasRocket = false;
+      if (this.rocketTimer <= 0) {
+        this.hasRocket = false;
+        this._redrawExpressiveDili();
+      }
     }
 
     // Dash status
@@ -1015,6 +812,7 @@ class BumperCraft {
       if (this.dashTimer <= 0) {
         this.isDashing = false;
         this.mass = 1.0;
+        this._redrawExpressiveDili();
       }
     } else {
       this.mass = this.hasRocket ? 2.2 : 1.0;
@@ -1117,15 +915,15 @@ class BumperCraft {
     // Dynamic Sprite scale with squash, stretch, and horizontal flip
     const flipX = (inputX < -0.1 ? -1 : 1);
     this.diliSprite.scale.set(
-      2.05 * this.squashX * flipX,
-      2.25 * this.squashY,
+      2.2 * this.squashX * flipX,
+      2.2 * this.squashY,
       1
     );
 
     // Idle Bobbing Animation
-    if (this.grounded) {
+    if (this.grounded && !this.isDashing) {
       const bob = Math.sin(performance.now() * 0.008) * 0.06;
-      this.diliSprite.position.y = 1.20 + bob;
+      this.diliSprite.position.y = 1.25 + bob;
     }
 
     this.bumperRing.material.emissiveIntensity = this.isDashing ? 2.8 : (this.hasShield ? 2.2 : 0.95);
