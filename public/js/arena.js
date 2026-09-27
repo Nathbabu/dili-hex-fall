@@ -279,14 +279,14 @@ class ArenaColosseum {
     if (!character || !character.alive) return null;
 
     for (const pu of this.powerUps) {
-      if (pu.collected) return;
+      if (pu.collected) continue;
       const dx = pu.x - character.x;
       const dz = pu.z - character.z;
-      if (dx * dx + dz * dz < 2.0) {
+      if (dx * dx + dz * dz < 2.4) {
         pu.collected = true;
         this.scene.remove(pu.mesh);
-        pu.mesh.geometry.dispose();
-        pu.mesh.material.dispose();
+        if (pu.mesh.geometry) pu.mesh.geometry.dispose();
+        if (pu.mesh.material) pu.mesh.material.dispose();
         return pu.type;
       }
     }

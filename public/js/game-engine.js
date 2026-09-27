@@ -414,7 +414,8 @@ class BumperGameEngine {
 
     // Hazard laser check
     if (this.arena.checkHazardCollision(this.player)) {
-      this.cameraShake = 0.25;
+      this.cameraShake = 0.28;
+      if (this.player.onLaserShock) this.player.onLaserShock();
     }
 
     // Power-up check
@@ -423,8 +424,20 @@ class BumperGameEngine {
       if (pu === 'crystal') {
         this.crystals++;
         HexAudio.sfxCrystal();
+        if (this.player.onCollectCrystal) this.player.onCollectCrystal();
       } else {
         this.player.activatePowerUp(pu);
+      }
+    }
+
+    // Periodic Dynamic Battle Banter between pilots
+    this.banterTimer = (this.banterTimer || 0) + dt;
+    if (this.banterTimer > 8.0) {
+      this.banterTimer = 0;
+      const aliveList = [this.player, ...this.aiManager.getCrafts()].filter(c => c.alive && c.grounded);
+      if (aliveList.length > 0) {
+        const speaker = aliveList[Math.floor(Math.random() * aliveList.length)];
+        if (speaker.triggerBanter) speaker.triggerBanter();
       }
     }
 
@@ -535,19 +548,23 @@ class BumperGameEngine {
 
             // Shield recoil
             if (A.hasShield) {
-              B.vx += nx * 22;
-              B.vz += nz * 22;
+              B.vx += nx * 24;
+              B.vz += nz * 24;
               B.lastAttacker = A;
               HexAudio.sfxBump(2.0);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
+              if (A.setEmotion) A.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (B.onImpact) B.onImpact(2.0);
               continue;
             }
             if (B.hasShield) {
-              A.vx -= nx * 22;
-              A.vz -= nz * 22;
+              A.vx -= nx * 24;
+              A.vz -= nz * 24;
               A.lastAttacker = B;
               HexAudio.sfxBump(2.0);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
+              if (B.setEmotion) B.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (A.onImpact) A.onImpact(2.0);
               continue;
             }
 
@@ -568,11 +585,16 @@ class BumperGameEngine {
               }
             }
 
+            // Trigger dynamic character expressions & comic emote bubbles for both combatants!
+            const impactIntensity = Math.min(2.2, Math.max(0.8, (relSpeed + bonusImpulse) / 9.5));
+            if (A.onImpact) A.onImpact(impactIntensity);
+            if (B.onImpact) B.onImpact(impactIntensity);
+
             // Impact audio and camera shake
             const impactForce = Math.min(2.5, relSpeed / 8.0);
             HexAudio.sfxBump(impactForce);
             if (A.isPlayer || B.isPlayer) {
-              this.cameraShake = Math.max(this.cameraShake, impactForce * 0.18);
+              this.cameraShake = Math.max(this.cameraShake, impactForce * 0.22);
             }
 
             // Collision Spark Particles at contact point
@@ -593,8 +615,15 @@ class BumperGameEngine {
       if (attacker === this.player) {
         this.kills++;
         this.score += 350;
-        this.cameraShake = 0.3;
+        this.cameraShake = 0.35;
       }
+      if (attacker.onScoreKill) {
+        attacker.onScoreKill(victim.pilotName);
+      }
+    }
+
+    if (victim.onKnockedOut) {
+      victim.onKnockedOut();
     }
 
     if (this.onKillFeed) {

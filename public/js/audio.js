@@ -172,6 +172,46 @@ const HexAudio = (() => {
     setTimeout(() => playTone(1174, 0.35, 'triangle', sfxGain, 0.4), 70);
   }
 
+  // Mascot Voice & Emote Reaction SFX
+  function sfxVoiceOof() {
+    playTone(280, 0.08, 'triangle', sfxGain, 0.4);
+    setTimeout(() => playTone(190, 0.12, 'sawtooth', sfxGain, 0.35), 40);
+  }
+
+  function sfxVoiceHappy() {
+    [784, 1047, 1318].forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.09, 'sine', sfxGain, 0.32), i * 45);
+    });
+  }
+
+  function sfxVoicePanic() {
+    [660, 520, 660, 520].forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.06, 'sawtooth', sfxGain, 0.3), i * 50);
+    });
+  }
+
+  function sfxVoiceScream() {
+    if (!ctx || isMuted) return;
+    try {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(620, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 1.2);
+      g.gain.setValueAtTime(0.38, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      osc.connect(g);
+      g.connect(sfxGain);
+      osc.start();
+      osc.stop(ctx.currentTime + 1.2);
+    } catch (_) {}
+  }
+
+  function sfxVoiceTaunt() {
+    playTone(880, 0.08, 'triangle', sfxGain, 0.3);
+    setTimeout(() => playTone(1174, 0.14, 'sine', sfxGain, 0.35), 70);
+  }
+
   // Fast Techno-Cyber Bassline (130 BPM)
   const bgmNotes = [
     { n: 110.00, d: 0.15 }, { n: 110.00, d: 0.15 }, { n: 130.81, d: 0.15 }, { n: 146.83, d: 0.15 },
@@ -209,6 +249,7 @@ const HexAudio = (() => {
     sfxBump, sfxDash, sfxEmp, sfxKill, sfxAlarm, sfxCollapse,
     sfxPowerUp, sfxCrystal, sfxElimination, sfxVictory,
     sfxCountdown, sfxGo,
+    sfxVoiceOof, sfxVoiceHappy, sfxVoicePanic, sfxVoiceScream, sfxVoiceTaunt,
     startMusic, stopMusic
   };
 })();
