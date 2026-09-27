@@ -143,6 +143,7 @@ class BumperCraft {
     this.grounded = true;
     this.kills = 0;
     this.lastAttacker = null;
+    this.hazardHitCooldown = 0;
 
     // Squash & Stretch Spring Physics
     this.squashX = 1.0;
@@ -589,6 +590,7 @@ class BumperCraft {
     if (!this.alive) return;
 
     // Cooldowns
+    if (this.hazardHitCooldown > 0) this.hazardHitCooldown -= dt;
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
     if (this.empCooldown > 0) this.empCooldown -= dt;
 

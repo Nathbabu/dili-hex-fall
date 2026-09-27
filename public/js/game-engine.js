@@ -412,10 +412,12 @@ class BumperGameEngine {
     const inp = this._getInputVector();
     this.player.update(dt, inp.x, inp.z, arenaRadius);
 
-    // Hazard laser check
-    if (this.arena.checkHazardCollision(this.player)) {
-      this.cameraShake = 0.28;
-      if (this.player.onLaserShock) this.player.onLaserShock();
+    // Heavy Cyber Sweeper collision check
+    const playerHit = this.arena.checkHazardCollision(this.player);
+    if (playerHit) {
+      this.cameraShake = Math.max(this.cameraShake, 0.48);
+      this._spawnSparks(playerHit.x, playerHit.z, 0xFF3300);
+      this._spawnSparks(playerHit.x, playerHit.z, 0xFFCC00);
     }
 
     // Power-up check
@@ -443,11 +445,16 @@ class BumperGameEngine {
 
     // 3. AI Opponents Update
     const allCrafts = [this.player, ...this.aiManager.getCrafts()];
-    this.aiManager.update(dt, allCrafts, arenaRadius);
+    this.aiManager.update(dt, allCrafts, arenaRadius, this.arena);
 
-    // Hazard laser check for bots
+    // Heavy Cyber Sweeper collision check for bots
     this.aiManager.bots.forEach(b => {
-      this.arena.checkHazardCollision(b.craft);
+      const botHit = this.arena.checkHazardCollision(b.craft);
+      if (botHit) {
+        this.cameraShake = Math.max(this.cameraShake, 0.35);
+        this._spawnSparks(botHit.x, botHit.z, 0xFF3300);
+        this._spawnSparks(botHit.x, botHit.z, 0xFFCC00);
+      }
     });
 
     // 4. ELASTIC BUMPER COLLISIONS BETWEEN ALL CRAFTS

@@ -96,54 +96,172 @@ class ArenaColosseum {
 
   _buildCenterHazard() {
     this.hazardGroup = new THREE.Group();
+    this.hazardAngularSpeed = 1.08; // ~1 full rotation every ~5.8s
 
-    // Central Cyber Hub
-    const hubGeo = new THREE.CylinderGeometry(0.8, 1.0, 1.2, 12);
-    const hubMat = new THREE.MeshStandardMaterial({
-      color: 0x111624,
-      metalness: 0.8,
-      roughness: 0.2,
-      emissive: 0x00E5FF,
-      emissiveIntensity: 0.3
+    // 1. Central Stationary Hydraulic Pylon
+    const pylonGroup = new THREE.Group();
+
+    // Dark Carbon Base Pedestal (Diameter 3.6m, height 0.45m)
+    const baseGeo = new THREE.CylinderGeometry(1.6, 2.0, 0.45, 20);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x0a101d,
+      metalness: 0.85,
+      roughness: 0.25,
+      emissive: 0xFF3300,
+      emissiveIntensity: 0.25
     });
-    const hub = new THREE.Mesh(hubGeo, hubMat);
-    hub.position.y = 0.6;
-    this.hazardGroup.add(hub);
+    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+    baseMesh.position.y = 0.22;
+    pylonGroup.add(baseMesh);
 
-    // Glowing Core Orb
-    const orbGeo = new THREE.SphereGeometry(0.45, 16, 12);
-    const orbMat = new THREE.MeshStandardMaterial({
-      color: 0xFF3344,
-      emissive: 0xFF3344,
-      emissiveIntensity: 1.2,
-      metalness: 0.2
+    // Glowing Base Hazard Ring
+    const baseRingGeo = new THREE.TorusGeometry(1.85, 0.08, 10, 32);
+    const baseRingMat = new THREE.MeshStandardMaterial({
+      color: 0xFF3300,
+      emissive: 0xFF3300,
+      emissiveIntensity: 1.8
     });
-    const orb = new THREE.Mesh(orbGeo, orbMat);
-    orb.position.y = 1.4;
-    this.hazardGroup.add(orb);
+    const baseRing = new THREE.Mesh(baseRingGeo, baseRingMat);
+    baseRing.rotation.x = Math.PI / 2;
+    baseRing.position.y = 0.42;
+    pylonGroup.add(baseRing);
 
-    // Twin Rotating Laser Sweepers
-    const armGeo = new THREE.BoxGeometry(9.0, 0.2, 0.2);
-    const armMat = new THREE.MeshStandardMaterial({
-      color: 0xFF3344,
-      emissive: 0xFF3344,
-      emissiveIntensity: 1.5,
+    // Hydraulic Heavy Column
+    const colGeo = new THREE.CylinderGeometry(1.15, 1.35, 1.1, 16);
+    const colMat = new THREE.MeshStandardMaterial({
+      color: 0x141c2c,
+      metalness: 0.9,
+      roughness: 0.3
+    });
+    const colMesh = new THREE.Mesh(colGeo, colMat);
+    colMesh.position.y = 0.9;
+    pylonGroup.add(colMesh);
+
+    // Pulsing Plasma Reactor Core Dome
+    const coreGeo = new THREE.SphereGeometry(0.72, 24, 16);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color: 0xFF4400,
+      emissive: 0xFF3300,
+      emissiveIntensity: 2.2,
+      metalness: 0.1,
+      roughness: 0.1
+    });
+    this.reactorCore = new THREE.Mesh(coreGeo, coreMat);
+    this.reactorCore.position.y = 1.55;
+    pylonGroup.add(this.reactorCore);
+
+    // Reactor Containment Cage
+    const cageGeo = new THREE.TorusGeometry(0.85, 0.06, 8, 24);
+    const cageMat = new THREE.MeshStandardMaterial({ color: 0x050b14, metalness: 0.9, roughness: 0.2 });
+    const cage1 = new THREE.Mesh(cageGeo, cageMat);
+    cage1.rotation.x = Math.PI / 2;
+    cage1.position.y = 1.55;
+    pylonGroup.add(cage1);
+
+    this.scene.add(pylonGroup);
+    this.hazardPylonGroup = pylonGroup;
+
+    // 2. The Heavy Rotating Dual Sweeper Bar (Mounted at exact Bumper Height y = 0.88!)
+    // Total span: 10.6m (5.3m per side, thickness: 0.68m, height: 0.62m)
+    this.sweeperBar = new THREE.Group();
+
+    // Central Turret Collar Hub
+    const turretGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.72, 18);
+    const turretMat = new THREE.MeshStandardMaterial({
+      color: 0x121927,
+      metalness: 0.95,
+      roughness: 0.2
+    });
+    const turretMesh = new THREE.Mesh(turretGeo, turretMat);
+    turretMesh.position.y = 0.88;
+    this.sweeperBar.add(turretMesh);
+
+    // Main Heavy Titanium Bumper Beam
+    const beamGeo = new THREE.BoxGeometry(10.6, 0.60, 0.68);
+    const beamMat = new THREE.MeshStandardMaterial({
+      color: 0x0e1522,
+      metalness: 0.9,
+      roughness: 0.28
+    });
+    const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+    beamMesh.position.y = 0.88;
+    this.sweeperBar.add(beamMesh);
+
+    // Dual Forward & Rear Energy Impact Pads (Glowing neon hazard cushions!)
+    for (let face of [-0.36, 0.36]) {
+      const padGeo = new THREE.BoxGeometry(10.3, 0.36, 0.12);
+      const padMat = new THREE.MeshStandardMaterial({
+        color: 0xFF3300,
+        emissive: 0xFF3300,
+        emissiveIntensity: 2.4,
+        roughness: 0.2
+      });
+      const pad = new THREE.Mesh(padGeo, padMat);
+      pad.position.set(0, 0.88, face);
+      this.sweeperBar.add(pad);
+    }
+
+    // Heavy Reinforced Ram Tips (Both ends at x = -5.3 and x = +5.3)
+    for (let side of [-5.3, 5.3]) {
+      const ramCapGeo = new THREE.BoxGeometry(0.45, 0.72, 0.82);
+      const ramCapMat = new THREE.MeshStandardMaterial({
+        color: 0x1c2436,
+        metalness: 0.95,
+        roughness: 0.2
+      });
+      const ramCap = new THREE.Mesh(ramCapGeo, ramCapMat);
+      ramCap.position.set(side, 0.88, 0);
+      this.sweeperBar.add(ramCap);
+
+      // Flashing Warning Beacon on tips
+      const tipLightGeo = new THREE.SphereGeometry(0.20, 14, 10);
+      const tipLightMat = new THREE.MeshStandardMaterial({
+        color: 0xFFDD00,
+        emissive: 0xFFCC00,
+        emissiveIntensity: 2.8
+      });
+      const tipLight = new THREE.Mesh(tipLightGeo, tipLightMat);
+      tipLight.position.set(side, 1.25, 0);
+      this.sweeperBar.add(tipLight);
+    }
+
+    // Yellow Caution Accent Chevrons along top of beam
+    for (let xPos of [-3.8, -2.4, -1.0, 1.0, 2.4, 3.8]) {
+      const stripeGeo = new THREE.BoxGeometry(0.65, 0.03, 0.45);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.position.set(xPos, 1.19, 0);
+      this.sweeperBar.add(stripe);
+    }
+
+    // Ground Laser Projection Line (Projected 0.95m ahead of the sweep on the hex floor)
+    const lineGeo = new THREE.PlaneGeometry(10.6, 0.18);
+    const lineMat = new THREE.MeshBasicMaterial({
+      color: 0xFF2200,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.70,
+      side: THREE.DoubleSide
     });
-    this.hazardLaser = new THREE.Mesh(armGeo, armMat);
-    this.hazardLaser.position.y = 0.6;
-    this.hazardGroup.add(this.hazardLaser);
+    this.groundLaser = new THREE.Mesh(lineGeo, lineMat);
+    this.groundLaser.rotation.x = Math.PI / 2;
+    this.groundLaser.position.set(0, 0.06, 0.95);
+    this.sweeperBar.add(this.groundLaser);
 
+    this.hazardLaser = beamMesh; // Reference for collision checks
+    this.hazardGroup.add(this.sweeperBar);
     this.scene.add(this.hazardGroup);
   }
 
   update(dt) {
     this.elapsedTime += dt;
 
-    // Rotate center laser sweeper
+    // Rotate center heavy cyber sweeper
     if (this.hazardGroup) {
-      this.hazardGroup.rotation.y += dt * 0.65;
+      this.hazardGroup.rotation.y += dt * (this.hazardAngularSpeed || 1.08);
+      if (this.reactorCore) {
+        const pulse = 1.8 + Math.sin(this.elapsedTime * 6.0) * 0.6;
+        this.reactorCore.material.emissiveIntensity = pulse;
+      }
     }
 
     // Check Ring Collapse Schedule
@@ -294,29 +412,84 @@ class ArenaColosseum {
   }
 
   checkHazardCollision(character) {
-    if (!character.alive || !this.hazardLaser) return false;
+    if (!character.alive || !character.grounded || character.hazardHitCooldown > 0 || !this.hazardLaser) {
+      return null;
+    }
 
-    // Laser arm is in hazardGroup with rotation
     const angle = this.hazardGroup.rotation.y;
     const cosA = Math.cos(-angle);
     const sinA = Math.sin(-angle);
 
-    // Transform character pos to laser local space
+    // Transform character pos to sweeper local space
     const lx = character.x * cosA - character.z * sinA;
     const lz = character.x * sinA + character.z * cosA;
 
-    // Laser spans x from -4.5 to +4.5, thickness z ~ 0.5
-    if (Math.abs(lx) <= 4.6 && Math.abs(lz) <= 0.65 && character.y <= 1.2) {
-      // Impact! Push character outward along radial vector
-      const dist = Math.sqrt(character.x * character.x + character.z * character.z) || 1;
-      const pushX = (character.x / dist) * 16;
-      const pushZ = (character.z / dist) * 16;
-      character.vx = pushX;
-      character.vz = pushZ;
-      HexAudio.sfxBump(1.4);
-      return true;
+    // Arm length: 10.6m (half-span 5.3m). Thickness: 0.68m (half-thickness 0.34m).
+    // Character radius is ~1.15. Total collision bounds in local space:
+    const armHalfLength = 5.35;
+    const armHalfThickness = 0.35 + (character.radius * 0.60); // ~1.04m
+
+    if (Math.abs(lx) <= armHalfLength && Math.abs(lz) <= armHalfThickness && character.y <= 1.8) {
+      const distFromCenter = Math.sqrt(character.x * character.x + character.z * character.z);
+
+      // If right against the central hub (r < 1.3), push outward
+      if (distFromCenter < 1.3) {
+        const pushDirX = character.x / (distFromCenter || 1);
+        const pushDirZ = character.z / (distFromCenter || 1);
+        character.vx = pushDirX * 18.0;
+        character.vz = pushDirZ * 18.0;
+        character.hazardHitCooldown = 0.40;
+        character.onImpact(1.8);
+        return { x: character.x, z: character.z };
+      }
+
+      // ROTATIONAL KINETIC TANGENTIAL SMACK:
+      // Rotation is counter-clockwise (positive around Y):
+      // Tangent vector = (-z, x) / dist
+      const rotSpeed = this.hazardAngularSpeed || 1.08;
+      const tangentX = -character.z / distFromCenter;
+      const tangentZ = character.x / distFromCenter;
+
+      // Radial outward vector (centrifugal fling):
+      const radialX = character.x / distFromCenter;
+      const radialZ = character.z / distFromCenter;
+
+      // Linear speed increases with radius from center (v = omega * r)
+      const tipFactor = Math.min(1.0, distFromCenter / 5.35);
+      const launchSpeed = 22.0 + (tipFactor * 10.0); // 22 to 32 m/s!
+
+      // Launch direction: 78% tangential + 45% radial outward
+      const smackVx = (tangentX * 0.78 + radialX * 0.45) * launchSpeed;
+      const smackVz = (tangentZ * 0.78 + radialZ * 0.45) * launchSpeed;
+
+      character.vx = smackVx;
+      character.vz = smackVz;
+
+      // Cooldown prevents getting multi-hit stuck in the bar
+      character.hazardHitCooldown = 0.45;
+
+      // Physical impact squash & hit reaction on character
+      character.squashX = 1.55;
+      character.squashY = 0.60;
+
+      // Trigger reeling impact reaction with comic callout
+      const smackLines = ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
+      const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
+      character.setEmotion('hit', 1.0, txt, '💥');
+
+      if (HexAudio && HexAudio.sfxSweeperSmack) {
+        HexAudio.sfxSweeperSmack();
+      } else if (HexAudio && HexAudio.sfxBump) {
+        HexAudio.sfxBump(2.2);
+      }
+
+      return {
+        x: character.x,
+        z: character.z,
+        launchSpeed: launchSpeed
+      };
     }
-    return false;
+    return null;
   }
 
   isPointOnPlatform(x, z) {
@@ -335,6 +508,9 @@ class ArenaColosseum {
     });
     if (this.hazardGroup && this.hazardGroup.parent) {
       this.scene.remove(this.hazardGroup);
+    }
+    if (this.hazardPylonGroup && this.hazardPylonGroup.parent) {
+      this.scene.remove(this.hazardPylonGroup);
     }
     this.rings = [];
     this.powerUps = [];

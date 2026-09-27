@@ -100,6 +100,15 @@ const HexAudio = (() => {
     } catch (_) {}
   }
 
+  // Heavy Cyber Sweeper Collision Impact (Deep metallic punch + electric sizzle)
+  function sfxSweeperSmack() {
+    playPunch(0.32, 0.75);
+    playTone(95, 0.35, 'sawtooth', sfxGain, 0.55);
+    playTone(55, 0.45, 'sine', sfxGain, 0.70);
+    setTimeout(() => playTone(320, 0.12, 'square', sfxGain, 0.35), 25);
+    setTimeout(() => playTone(180, 0.20, 'triangle', sfxGain, 0.40), 60);
+  }
+
   // Bumper Collision Impact
   function sfxBump(intensity = 1.0) {
     playPunch(0.12 * Math.min(2, intensity), 0.35 * Math.min(1.5, intensity));
@@ -249,7 +258,7 @@ const HexAudio = (() => {
     sfxBump, sfxDash, sfxEmp, sfxKill, sfxAlarm, sfxCollapse,
     sfxPowerUp, sfxCrystal, sfxElimination, sfxVictory,
     sfxCountdown, sfxGo,
-    sfxVoiceOof, sfxVoiceHappy, sfxVoicePanic, sfxVoiceScream, sfxVoiceTaunt,
+    sfxVoiceOof, sfxVoiceHappy, sfxVoicePanic, sfxVoiceScream, sfxVoiceTaunt, sfxSweeperSmack,
     startMusic, stopMusic
   };
 })();

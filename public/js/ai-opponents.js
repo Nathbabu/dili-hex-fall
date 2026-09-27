@@ -24,19 +24,19 @@ class AIBumperBot {
     this.craft.reset(x, z);
   }
 
-  update(dt, allCrafts, arenaRadius) {
+  update(dt, allCrafts, arenaRadius, arena = null) {
     if (!this.craft.alive) return;
 
     this.thinkTimer += dt;
     if (this.thinkTimer >= this.thinkInterval) {
       this.thinkTimer = 0;
-      this._think(allCrafts, arenaRadius);
+      this._think(allCrafts, arenaRadius, arena);
     }
 
     this.craft.update(dt, this.steerX, this.steerZ, arenaRadius);
   }
 
-  _think(allCrafts, arenaRadius) {
+  _think(allCrafts, arenaRadius, arena = null) {
     const myDistFromCenter = Math.sqrt(this.craft.x * this.craft.x + this.craft.z * this.craft.z);
 
     // 1. SURVIVAL CHECK: If dangerously close to collapsing edge, steer toward center!
@@ -53,6 +53,30 @@ class AIBumperBot {
         this.craft.triggerDash();
       }
       return;
+    }
+
+    // 1.5. CYBER SWEEPER DANGER CHECK: Avoid getting smacked by the rotating heavy sweeper
+    if (arena && arena.hazardGroup && myDistFromCenter < 5.8) {
+      const sweeperAngle = (arena.hazardGroup.rotation.y) % (Math.PI * 2);
+      const botAngle = Math.atan2(this.craft.x, this.craft.z);
+      let angleDiff = botAngle - sweeperAngle;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+      // If sweeper is sweeping toward bot within ~50 degrees behind:
+      if (angleDiff > 0 && angleDiff < 0.88) {
+        // Steer outward away from the center to clear the bar!
+        const awayX = this.craft.x / (myDistFromCenter || 1);
+        const awayZ = this.craft.z / (myDistFromCenter || 1);
+        this.steerX = awayX * 1.5;
+        this.steerZ = awayZ * 1.5;
+
+        // Tactical evasion dash if available
+        if (Math.random() < 0.45) {
+          this.craft.triggerDash();
+        }
+        return;
+      }
     }
 
     // 2. TARGET SELECTION: Find closest or weakest alive rival
