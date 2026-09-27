@@ -163,10 +163,10 @@ class BumperCraft {
     this.isDashing = false;
     this.dashTimer = 0;
     this.dashCooldown = 0;
-    this.dashMaxCooldown = 3.2;
+    this.dashMaxCooldown = 2.4;
 
     this.empCooldown = 0;
-    this.empMaxCooldown = 5.5;
+    this.empMaxCooldown = 5.0;
 
     // Power-ups
     this.hasShield = false;
@@ -459,7 +459,7 @@ class BumperCraft {
     this.squashX = 0.78;
     this.squashY = 1.35;
 
-    const dashSpeed = 26.5;
+    const dashSpeed = this.isPlayer ? 29.0 : 23.5;
     this.vx = Math.sin(this.facing) * dashSpeed;
     this.vz = Math.cos(this.facing) * dashSpeed;
 

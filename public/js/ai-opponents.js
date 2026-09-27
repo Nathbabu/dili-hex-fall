@@ -12,7 +12,7 @@ class AIBumperBot {
     this.personality = {
       aggression: 0.70 + Math.random() * 0.30, // Ramming & flank tendency
       survival: 0.85 + Math.random() * 0.15,   // Edge avoidance & zone retreat
-      dashSkill: 0.75 + Math.random() * 0.25   // Smart dash timing
+      dashSkill: 0.35 + Math.random() * 0.25   // Smart dash timing
     };
 
     this.steerX = 0;
@@ -208,7 +208,7 @@ class AIBumperBot {
 
       // High priority to knockout the human player!
       if (c.isPlayer) {
-        score += 35.0;
+        score += 6.0;
       }
 
       // Huge priority to eliminate rivals already wobbling near the edge!
@@ -291,6 +291,7 @@ class AIBumperBot {
     if (directDist >= 2.0 && directDist <= 6.5 && this.craft.dashCooldown <= 0 && isDashSafe) {
       if (Math.abs(angleDiff) < 0.45 && Math.random() < this.personality.dashSkill) {
         this.craft.triggerDash();
+        this.craft.dashCooldown = 3.8 + Math.random() * 1.5;
         if (Math.random() < 0.30 && this.craft.setEmotion) {
           const taunts = ['OUT OF MY WAY!', 'EAT BUMPER!', 'RAMMING SPEED!', 'FEEL THE FORCE!'];
           this.craft.setEmotion('dash', 1.2, taunts[Math.floor(Math.random() * taunts.length)], '💥');

@@ -333,6 +333,10 @@ class BumperGameEngine {
     if (this.player) this.player.remove();
     this.player = new BumperCraft(this.scene, this.suitKey, this.pilotName);
     this.player.isPlayer = true;
+    this.player.mass = 1.45;        // Heavier, superior grip against collisions
+    this.player.baseSpeed = 11.5;   // Responsive, agile throttle
+    this.player.accel = 42.0;       // Snappy acceleration
+    this.player.dashMaxCooldown = 2.2; // Fast Dash recharge (Spacebar)
     this.player.reset(0, 11); // Start near bottom edge of arena
 
     // Reset AI Manager
@@ -515,10 +519,10 @@ class BumperGameEngine {
         const dx = B.x - A.x;
         const dz = B.z - A.z;
         const dist = Math.sqrt(dx * dx + dz * dz);
-        const minDist = A.radius + B.radius; // ~2.1
+        const minDist = A.radius + B.radius; // ~2.3
 
         if (dist < minDist && dist > 0.001) {
-          // Normal vector from A to B
+          // Normal vector pointing from A to B
           const nx = dx / dist;
           const nz = dz / dist;
 
@@ -535,73 +539,127 @@ class BumperGameEngine {
           const velAlongNormal = rvx * nx + rvz * nz;
 
           if (velAlongNormal < 0) {
-            // Elastic collision with extra bounce juice
+            // Forward velocity along normal: who is ramming whom?
+            const aForward = A.vx * nx + A.vz * nz;       // Positive if A is charging toward B
+            const bForward = -(B.vx * nx + B.vz * nz);    // Positive if B is charging toward A
+
             let restitution = 1.35;
-
-            // Extra impulse if either is dashing or rocket powered!
             let bonusImpulse = 0;
-            if (A.isDashing) {
-              bonusImpulse += 18.0;
-              B.lastAttacker = A;
-            }
-            if (B.isDashing) {
-              bonusImpulse += 18.0;
-              A.lastAttacker = B;
-            }
 
-            // Shield recoil
-            if (A.hasShield) {
-              B.vx += nx * 24;
-              B.vz += nz * 24;
+            // Shield deflection
+            if (A.hasShield && !B.hasShield) {
+              B.vx += nx * 26;
+              B.vz += nz * 26;
+              B.knockbackTimer = 0.45;
               B.lastAttacker = A;
-              HexAudio.sfxBump(2.0);
+              HexAudio.sfxBump(2.2);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
-              if (A.setEmotion) A.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (A.setEmotion) A.setEmotion('kill', 1.2, 'DEFLECTED!', '⚡');
               if (B.onImpact) B.onImpact(2.0);
               continue;
             }
-            if (B.hasShield) {
-              A.vx -= nx * 24;
-              A.vz -= nz * 24;
+            if (B.hasShield && !A.hasShield) {
+              A.vx -= nx * 26;
+              A.vz -= nz * 26;
+              A.knockbackTimer = 0.45;
               A.lastAttacker = B;
-              HexAudio.sfxBump(2.0);
+              HexAudio.sfxBump(2.2);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
-              if (B.setEmotion) B.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (B.setEmotion) B.setEmotion('kill', 1.2, 'DEFLECTED!', '⚡');
               if (A.onImpact) A.onImpact(2.0);
               continue;
             }
 
-            const impulseMag = -(1 + restitution) * velAlongNormal / (1 / A.mass + 1 / B.mass) + bonusImpulse;
+            // Dash bonuses: Player gets huge Mega Dash Ram!
+            if (A.isDashing) {
+              bonusImpulse += A.isPlayer ? 28.0 : 15.0;
+              B.lastAttacker = A;
+            }
+            if (B.isDashing) {
+              bonusImpulse += B.isPlayer ? 28.0 : 15.0;
+              A.lastAttacker = B;
+            }
 
-            A.vx -= (impulseMag / A.mass) * nx;
-            A.vz -= (impulseMag / A.mass) * nz;
-            B.vx += (impulseMag / B.mass) * nx;
-            B.vz += (impulseMag / B.mass) * nz;
+            // Regular offensive ram bonus: If player is steering forward at speed, pack a punch!
+            if (A.isPlayer && aForward > 2.0 && !A.isDashing) {
+              bonusImpulse += 15.0; // Player regular shove is punchy!
+              B.lastAttacker = A;
+            } else if (B.isPlayer && bForward > 2.0 && !B.isDashing) {
+              bonusImpulse += 15.0;
+              A.lastAttacker = B;
+            }
 
-            // Attribute attacker
-            const relSpeed = Math.sqrt(rvx * rvx + rvz * rvz);
-            if (A.isPlayer || relSpeed > 10) {
-              if (Math.abs(A.vx) + Math.abs(A.vz) > Math.abs(B.vx) + Math.abs(B.vz)) {
-                B.lastAttacker = A;
+            const totalMass = (1 / A.mass) + (1 / B.mass);
+            const impulseMag = -(1 + restitution) * velAlongNormal / totalMass + bonusImpulse;
+
+            // Recoil factors: Player has high grip and low recoil when attacking
+            let aRecoil = 1.0;
+            let bRecoil = 1.0;
+
+            if (A.isPlayer && aForward >= bForward) {
+              // Player is ramming B!
+              aRecoil = 0.30; // Player maintains momentum, barely recoils
+              bRecoil = 1.55; // Bot takes massive knockback!
+              B.knockbackTimer = A.isDashing ? 0.50 : 0.35;
+              if (A.setEmotion && Math.random() < 0.4) {
+                const calls = ['RAMMED!', 'BOOM!', 'GET OUT!', 'SMACK!'];
+                A.setEmotion('dash', 0.9, calls[Math.floor(Math.random() * calls.length)], '💥');
+              }
+            } else if (B.isPlayer && bForward >= aForward) {
+              // Player is ramming A!
+              bRecoil = 0.30;
+              aRecoil = 1.55;
+              A.knockbackTimer = B.isDashing ? 0.50 : 0.35;
+              if (B.setEmotion && Math.random() < 0.4) {
+                const calls = ['RAMMED!', 'BOOM!', 'GET OUT!', 'SMACK!'];
+                B.setEmotion('dash', 0.9, calls[Math.floor(Math.random() * calls.length)], '💥');
+              }
+            } else {
+              // Bot vs Player or Bot vs Bot
+              if (A.isPlayer) {
+                aRecoil = 0.70; // Player absorbs bot hits with high mass
+                bRecoil = 1.0;
+                A.knockbackTimer = B.isDashing ? 0.25 : 0.12;
+              } else if (B.isPlayer) {
+                bRecoil = 0.70;
+                aRecoil = 1.0;
+                B.knockbackTimer = A.isDashing ? 0.25 : 0.12;
               } else {
-                A.lastAttacker = B;
+                // Bot vs Bot: Both slide and bounce realistically
+                A.knockbackTimer = 0.32;
+                B.knockbackTimer = 0.32;
               }
             }
 
-            // Trigger dynamic character expressions & comic emote bubbles for both combatants!
-            const impactIntensity = Math.min(2.2, Math.max(0.8, (relSpeed + bonusImpulse) / 9.5));
+            A.vx -= ((impulseMag * aRecoil) / A.mass) * nx;
+            A.vz -= ((impulseMag * aRecoil) / A.mass) * nz;
+            B.vx += ((impulseMag * bRecoil) / B.mass) * nx;
+            B.vz += ((impulseMag * bRecoil) / B.mass) * nz;
+
+            // Attribute attacker
+            const relSpeed = Math.sqrt(rvx * rvx + rvz * rvz);
+            if (aForward > bForward + 1.5) {
+              B.lastAttacker = A;
+            } else if (bForward > aForward + 1.5) {
+              A.lastAttacker = B;
+            } else if (A.isPlayer) {
+              B.lastAttacker = A;
+            }
+
+            // Impact reactions & dynamic expressions
+            const impactIntensity = Math.min(2.5, Math.max(0.8, (relSpeed + bonusImpulse) / 8.5));
             if (A.onImpact) A.onImpact(impactIntensity);
             if (B.onImpact) B.onImpact(impactIntensity);
 
             // Impact audio and camera shake
-            const impactForce = Math.min(2.5, relSpeed / 8.0);
+            const impactForce = Math.min(2.5, relSpeed / 7.0);
             HexAudio.sfxBump(impactForce);
             if (A.isPlayer || B.isPlayer) {
-              this.cameraShake = Math.max(this.cameraShake, impactForce * 0.22);
+              this.cameraShake = Math.max(this.cameraShake, (A.isDashing || B.isDashing) ? 0.42 : 0.22);
             }
 
             // Collision Spark Particles at contact point
-            this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, A.suitColor);
+            this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, (A.isPlayer ? A : B).suitColor);
           }
         }
       }
