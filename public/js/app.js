@@ -1,10 +1,10 @@
 // =============================================
-// DILI: HEX-FALL — UI & Leaderboard Controller
+// DILI: CYBER BUMPERS — UI & Leaderboard Controller
 // =============================================
 (function() {
   'use strict';
 
-  // DOM Elements
+  // Screens
   const titleScreen = document.getElementById('titleScreen');
   const hud = document.getElementById('hud');
   const pauseOverlay = document.getElementById('pauseOverlay');
@@ -12,7 +12,7 @@
   const leaderboardScreen = document.getElementById('leaderboardScreen');
   const howToPlayModal = document.getElementById('howToPlayModal');
 
-  // Title inputs & buttons
+  // Title inputs
   const pilotNameInput = document.getElementById('pilotName');
   const suitButtons = document.querySelectorAll('.suit-btn');
   const btnPlay = document.getElementById('btnPlay');
@@ -24,13 +24,23 @@
   const globalAudioBtn = document.getElementById('globalAudioBtn');
   const audioIcon = document.getElementById('audioIcon');
 
-  // HUD
+  // HUD Elements
   const hudTime = document.getElementById('hudTime');
-  const hudTier = document.getElementById('hudTier');
   const hudAlive = document.getElementById('hudAlive');
-  const hudCrystals = document.getElementById('hudCrystals');
+  const hudKills = document.getElementById('hudKills');
   const hudScore = document.getElementById('hudScore');
   const btnPause = document.getElementById('btnPause');
+  const killFeed = document.getElementById('killFeed');
+  const arenaAlert = document.getElementById('arenaAlert');
+  const alertText = document.getElementById('alertText');
+
+  // Cooldown Overlays (Mobile & Desktop)
+  const dashCooldownOverlay = document.getElementById('dashCooldownOverlay');
+  const empCooldownOverlay = document.getElementById('empCooldownOverlay');
+  const pcDashCooldown = document.getElementById('pcDashCooldown');
+  const pcEmpCooldown = document.getElementById('pcEmpCooldown');
+
+  // Powerup Banner
   const powerUpBanner = document.getElementById('powerUpBanner');
   const powerUpIcon = document.getElementById('powerUpIcon');
   const powerUpText = document.getElementById('powerUpText');
@@ -44,8 +54,7 @@
   const goTitle = document.getElementById('goTitle');
   const goSubtitle = document.getElementById('goSubtitle');
   const goTime = document.getElementById('goTime');
-  const goTier = document.getElementById('goTier');
-  const goCrystals = document.getElementById('goCrystals');
+  const goKills = document.getElementById('goKills');
   const goScore = document.getElementById('goScore');
   const goRank = document.getElementById('goRank');
   const newRecordBanner = document.getElementById('newRecordBanner');
@@ -60,24 +69,21 @@
   // State
   let engine = null;
   let selectedSuit = 'mint';
-  let personalBest = parseInt(localStorage.getItem('hexfall_pb') || '0', 10);
+  let personalBest = parseInt(localStorage.getItem('cyberbumpers_pb') || '0', 10);
 
   const suitColorMap = {
     mint:    0x00FFC6,
     pink:    0xFF6EC7,
     gold:    0xFFD700,
     cobalt:  0x4DA6FF,
-    crimson: 0xFF4444
+    crimson: 0xFF3344
   };
 
-  // Screen Manager
-  function showScreen(screenId) {
+  function showScreen(id) {
     [titleScreen, hud, pauseOverlay, gameOverScreen, leaderboardScreen, howToPlayModal].forEach(s => {
       s.classList.remove('active');
     });
-    if (screenId) {
-      document.getElementById(screenId).classList.add('active');
-    }
+    if (id) document.getElementById(id).classList.add('active');
   }
 
   // Audio Toggle
@@ -97,58 +103,92 @@
     });
   });
 
-  // Init Engine
+  // Engine Setup
   function getEngine() {
     if (!engine) {
-      engine = new HexFallEngine('gameCanvas');
+      engine = new BumperGameEngine('gameCanvas');
 
+      // Live HUD updates
       engine.onUpdate = (data) => {
         hudTime.textContent = formatTime(data.time);
-        hudTier.textContent = `${data.tier}/4 - ${data.tierLabel}`;
         hudAlive.textContent = `${data.alive}/${data.total}`;
-        hudCrystals.textContent = data.crystals;
+        hudKills.textContent = data.kills;
         hudScore.textContent = data.score;
 
-        if (data.powerUp) {
+        // Cooldown bars
+        const dashCdPct = Math.floor(data.dashCooldown * 100);
+        const empCdPct = Math.floor(data.empCooldown * 100);
+
+        if (dashCooldownOverlay) dashCooldownOverlay.style.height = `${dashCdPct}%`;
+        if (empCooldownOverlay) empCooldownOverlay.style.height = `${empCdPct}%`;
+        if (pcDashCooldown) pcDashCooldown.style.width = `${100 - dashCdPct}%`;
+        if (pcEmpCooldown) pcEmpCooldown.style.width = `${100 - empCdPct}%`;
+
+        // Active Power-up banner
+        if (data.hasRocket) {
           powerUpBanner.classList.remove('hidden');
-          powerUpIcon.textContent = data.powerUp.icon;
-          powerUpText.textContent = data.powerUp.name;
-          powerUpBar.style.width = `${Math.max(0, data.powerUpProgress)}%`;
+          powerUpIcon.textContent = '🚀';
+          powerUpText.textContent = 'MEGA ROCKET ACTIVE';
+          powerUpBar.style.width = `${Math.max(0, data.rocketProgress)}%`;
+        } else if (data.hasShield) {
+          powerUpBanner.classList.remove('hidden');
+          powerUpIcon.textContent = '🛡️';
+          powerUpText.textContent = 'FORCE SHIELD ACTIVE';
+          powerUpBar.style.width = `${Math.max(0, data.shieldProgress)}%`;
         } else {
           powerUpBanner.classList.add('hidden');
         }
       };
 
+      // Kill Feed Event
+      engine.onKillFeed = (data) => {
+        const item = document.createElement('div');
+        item.className = 'kill-item';
+        if (data.isPlayerKill) {
+          item.style.borderColor = '#00FFC6';
+          item.innerHTML = `💥 <b>YOU</b> knocked out ${escapeHtml(data.victim)}! <span style="color:#FFD700">+350</span>`;
+        } else {
+          item.innerHTML = `💥 ${escapeHtml(data.killer)} eliminated ${escapeHtml(data.victim)}`;
+        }
+        killFeed.prepend(item);
+        setTimeout(() => { item.remove(); }, 3500);
+      };
+
+      // Arena Alert Event
+      engine.onAlert = (msg) => {
+        alertText.textContent = msg;
+        arenaAlert.classList.remove('hidden');
+        setTimeout(() => { arenaAlert.classList.add('hidden'); }, 3000);
+      };
+
+      // Game Over / Victory
       engine.onGameOver = (data) => {
         showScreen('gameOverScreen');
 
         if (data.win) {
-          goTitle.textContent = '🏆 VICTORY - LAST STANDING!';
+          goTitle.textContent = '🏆 ARENA CHAMPION! 🏆';
           goTitle.style.color = '#FFD700';
-          goSubtitle.textContent = 'You outlasted all rival astronauts!';
+          goSubtitle.textContent = 'You knocked out every rival pilot!';
         } else {
-          goTitle.textContent = 'ELIMINATED';
-          goTitle.style.color = '#FF4444';
-          goSubtitle.textContent = 'Fell through collapsing hex tiers into the void';
+          goTitle.textContent = 'KNOCKED OUT!';
+          goTitle.style.color = '#FF3344';
+          goSubtitle.textContent = 'Plunged into the cyber abyss!';
         }
 
         goTime.textContent = formatTime(data.time);
-        goTier.textContent = `TIER ${data.tier}`;
-        goCrystals.textContent = data.crystals;
+        goKills.textContent = data.kills;
         goScore.textContent = data.score;
         goRank.textContent = 'Submitting...';
 
-        // Personal record check
         if (data.score > personalBest) {
           personalBest = data.score;
-          localStorage.setItem('hexfall_pb', String(personalBest));
+          localStorage.setItem('cyberbumpers_pb', String(personalBest));
           newRecordBanner.classList.remove('hidden');
           launchConfetti();
         } else {
           newRecordBanner.classList.add('hidden');
         }
 
-        // Submit score to cloud leaderboard
         submitScore(data).then(res => {
           if (res && res.rank) {
             goRank.textContent = `#${res.rank} of ${res.totalPilots || 1}`;
@@ -170,19 +210,17 @@
     const suitHex = suitColorMap[selectedSuit] || 0x00FFC6;
 
     showScreen('hud');
+    killFeed.innerHTML = '';
+    arenaAlert.classList.add('hidden');
     eg.startGame(pilot, suitHex);
   }
 
-  // Play button
   btnPlay.addEventListener('click', launchGame);
+  btnRetry.addEventListener('click', launchGame);
 
   // How to play
-  btnHowToPlay.addEventListener('click', () => {
-    showScreen('howToPlayModal');
-  });
-  btnHelpClose.addEventListener('click', () => {
-    showScreen('titleScreen');
-  });
+  btnHowToPlay.addEventListener('click', () => { showScreen('howToPlayModal'); });
+  btnHelpClose.addEventListener('click', () => { showScreen('titleScreen'); });
 
   // Pause
   btnPause.addEventListener('click', (e) => {
@@ -205,9 +243,6 @@
     showScreen('titleScreen');
   });
 
-  // Retry
-  btnRetry.addEventListener('click', launchGame);
-
   btnGoMenu.addEventListener('click', () => {
     if (engine) engine.quit();
     showScreen('titleScreen');
@@ -218,7 +253,6 @@
     fetchLeaderboard();
   });
 
-  // Leaderboard modal
   btnLeaderboard.addEventListener('click', () => {
     showScreen('leaderboardScreen');
     fetchLeaderboard();
@@ -228,32 +262,30 @@
     showScreen('titleScreen');
   });
 
-  // API: Fetch Leaderboard
+  // Leaderboard API
   async function fetchLeaderboard() {
-    lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">Connecting to Dlicom Leaderboard...</td></tr>';
+    lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>';
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
       if (data.success && data.leaderboard && data.leaderboard.length > 0) {
         lbBody.innerHTML = data.leaderboard.slice(0, 50).map((e, idx) => {
           const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-          const time = e.survivalTime ? formatTime(e.survivalTime) : '—';
           return `<tr>
             <td>${rankBadge}</td>
             <td><strong>${escapeHtml(e.pilot)}</strong></td>
-            <td class="highlight-mint">${e.score}</td>
-            <td>${time}</td>
+            <td class="highlight-pink">${e.crystals || e.tier || 0}</td>
+            <td class="highlight-gold">${e.score}</td>
           </tr>`;
         }).join('');
       } else {
-        lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim the #1 rank!</td></tr>';
+        lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim #1 rank!</td></tr>';
       }
     } catch (err) {
       lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
     }
   }
 
-  // API: Submit High Score
   async function submitScore(data) {
     try {
       const res = await fetch('/api/score/submit', {
@@ -263,8 +295,8 @@
           pilot: data.pilot,
           score: data.score,
           survivalTime: data.time,
-          tier: data.tier,
-          crystals: data.crystals,
+          tier: data.kills, // store knockouts in tier/crystals field for display
+          crystals: data.kills,
           suitColor: selectedSuit,
           win: data.win
         })
@@ -276,7 +308,7 @@
     }
   }
 
-  // Confetti Animation
+  // Celebratory Confetti
   function launchConfetti() {
     let canvas = document.getElementById('confettiCanvas');
     if (!canvas) {
@@ -289,7 +321,7 @@
     const ctx = canvas.getContext('2d');
 
     const particles = [];
-    const colors = ['#00FFC6', '#00E5FF', '#FF6EC7', '#FFD700', '#4DA6FF'];
+    const colors = ['#00FFC6', '#00E5FF', '#FF6EC7', '#FFD700', '#FF3344'];
 
     for (let i = 0; i < 180; i++) {
       particles.push({
@@ -351,15 +383,13 @@
     return d.innerHTML;
   }
 
-  // Pre-fill pilot name from local storage if available
-  const savedPilot = localStorage.getItem('hexfall_pilot');
+  const savedPilot = localStorage.getItem('cyberbumpers_pilot');
   if (savedPilot) pilotNameInput.value = savedPilot;
   pilotNameInput.addEventListener('change', () => {
     if (pilotNameInput.value.trim()) {
-      localStorage.setItem('hexfall_pilot', pilotNameInput.value.trim());
+      localStorage.setItem('cyberbumpers_pilot', pilotNameInput.value.trim());
     }
   });
 
-  // Boot Title Screen
   showScreen('titleScreen');
 })();

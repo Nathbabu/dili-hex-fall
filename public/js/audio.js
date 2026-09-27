@@ -1,13 +1,13 @@
 // =============================================
-// DILI: HEX-FALL — Cyber Synth Web Audio Engine
+// DILI: CYBER BUMPERS — High-Octane Audio Synth
 // =============================================
 const HexAudio = (() => {
   'use strict';
 
   let ctx = null;
   let masterGain = null;
-  let musicGain = null;
   let sfxGain = null;
+  let musicGain = null;
   let bgmInterval = null;
   let bgmStep = 0;
   let isMuted = false;
@@ -19,18 +19,18 @@ const HexAudio = (() => {
       ctx = new AudioContext();
 
       masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.6, ctx.currentTime);
+      masterGain.gain.setValueAtTime(0.7, ctx.currentTime);
       masterGain.connect(ctx.destination);
 
-      musicGain = ctx.createGain();
-      musicGain.gain.setValueAtTime(0.2, ctx.currentTime);
-      musicGain.connect(masterGain);
-
       sfxGain = ctx.createGain();
-      sfxGain.gain.setValueAtTime(0.65, ctx.currentTime);
+      sfxGain.gain.setValueAtTime(0.75, ctx.currentTime);
       sfxGain.connect(masterGain);
+
+      musicGain = ctx.createGain();
+      musicGain.gain.setValueAtTime(0.22, ctx.currentTime);
+      musicGain.connect(masterGain);
     } catch (e) {
-      console.warn('[HexAudio] AudioContext unavailable:', e.message);
+      console.warn('[Audio] Init error:', e.message);
     }
   }
 
@@ -43,7 +43,7 @@ const HexAudio = (() => {
   function toggleMute() {
     isMuted = !isMuted;
     if (masterGain && ctx) {
-      masterGain.gain.setTargetAtTime(isMuted ? 0 : 0.6, ctx.currentTime, 0.05);
+      masterGain.gain.setTargetAtTime(isMuted ? 0 : 0.7, ctx.currentTime, 0.05);
     }
     return !isMuted;
   }
@@ -52,6 +52,7 @@ const HexAudio = (() => {
     return isMuted;
   }
 
+  // Tactile Tone Generator
   function playTone(freq, duration, type = 'sine', gainNode = sfxGain, vol = 0.3) {
     if (!ctx || isMuted) return;
     try {
@@ -68,93 +69,115 @@ const HexAudio = (() => {
     } catch (_) {}
   }
 
-  function playNoise(duration, vol = 0.15) {
+  // Heavy Impact Noise with Low-Pass Punch
+  function playPunch(duration = 0.15, vol = 0.45) {
     if (!ctx || isMuted) return;
     try {
       const bufSize = Math.floor(ctx.sampleRate * duration);
       const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+
       const src = ctx.createBufferSource();
       src.buffer = buf;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(320, ctx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + duration);
+
       const g = ctx.createGain();
       g.gain.setValueAtTime(vol, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.value = 2400;
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
       src.connect(filter);
       filter.connect(g);
       g.connect(sfxGain);
       src.start();
+
+      // Deep sub-bass boom
+      playTone(90, duration * 1.5, 'sine', sfxGain, vol * 0.8);
     } catch (_) {}
   }
 
-  // SFX Actions
-  function sfxJump() {
-    playTone(280, 0.12, 'sine', sfxGain, 0.28);
-    setTimeout(() => playTone(520, 0.1, 'sine', sfxGain, 0.22), 40);
+  // Bumper Collision Impact
+  function sfxBump(intensity = 1.0) {
+    playPunch(0.12 * Math.min(2, intensity), 0.35 * Math.min(1.5, intensity));
+    playTone(160, 0.1, 'sawtooth', sfxGain, 0.25 * intensity);
   }
 
-  function sfxLand() {
-    playNoise(0.06, 0.18);
-    playTone(140, 0.08, 'triangle', sfxGain, 0.25);
+  // Ram Dash Rocket Boost
+  function sfxDash() {
+    playTone(350, 0.3, 'sawtooth', sfxGain, 0.35);
+    playTone(180, 0.4, 'sine', sfxGain, 0.4);
+    setTimeout(() => playTone(600, 0.2, 'sawtooth', sfxGain, 0.25), 60);
   }
 
-  function sfxTileWarning() {
-    playTone(380, 0.08, 'sawtooth', sfxGain, 0.12);
+  // EMP Shockwave Pulse
+  function sfxEmp() {
+    playTone(800, 0.4, 'sawtooth', sfxGain, 0.4);
+    playTone(200, 0.6, 'sine', sfxGain, 0.5);
+    playPunch(0.25, 0.4);
   }
 
-  function sfxTileDrop() {
-    playTone(180, 0.25, 'sawtooth', sfxGain, 0.15);
-    playNoise(0.12, 0.1);
-  }
-
-  function sfxDive() {
-    playTone(650, 0.18, 'sawtooth', sfxGain, 0.2);
-    playTone(220, 0.25, 'sine', sfxGain, 0.25);
-  }
-
-  function sfxCollectCrystal() {
-    playTone(880, 0.09, 'sine', sfxGain, 0.3);
-    setTimeout(() => playTone(1320, 0.14, 'sine', sfxGain, 0.28), 50);
-  }
-
-  function sfxPowerUp() {
-    const freqs = [440, 554, 659, 880, 1108];
-    freqs.forEach((f, i) => {
-      setTimeout(() => playTone(f, 0.12, 'triangle', sfxGain, 0.25), i * 50);
+  // Knockout / Elimination
+  function sfxKill() {
+    const tones = [440, 659, 880, 1174];
+    tones.forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.15, 'triangle', sfxGain, 0.35), i * 50);
     });
   }
 
-  function sfxCountdown() {
-    playTone(480, 0.12, 'square', sfxGain, 0.25);
+  // Arena Collapse Siren Warning
+  function sfxAlarm() {
+    playTone(520, 0.25, 'sawtooth', sfxGain, 0.25);
+    setTimeout(() => playTone(440, 0.25, 'sawtooth', sfxGain, 0.25), 260);
   }
 
-  function sfxGo() {
-    playTone(880, 0.25, 'sine', sfxGain, 0.35);
-    setTimeout(() => playTone(1174, 0.35, 'triangle', sfxGain, 0.35), 80);
+  // Tile / Ring Drop Boom
+  function sfxCollapse() {
+    playPunch(0.4, 0.6);
+    playTone(70, 0.5, 'sawtooth', sfxGain, 0.4);
   }
 
+  // Power-up & Crystals
+  function sfxPowerUp() {
+    [523, 659, 784, 1047].forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.12, 'sine', sfxGain, 0.3), i * 50);
+    });
+  }
+
+  function sfxCrystal() {
+    playTone(980, 0.08, 'sine', sfxGain, 0.35);
+    setTimeout(() => playTone(1318, 0.14, 'sine', sfxGain, 0.3), 60);
+  }
+
+  // Game Endings
   function sfxElimination() {
-    playTone(280, 0.4, 'sawtooth', sfxGain, 0.25);
-    setTimeout(() => playTone(140, 0.6, 'sawtooth', sfxGain, 0.25), 100);
-    playNoise(0.4, 0.2);
+    playTone(280, 0.4, 'sawtooth', sfxGain, 0.35);
+    setTimeout(() => playTone(140, 0.6, 'sawtooth', sfxGain, 0.35), 100);
+    playPunch(0.3, 0.4);
   }
 
   function sfxVictory() {
-    const fanfare = [523.25, 659.25, 783.99, 1046.50, 880.00, 1046.50, 1318.51];
+    const fanfare = [523.25, 659.25, 783.99, 1046.50, 880.00, 1046.50, 1318.51, 1567.98];
     fanfare.forEach((f, i) => {
-      setTimeout(() => playTone(f, 0.28, 'triangle', sfxGain, 0.32), i * 110);
+      setTimeout(() => playTone(f, 0.3, 'triangle', sfxGain, 0.4), i * 110);
     });
   }
 
-  // Synthesizer BGM sequence
-  const bgmPattern = [
-    { note: 130.81, dur: 0.2 }, { note: 164.81, dur: 0.2 }, { note: 196.00, dur: 0.2 }, { note: 261.63, dur: 0.2 },
-    { note: 155.56, dur: 0.2 }, { note: 196.00, dur: 0.2 }, { note: 233.08, dur: 0.2 }, { note: 311.13, dur: 0.2 },
-    { note: 146.83, dur: 0.2 }, { note: 185.00, dur: 0.2 }, { note: 220.00, dur: 0.2 }, { note: 293.66, dur: 0.2 },
-    { note: 174.61, dur: 0.2 }, { note: 220.00, dur: 0.2 }, { note: 261.63, dur: 0.2 }, { note: 349.23, dur: 0.2 }
+  function sfxCountdown() { playTone(440, 0.12, 'square', sfxGain, 0.25); }
+  function sfxGo() {
+    playTone(880, 0.25, 'sine', sfxGain, 0.4);
+    setTimeout(() => playTone(1174, 0.35, 'triangle', sfxGain, 0.4), 70);
+  }
+
+  // Fast Techno-Cyber Bassline (130 BPM)
+  const bgmNotes = [
+    { n: 110.00, d: 0.15 }, { n: 110.00, d: 0.15 }, { n: 130.81, d: 0.15 }, { n: 146.83, d: 0.15 },
+    { n: 110.00, d: 0.15 }, { n: 164.81, d: 0.15 }, { n: 146.83, d: 0.15 }, { n: 130.81, d: 0.15 },
+    { n: 98.00,  d: 0.15 }, { n: 98.00,  d: 0.15 }, { n: 123.47, d: 0.15 }, { n: 146.83, d: 0.15 },
+    { n: 130.81, d: 0.15 }, { n: 164.81, d: 0.15 }, { n: 196.00, d: 0.20 }, { n: 164.81, d: 0.15 }
   ];
 
   function startMusic() {
@@ -164,14 +187,14 @@ const HexAudio = (() => {
     bgmStep = 0;
     bgmInterval = setInterval(() => {
       if (isMuted) return;
-      const p = bgmPattern[bgmStep % bgmPattern.length];
-      playTone(p.note, p.dur, 'triangle', musicGain, 0.16);
+      const b = bgmNotes[bgmStep % bgmNotes.length];
+      playTone(b.n, b.d, 'sawtooth', musicGain, 0.18);
+      // Kick drum punch on quarter beats
       if (bgmStep % 4 === 0) {
-        // Bass kick
-        playTone(p.note / 2, 0.35, 'sine', musicGain, 0.18);
+        playPunch(0.09, 0.25);
       }
       bgmStep++;
-    }, 190);
+    }, 175);
   }
 
   function stopMusic() {
@@ -183,9 +206,9 @@ const HexAudio = (() => {
 
   return {
     init, resumeCtx, toggleMute, getIsMuted,
-    sfxJump, sfxLand, sfxTileWarning, sfxTileDrop, sfxDive,
-    sfxCollectCrystal, sfxPowerUp, sfxCountdown, sfxGo,
-    sfxElimination, sfxVictory,
+    sfxBump, sfxDash, sfxEmp, sfxKill, sfxAlarm, sfxCollapse,
+    sfxPowerUp, sfxCrystal, sfxElimination, sfxVictory,
+    sfxCountdown, sfxGo,
     startMusic, stopMusic
   };
 })();

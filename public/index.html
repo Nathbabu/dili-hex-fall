@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>DILI: HEX-FALL | Dlicom 3D Cyber Arena</title>
-  <meta name="description" content="3D Hexagon Survival Arena — Be the Last Astronaut Standing in the Dlicom Cyber Universe!"/>
+  <title>DILI: CYBER BUMPERS | 3D Sumo Knockout Arena</title>
+  <meta name="description" content="3D Cyber Bumper Sumo Arena — Smash rival pilots off the collapsing arena in high-speed combat!"/>
   <meta name="theme-color" content="#050810"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/game.css"/>
 </head>
 <body>
-  <!-- 3D Canvas -->
+  <!-- 3D WebGL Canvas -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Sound Toggle Global Floating Button -->
-  <button id="globalAudioBtn" class="audio-btn" aria-label="Toggle Sound" title="Toggle Sound">
+  <!-- Global Audio Toggle -->
+  <button id="globalAudioBtn" class="audio-btn" aria-label="Toggle Audio" title="Toggle Sound">
     <span id="audioIcon">🔊</span>
   </button>
 
@@ -26,35 +26,35 @@
     <div class="title-content">
       <div class="brand-badge">
         <img src="assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo" onerror="this.style.display='none'"/>
-        <span class="brand-text">DLICOM AI GAME JAM</span>
+        <span class="brand-text">DLICOM 3D ACTION JAM</span>
       </div>
 
       <div class="logo-glow">
-        <h1 class="game-title">DILI<span class="title-accent">:</span> HEX<span class="title-dash">-</span>FALL</h1>
-        <p class="game-subtitle">3D CYBER HEXAGON SURVIVAL ARENA</p>
+        <h1 class="game-title">DILI<span class="title-accent">:</span> CYBER<span class="title-dash"> </span>BUMPERS</h1>
+        <p class="game-subtitle">⚡ 3D HIGH-SPEED SUMO KNOCKOUT ARENA ⚡</p>
       </div>
 
-      <!-- Suit Customization -->
+      <!-- Craft Customization -->
       <div class="suit-selector" id="suitSelector">
-        <p class="suit-label">CHOOSE ASTRONAUT SUIT</p>
+        <p class="suit-label">SELECT COMBAT GYRO-CRAFT</p>
         <div class="suit-options">
           <button class="suit-btn active" data-suit="mint" style="--suit:#00FFC6" title="Neon Mint Cadet">
             <span class="suit-dot"></span>
             <span class="suit-name">MINT</span>
           </button>
-          <button class="suit-btn" data-suit="pink" style="--suit:#FF6EC7" title="Cyber Pink Dliever">
+          <button class="suit-btn" data-suit="pink" style="--suit:#FF6EC7" title="Cyber Pink Striker">
             <span class="suit-dot"></span>
             <span class="suit-name">PINK</span>
           </button>
-          <button class="suit-btn" data-suit="gold" style="--suit:#FFD700" title="Sovereign Gold DCO">
+          <button class="suit-btn" data-suit="gold" style="--suit:#FFD700" title="Sovereign Titan">
             <span class="suit-dot"></span>
             <span class="suit-name">GOLD</span>
           </button>
-          <button class="suit-btn" data-suit="cobalt" style="--suit:#4DA6FF" title="Cobalt Shield Decoded">
+          <button class="suit-btn" data-suit="cobalt" style="--suit:#4DA6FF" title="Cobalt Enforcer">
             <span class="suit-dot"></span>
             <span class="suit-name">COBALT</span>
           </button>
-          <button class="suit-btn" data-suit="crimson" style="--suit:#FF4444" title="Crimson Fury">
+          <button class="suit-btn" data-suit="crimson" style="--suit:#FF3344" title="Crimson Crusher">
             <span class="suit-dot"></span>
             <span class="suit-name">CRIMSON</span>
           </button>
@@ -70,22 +70,21 @@
       <!-- Action Buttons -->
       <div class="title-actions">
         <button class="btn-primary" id="btnPlay">
-          <span class="btn-text">LAUNCH INTO ARENA</span>
+          <span class="btn-text">ENTER BATTLE ARENA</span>
           <span class="btn-glow"></span>
         </button>
         <div class="btn-row">
           <button class="btn-secondary" id="btnLeaderboard">
-            <span>🏆</span> GLOBAL LEADERBOARD
+            <span>🏆</span> LEADERBOARD
           </button>
           <button class="btn-secondary" id="btnHowToPlay">
-            <span>❓</span> HOW TO PLAY
+            <span>❓</span> COMBAT GUIDE
           </button>
         </div>
       </div>
 
-      <!-- Desktop Quick Controls Ribbon -->
       <div class="desktop-controls-hint">
-        <span>🎮 PC: <b>WASD</b> or <b>ARROWS</b> to Move | <b>SPACE</b> Jump | <b>SHIFT</b> Dive | <b>DRAG</b> Rotate Camera</span>
+        <span>🎮 <b>WASD/ARROWS</b> Steer | <b>SPACE</b> Turbo Ram Dash | <b>E / SHIFT</b> EMP Shockwave</span>
       </div>
     </div>
   </div>
@@ -98,27 +97,32 @@
         <span class="hud-value" id="hudTime">00:00</span>
       </div>
       <div class="hud-stat">
-        <span class="hud-label">TIER</span>
-        <span class="hud-value" id="hudTier">1/4</span>
+        <span class="hud-label">PILOTS ALIVE</span>
+        <span class="hud-value highlight-cyan" id="hudAlive">5/5</span>
       </div>
       <div class="hud-stat">
-        <span class="hud-label">ALIVE</span>
-        <span class="hud-value" id="hudAlive">5/5</span>
-      </div>
-      <div class="hud-stat">
-        <span class="hud-label">CRYSTALS</span>
-        <span class="hud-value highlight-gold" id="hudCrystals">0</span>
+        <span class="hud-label">KNOCKOUTS</span>
+        <span class="hud-value highlight-pink" id="hudKills">0</span>
       </div>
       <div class="hud-stat">
         <span class="hud-label">SCORE</span>
-        <span class="hud-value highlight-mint" id="hudScore">0</span>
+        <span class="hud-value highlight-gold" id="hudScore">0</span>
       </div>
     </div>
 
+    <!-- Arena Collapse Alert -->
+    <div id="arenaAlert" class="arena-alert hidden">
+      <span class="alert-icon">⚠️</span>
+      <span id="alertText">OUTER RING COLLAPSING!</span>
+    </div>
+
+    <!-- Live Combat Kill Feed -->
+    <div id="killFeed" class="kill-feed"></div>
+
     <!-- Power-up Active Banner -->
     <div id="powerUpBanner" class="powerup-banner hidden">
-      <span id="powerUpIcon">⚡</span>
-      <span id="powerUpText">SUPER JUMP READY</span>
+      <span id="powerUpIcon">🚀</span>
+      <span id="powerUpText">MEGA ROCKET ACTIVE</span>
       <div class="powerup-progress"><div id="powerUpBar" class="powerup-bar"></div></div>
     </div>
 
@@ -135,58 +139,74 @@
         </div>
       </div>
       <div class="action-buttons">
-        <button class="action-btn jump-btn" id="btnJump">
-          <span class="act-icon">▲</span>
-          <span class="act-txt">JUMP</span>
+        <button class="action-btn dash-btn" id="btnDash">
+          <span class="act-icon">⚡</span>
+          <span class="act-txt">RAM DASH</span>
+          <div id="dashCooldownOverlay" class="cooldown-overlay"></div>
         </button>
-        <button class="action-btn dive-btn" id="btnDive">
-          <span class="act-icon">▼</span>
-          <span class="act-txt">DIVE</span>
+        <button class="action-btn emp-btn" id="btnEmp">
+          <span class="act-icon">💥</span>
+          <span class="act-txt">EMP BLAST</span>
+          <div id="empCooldownOverlay" class="cooldown-overlay"></div>
         </button>
+      </div>
+    </div>
+
+    <!-- Desktop Ability HUD (Bottom Center) -->
+    <div class="desktop-abilities" id="desktopAbilities">
+      <div class="ability-card" id="cardDash">
+        <span class="ability-key">SPACE</span>
+        <span class="ability-name">RAM DASH</span>
+        <div id="pcDashCooldown" class="ability-cd-bar"></div>
+      </div>
+      <div class="ability-card" id="cardEmp">
+        <span class="ability-key">E / SHIFT</span>
+        <span class="ability-name">EMP SHOCKWAVE</span>
+        <div id="pcEmpCooldown" class="ability-cd-bar"></div>
       </div>
     </div>
   </div>
 
-  <!-- HOW TO PLAY MODAL -->
+  <!-- HOW TO PLAY / COMBAT GUIDE -->
   <div id="howToPlayModal" class="screen overlay">
     <div class="overlay-card help-card">
-      <h2>ARENA PROTOCOL</h2>
+      <h2>BATTLE ARENA RULES</h2>
       <div class="help-content">
         <div class="help-section">
-          <h3>🎯 MISSION OBJECTIVE</h3>
-          <p>Survive across <b>4 descending tiers</b> of hexagonal tiles. Once stepped on, tiles flash red and disintegrate into the void! Be the <b>Last Astronaut Standing</b> to claim victory!</p>
+          <h3>🎯 OBJECTIVE: LAST PILOT ON THE PLATFORM</h3>
+          <p>You and 4 rival pilots are dropped into a floating cyber colosseum. <b>Ram rival crafts off the edge into the void</b>! The outer rings will collapse over time, forcing high-stakes close-quarters combat!</p>
         </div>
         <div class="help-section">
-          <h3>🕹️ CONTROLS</h3>
+          <h3>🕹️ COMBAT CONTROLS</h3>
           <div class="controls-grid">
-            <div class="ctrl-item"><span class="badge">WASD / ARROWS</span> Move Pilot</div>
-            <div class="ctrl-item"><span class="badge">SPACE / TAP ▲</span> Jump over gaps</div>
-            <div class="ctrl-item"><span class="badge">SHIFT / TAP ▼</span> Fast Dive</div>
-            <div class="ctrl-item"><span class="badge">MOUSE / DRAG</span> Orbit Camera</div>
+            <div class="ctrl-item"><span class="badge">WASD / ARROWS</span> Steer Bumper Craft</div>
+            <div class="ctrl-item"><span class="badge">SPACE / TAP ⚡</span> Ram Dash (Rocket Ram)</div>
+            <div class="ctrl-item"><span class="badge">E, SHIFT / TAP 💥</span> EMP Radial Shockwave</div>
+            <div class="ctrl-item"><span class="badge">MOUSE DRAG</span> Orbit / Look Around</div>
           </div>
         </div>
         <div class="help-section">
-          <h3>⚡ CYBER POWER-UPS</h3>
+          <h3>⚡ ARENA POWER-UPS</h3>
           <div class="powerups-grid">
-            <div class="pu-item"><span class="pu-badge cyan">⚡ SPRING</span> Launch High</div>
-            <div class="pu-item"><span class="pu-badge pink">🪂 GLIDER</span> Slow Fall Gliding</div>
-            <div class="pu-item"><span class="pu-badge blue">❄️ FREEZE</span> Solid Hex Tiles</div>
-            <div class="pu-item"><span class="pu-badge gold">💎 CRYSTAL</span> +100 Bonus Score</div>
+            <div class="pu-item"><span class="pu-badge gold">🚀 MEGA ROCKET</span> 3x Ramming Power</div>
+            <div class="pu-item"><span class="pu-badge cyan">🛡️ FORCE SHIELD</span> Zero Knockback Reflector</div>
+            <div class="pu-item"><span class="pu-badge pink">💣 PULSE MINE</span> Detonates on Contact</div>
+            <div class="pu-item"><span class="pu-badge mint">💎 DLICOM CORE</span> +150 Bonus Score</div>
           </div>
         </div>
       </div>
-      <button class="btn-primary" id="btnHelpClose">GOT IT, PILOT!</button>
+      <button class="btn-primary" id="btnHelpClose">ENTER THE COLOSSEUM</button>
     </div>
   </div>
 
   <!-- PAUSE OVERLAY -->
   <div id="pauseOverlay" class="screen overlay">
     <div class="overlay-card">
-      <h2>SYSTEM PAUSED</h2>
-      <p class="pause-sub">Arena simulation frozen</p>
+      <h2>MATCH PAUSED</h2>
+      <p class="pause-sub">Arena combat simulation suspended</p>
       <div class="pause-actions">
-        <button class="btn-primary" id="btnResume">RESUME MISSION</button>
-        <button class="btn-secondary" id="btnQuit">ABORT TO MENU</button>
+        <button class="btn-primary" id="btnResume">RESUME BATTLE</button>
+        <button class="btn-secondary" id="btnQuit">ABORT MATCH</button>
       </div>
     </div>
   </div>
@@ -196,11 +216,11 @@
     <div class="overlay-card game-over-card">
       <div id="goHeaderGlow" class="go-header-glow">
         <h2 id="goTitle">ELIMINATED</h2>
-        <p id="goSubtitle" class="go-sub">Fell into the Cyber Void</p>
+        <p id="goSubtitle" class="go-sub">Knocked out of the colosseum!</p>
       </div>
 
       <div id="newRecordBanner" class="record-banner hidden">
-        🏆 NEW PERSONAL BEST RECORD! 🏆
+        🏆 NEW PERSONAL BEST SCORE! 🏆
       </div>
 
       <div class="go-stats">
@@ -209,16 +229,12 @@
           <span id="goTime">00:00</span>
         </div>
         <div class="go-stat">
-          <span>FINAL TIER</span>
-          <span id="goTier">TIER 1</span>
-        </div>
-        <div class="go-stat">
-          <span>CRYSTALS</span>
-          <span id="goCrystals" class="highlight-gold">0</span>
+          <span>KNOCKOUTS (KOs)</span>
+          <span id="goKills" class="highlight-pink">0</span>
         </div>
         <div class="go-stat">
           <span>FINAL SCORE</span>
-          <span id="goScore" class="highlight-mint">0</span>
+          <span id="goScore" class="highlight-gold">0</span>
         </div>
         <div class="go-stat">
           <span>GLOBAL RANK</span>
@@ -228,7 +244,7 @@
 
       <div class="go-actions">
         <button class="btn-primary" id="btnRetry">
-          <span class="btn-text">DEPLOY AGAIN</span>
+          <span class="btn-text">REMATCH NOW</span>
           <span class="btn-glow"></span>
         </button>
         <div class="btn-row">
@@ -243,17 +259,17 @@
   <div id="leaderboardScreen" class="screen overlay">
     <div class="overlay-card leaderboard-card">
       <div class="lb-header">
-        <h2>GLOBAL HALL OF PILOTS</h2>
-        <p class="lb-sub">Powered by Dlicom Cloud High Scores</p>
+        <h2>GLOBAL TOP SMASHERS</h2>
+        <p class="lb-sub">Real-Time Cloud High Scores</p>
       </div>
       <div class="lb-table-wrap">
         <table class="lb-table">
           <thead>
             <tr>
-              <th style="width:15%">RANK</th>
-              <th style="width:40%">PILOT</th>
-              <th style="width:25%">SCORE</th>
-              <th style="width:20%">TIME</th>
+              <th style="width:14%">RANK</th>
+              <th style="width:38%">PILOT</th>
+              <th style="width:18%">KOs</th>
+              <th style="width:30%">SCORE</th>
             </tr>
           </thead>
           <tbody id="lbBody">
@@ -267,12 +283,12 @@
 
   <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  
+
   <!-- Game Scripts -->
   <script src="js/audio.js"></script>
-  <script src="js/hex-grid.js"></script>
-  <script src="js/character-3d.js"></script>
-  <script src="js/ai-astronauts.js"></script>
+  <script src="js/arena.js"></script>
+  <script src="js/bumper-craft.js"></script>
+  <script src="js/ai-opponents.js"></script>
   <script src="js/game-engine.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -1,51 +1,52 @@
 // =============================================
-// DILI: HEX-FALL — 3D Cyber Arena Engine
+// DILI: CYBER BUMPERS — 3D Arena Physics Engine
 // =============================================
-class HexFallEngine {
+class BumperGameEngine {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
     this.state = 'idle'; // idle, countdown, playing, paused, gameover
 
-    // Three.js Core
     this.renderer = null;
     this.scene = null;
     this.camera = null;
     this.clock = new THREE.Clock();
 
-    // Scene Objects
-    this.hexGrid = null;
+    // Game Elements
+    this.arena = null;
     this.player = null;
     this.aiManager = null;
     this.stars = null;
+    this.sparkParticles = [];
 
-    // Input
+    // Inputs
     this.keys = {};
     this.joystickInput = { x: 0, z: 0 };
     this.cameraYaw = 0;
     this.isDraggingCamera = false;
     this.lastMouseX = 0;
 
-    // Game stats
-    this.survivalTime = 0;
+    // Stats
+    this.matchTime = 0;
     this.score = 0;
-    this.crystalsCollected = 0;
-    this.playerTier = 0;
-    this.pilotName = 'Dili_Cadet';
+    this.crystals = 0;
+    this.kills = 0;
+    this.pilotName = 'Commander_Dili';
     this.suitColor = 0x00FFC6;
 
     // Camera follow
     this.cameraTarget = new THREE.Vector3();
-    this.cameraDistance = 15;
-    this.cameraHeight = 11;
+    this.camDistance = 14.5;
+    this.camHeight = 11.0;
     this.cameraShake = 0;
 
     // Callbacks
     this.onUpdate = null;
     this.onGameOver = null;
-    this.onPowerUp = null;
+    this.onKillFeed = null;
+    this.onAlert = null;
 
     this._initThree();
-    this._setupInputs();
+    this._setupControls();
     this._animate();
   }
 
@@ -57,54 +58,49 @@ class HexFallEngine {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setClearColor(0x050810, 1);
+    this.renderer.setClearColor(0x040711, 1);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x050810, 0.018);
+    this.scene.fog = new THREE.FogExp2(0x040711, 0.016);
 
-    this.camera = new THREE.PerspectiveCamera(
-      52,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      250
-    );
+    this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 250);
     this.camera.position.set(0, 16, 18);
     this.camera.lookAt(0, 0, 0);
 
-    // Lights
-    const ambient = new THREE.AmbientLight(0x405580, 0.7);
+    // Dynamic Cyber Lighting
+    const ambient = new THREE.AmbientLight(0x384a6b, 0.85);
     this.scene.add(ambient);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-    dirLight.position.set(15, 30, 20);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(20, 35, 20);
     this.scene.add(dirLight);
 
-    const pointCyan = new THREE.PointLight(0x00E5FF, 1.2, 50);
-    pointCyan.position.set(-12, 6, -10);
-    this.scene.add(pointCyan);
+    const cyanSpot = new THREE.PointLight(0x00E5FF, 1.5, 60);
+    cyanSpot.position.set(-15, 8, -15);
+    this.scene.add(cyanSpot);
 
-    const pointPink = new THREE.PointLight(0xFF6EC7, 0.8, 45);
-    pointPink.position.set(12, 4, 10);
-    this.scene.add(pointPink);
+    const pinkSpot = new THREE.PointLight(0xFF6EC7, 1.2, 55);
+    pinkSpot.position.set(15, 6, 15);
+    this.scene.add(pinkSpot);
 
-    this._createStarfield();
-    this._createAbyssGrid();
+    this._buildStarfield();
+    this._buildVoidGrid();
 
     window.addEventListener('resize', () => this._onResize());
   }
 
-  _createStarfield() {
-    const starCount = 1400;
+  _buildStarfield() {
+    const starCount = 1500;
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
 
     for (let i = 0; i < starCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 250;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 120 + 20;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 250;
+      positions[i * 3] = (Math.random() - 0.5) * 260;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 140 + 20;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 260;
 
-      const c = new THREE.Color().setHSL(0.52 + Math.random() * 0.16, 0.6, 0.75);
+      const c = new THREE.Color().setHSL(0.55 + Math.random() * 0.18, 0.6, 0.8);
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
       colors[i * 3 + 2] = c.b;
@@ -124,30 +120,26 @@ class HexFallEngine {
     this.scene.add(this.stars);
   }
 
-  _createAbyssGrid() {
-    const gridHelper = new THREE.GridHelper(160, 40, 0x00E5FF, 0x003366);
-    gridHelper.position.y = -35;
-    gridHelper.material.transparent = true;
-    gridHelper.material.opacity = 0.4;
-    this.scene.add(gridHelper);
+  _buildVoidGrid() {
+    const grid = new THREE.GridHelper(180, 45, 0x00E5FF, 0x0a1d3a);
+    grid.position.y = -35;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.35;
+    this.scene.add(grid);
   }
 
-  _setupInputs() {
+  _setupControls() {
     // Keyboard
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
+
       if (e.code === 'Space' && this.state === 'playing') {
         e.preventDefault();
-        if (this.player && this.player.grounded) {
-          this.player.jump();
-          HexAudio.sfxJump();
-        }
+        this.performPlayerDash();
       }
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        if (this.player && this.state === 'playing') {
-          this.player.dive();
-          HexAudio.sfxDive();
-        }
+      if ((e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') && this.state === 'playing') {
+        e.preventDefault();
+        this.performPlayerEmp();
       }
     });
 
@@ -155,7 +147,7 @@ class HexFallEngine {
       this.keys[e.code] = false;
     });
 
-    // Camera Drag Orbit (Mouse & Non-Control Touch)
+    // Mouse / Touch Orbit
     window.addEventListener('mousedown', (e) => {
       if (e.target.tagName !== 'BUTTON' && !e.target.closest('#joystickZone') && !e.target.closest('#hud')) {
         this.isDraggingCamera = true;
@@ -170,11 +162,8 @@ class HexFallEngine {
       this.lastMouseX = e.clientX;
     });
 
-    window.addEventListener('mouseup', () => {
-      this.isDraggingCamera = false;
-    });
+    window.addEventListener('mouseup', () => { this.isDraggingCamera = false; });
 
-    // Touch orbit on canvas
     this.canvas.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1 && !e.target.closest('.mobile-controls')) {
         this.isDraggingCamera = true;
@@ -189,43 +178,35 @@ class HexFallEngine {
       this.lastMouseX = e.touches[0].clientX;
     }, { passive: true });
 
-    this.canvas.addEventListener('touchend', () => {
-      this.isDraggingCamera = false;
-    }, { passive: true });
+    this.canvas.addEventListener('touchend', () => { this.isDraggingCamera = false; });
 
-    // Mobile Virtual Joystick
-    this._setupVirtualJoystick();
+    // Setup Virtual Joystick
+    this._setupJoystick();
 
     // Mobile Action Buttons
-    const btnJump = document.getElementById('btnJump');
-    const btnDive = document.getElementById('btnDive');
+    const btnDash = document.getElementById('btnDash');
+    const btnEmp = document.getElementById('btnEmp');
 
-    const handleJump = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if (this.player && this.player.grounded && this.state === 'playing') {
-        this.player.jump();
-        HexAudio.sfxJump();
-      }
-    };
-    if (btnJump) {
-      btnJump.addEventListener('touchstart', handleJump, { passive: false });
-      btnJump.addEventListener('mousedown', handleJump);
+    if (btnDash) {
+      const doDash = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (this.state === 'playing') this.performPlayerDash();
+      };
+      btnDash.addEventListener('touchstart', doDash, { passive: false });
+      btnDash.addEventListener('mousedown', doDash);
     }
 
-    const handleDive = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if (this.player && this.state === 'playing') {
-        this.player.dive();
-        HexAudio.sfxDive();
-      }
-    };
-    if (btnDive) {
-      btnDive.addEventListener('touchstart', handleDive, { passive: false });
-      btnDive.addEventListener('mousedown', handleDive);
+    if (btnEmp) {
+      const doEmp = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (this.state === 'playing') this.performPlayerEmp();
+      };
+      btnEmp.addEventListener('touchstart', doEmp, { passive: false });
+      btnEmp.addEventListener('mousedown', doEmp);
     }
   }
 
-  _setupVirtualJoystick() {
+  _setupJoystick() {
     const zone = document.getElementById('joystickZone');
     const knob = document.getElementById('joystickKnob');
     if (!zone || !knob) return;
@@ -234,17 +215,17 @@ class HexFallEngine {
     let startX = 0, startY = 0;
     const maxR = 42;
 
-    const onStart = (clientX, clientY) => {
+    const onStart = (cx, cy) => {
       dragging = true;
-      const rect = zone.getBoundingClientRect();
-      startX = rect.left + rect.width / 2;
-      startY = rect.top + rect.height / 2;
+      const r = zone.getBoundingClientRect();
+      startX = r.left + r.width / 2;
+      startY = r.top + r.height / 2;
     };
 
-    const onMove = (clientX, clientY) => {
+    const onMove = (cx, cy) => {
       if (!dragging) return;
-      let dx = clientX - startX;
-      let dy = clientY - startY;
+      let dx = cx - startX;
+      let dy = cy - startY;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist > maxR) {
@@ -291,6 +272,22 @@ class HexFallEngine {
     });
   }
 
+  performPlayerDash() {
+    if (this.player && this.player.triggerDash()) {
+      this.cameraShake = 0.25;
+    }
+  }
+
+  performPlayerEmp() {
+    if (this.player) {
+      const allCrafts = [this.player, ...this.aiManager.getCrafts()];
+      if (this.player.triggerEmp(allCrafts)) {
+        this.cameraShake = 0.35;
+        this._spawnEmpRingVFX(this.player.x, this.player.z);
+      }
+    }
+  }
+
   _getInputVector() {
     let kx = 0, kz = 0;
     if (this.keys['KeyW'] || this.keys['ArrowUp']) kz -= 1;
@@ -304,40 +301,44 @@ class HexFallEngine {
     const mag = Math.sqrt(fx * fx + fz * fz);
     if (mag > 1) { fx /= mag; fz /= mag; }
 
-    // Rotate input relative to camera yaw
     const cosY = Math.cos(this.cameraYaw);
     const sinY = Math.sin(this.cameraYaw);
 
-    const worldX = fx * cosY + fz * sinY;
-    const worldZ = -fx * sinY + fz * cosY;
-
-    return { x: worldX, z: worldZ };
+    return {
+      x: fx * cosY + fz * sinY,
+      z: -fx * sinY + fz * cosY
+    };
   }
 
   startGame(pilotName, suitColorHex) {
-    this.pilotName = pilotName || 'Dili_Cadet';
+    this.pilotName = pilotName || 'Commander_Dili';
     this.suitColor = suitColorHex || 0x00FFC6;
-    this.survivalTime = 0;
+    this.matchTime = 0;
     this.score = 0;
-    this.crystalsCollected = 0;
-    this.playerTier = 0;
+    this.crystals = 0;
+    this.kills = 0;
     this.cameraYaw = 0;
 
-    if (this.hexGrid) {
-      this.hexGrid.reset();
+    // Reset or build arena
+    if (this.arena) {
+      this.arena.reset();
     } else {
-      this.hexGrid = new HexGrid(this.scene);
-      this.hexGrid.build();
+      this.arena = new ArenaColosseum(this.scene);
     }
+    this.arena.onAlert = (msg) => {
+      if (this.onAlert) this.onAlert(msg);
+    };
 
+    // Reset Player Craft
     if (this.player) this.player.remove();
-    this.player = new Character3D(this.scene, this.suitColor, this.pilotName);
+    this.player = new BumperCraft(this.scene, this.suitColor, this.pilotName);
     this.player.isPlayer = true;
-    this.player.reset(0, this.hexGrid.getTierY(0) + 2, 0);
+    this.player.reset(0, 11); // Start near bottom edge of arena
 
+    // Reset AI Manager
     if (this.aiManager) this.aiManager.clear();
-    this.aiManager = new AIManager(this.scene, this.hexGrid);
-    this.aiManager.spawn();
+    this.aiManager = new AIBumperManager(this.scene);
+    this.aiManager.spawn(this.arena.currentRadius);
 
     this.state = 'countdown';
     this._doCountdown();
@@ -345,32 +346,32 @@ class HexFallEngine {
 
   _doCountdown() {
     let count = 3;
-    const overlay = document.createElement('div');
-    overlay.id = 'countdownModal';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:60;pointer-events:none;';
-    overlay.innerHTML = `<span style="font-family:Orbitron,monospace;font-size:7rem;font-weight:900;color:#00E5FF;text-shadow:0 0 50px #00E5FF, 0 0 100px rgba(0,229,255,0.4);transition:all 0.25s">${count}</span>`;
-    document.body.appendChild(overlay);
+    const modal = document.createElement('div');
+    modal.id = 'countdownModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:60;pointer-events:none;';
+    modal.innerHTML = `<span style="font-family:Orbitron,monospace;font-size:7rem;font-weight:900;color:#00E5FF;text-shadow:0 0 50px #00E5FF, 0 0 100px rgba(0,229,255,0.4);transition:all 0.25s">${count}</span>`;
+    document.body.appendChild(modal);
 
     HexAudio.sfxCountdown();
 
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       count--;
       if (count > 0) {
-        overlay.querySelector('span').textContent = count;
+        modal.querySelector('span').textContent = count;
         HexAudio.sfxCountdown();
       } else {
-        const span = overlay.querySelector('span');
-        span.textContent = 'GO!';
-        span.style.color = '#00FFC6';
-        span.style.textShadow = '0 0 50px #00FFC6';
+        const s = modal.querySelector('span');
+        s.textContent = 'SMASH!';
+        s.style.color = '#00FFC6';
+        s.style.textShadow = '0 0 50px #00FFC6';
         HexAudio.sfxGo();
-        clearInterval(interval);
+        clearInterval(iv);
         setTimeout(() => {
-          overlay.remove();
+          modal.remove();
           this.state = 'playing';
           this.clock.start();
           HexAudio.startMusic();
-        }, 550);
+        }, 500);
       }
     }, 750);
   }
@@ -384,7 +385,7 @@ class HexFallEngine {
   resume() {
     if (this.state !== 'paused') return;
     this.state = 'playing';
-    this.clock.getDelta(); // flush delta
+    this.clock.getDelta();
     HexAudio.startMusic();
   }
 
@@ -398,170 +399,302 @@ class HexFallEngine {
   _update(dt) {
     if (this.state !== 'playing') return;
 
-    this.survivalTime += dt;
+    this.matchTime += dt;
 
-    // Player Movement
-    const inp = this._getInputVector();
-    this.player.update(dt, inp.x, inp.z);
-
-    // Continuous Ground Collision
-    this._checkGroundCollision(this.player);
-
-    // Tile Stepping
-    this._checkTileStepping(this.player, true);
-
-    // Pickups
-    this._checkPickups();
-
-    // AI Astronauts
-    if (this.aiManager) {
-      this.aiManager.update(dt);
-      this.aiManager.bots.forEach(b => {
-        this._checkGroundCollision(b.character);
-        this._checkTileStepping(b.character, false);
-      });
+    // 1. Update Arena colosseum (ring timers, laser hazard)
+    if (this.arena) {
+      this.arena.update(dt);
     }
 
-    // Hex Grid Animation & Drop
-    if (this.hexGrid) this.hexGrid.update(dt);
+    const arenaRadius = this.arena.currentRadius;
 
-    // Camera follow
+    // 2. Player Input & Physics
+    const inp = this._getInputVector();
+    this.player.update(dt, inp.x, inp.z, arenaRadius);
+
+    // Hazard laser check
+    if (this.arena.checkHazardCollision(this.player)) {
+      this.cameraShake = 0.25;
+    }
+
+    // Power-up check
+    const pu = this.arena.checkPickups(this.player);
+    if (pu) {
+      if (pu === 'crystal') {
+        this.crystals++;
+        HexAudio.sfxCrystal();
+      } else {
+        this.player.activatePowerUp(pu);
+      }
+    }
+
+    // 3. AI Opponents Update
+    const allCrafts = [this.player, ...this.aiManager.getCrafts()];
+    this.aiManager.update(dt, allCrafts, arenaRadius);
+
+    // Hazard laser check for bots
+    this.aiManager.bots.forEach(b => {
+      this.arena.checkHazardCollision(b.craft);
+    });
+
+    // 4. ELASTIC BUMPER COLLISIONS BETWEEN ALL CRAFTS
+    this._resolveBumperCollisions(allCrafts);
+
+    // 5. Check Knockout Credit
+    allCrafts.forEach(c => {
+      if (!c.alive && !c.deathCredited) {
+        c.deathCredited = true;
+        this._handleCraftKnockout(c);
+      }
+    });
+
+    // 6. Camera Follow
     this._updateCamera(dt);
 
-    // Live score calculation
-    this.score = Math.floor(this.survivalTime * 12) + (this.crystalsCollected * 100);
+    // 7. Spark Particles
+    this._updateSparkParticles(dt);
 
-    // Check Death
+    // Score Calculation
+    this.score = Math.floor(this.matchTime * 15) + (this.kills * 350) + (this.crystals * 150);
+
+    // Check Player Death
     if (!this.player.alive) {
       this._triggerGameOver(false);
       return;
     }
 
-    // Check Victory (Last pilot alive!)
-    if (this.aiManager && this.aiManager.getAliveCount() === 0) {
-      this.score += 1000; // 1000 bonus victory points
+    // Check Victory (Last pilot remaining!)
+    if (this.aiManager.getAliveCount() === 0) {
+      this.score += 1500; // huge victory reward!
       this._triggerGameOver(true);
       return;
-    }
-
-    // Power-up HUD status
-    let activePowerUp = null;
-    let powerUpProgress = 0;
-    if (this.player.hasGlider) {
-      activePowerUp = { icon: '🪂', name: 'GLIDER JETPACK' };
-      powerUpProgress = (this.player.gliderTimer / 5.0) * 100;
-    } else if (this.player.frozenTiles) {
-      activePowerUp = { icon: '❄️', name: 'MATRIX FREEZE' };
-      powerUpProgress = (this.player.freezeTimer / 3.5) * 100;
     }
 
     // HUD Callback
     if (this.onUpdate) {
       this.onUpdate({
-        time: this.survivalTime,
-        tier: this.playerTier + 1,
-        tierLabel: this.hexGrid ? this.hexGrid.getTierLabel(this.playerTier) : 'ORBIT',
-        alive: 1 + (this.aiManager ? this.aiManager.getAliveCount() : 0),
+        time: this.matchTime,
+        alive: 1 + this.aiManager.getAliveCount(),
         total: 5,
-        crystals: this.crystalsCollected,
+        kills: this.kills,
         score: this.score,
-        powerUp: activePowerUp,
-        powerUpProgress
+        dashCooldown: Math.max(0, this.player.dashCooldown / this.player.dashMaxCooldown),
+        empCooldown: Math.max(0, this.player.empCooldown / this.player.empMaxCooldown),
+        hasRocket: this.player.hasRocket,
+        rocketProgress: (this.player.rocketTimer / 4.5) * 100,
+        hasShield: this.player.hasShield,
+        shieldProgress: (this.player.shieldTimer / 5.0) * 100
       });
     }
   }
 
-  _checkGroundCollision(character) {
-    if (!this.hexGrid || !character.alive) return;
+  _resolveBumperCollisions(crafts) {
+    const n = crafts.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const A = crafts[i];
+        const B = crafts[j];
+        if (!A.alive || !B.alive || !A.grounded || !B.grounded) continue;
 
-    for (let tierIdx = 0; tierIdx <= 3; tierIdx++) {
-      const tierY = this.hexGrid.getTierY(tierIdx);
-      const landingY = tierY + 0.18;
+        const dx = B.x - A.x;
+        const dz = B.z - A.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        const minDist = A.radius + B.radius; // ~2.1
 
-      // Crossing or on landing surface check
-      const wasAbove = character.prevY >= landingY - 0.2;
-      const isNearOrBelow = character.y <= landingY + 0.35 && character.y >= landingY - 1.4;
+        if (dist < minDist && dist > 0.001) {
+          // Normal vector from A to B
+          const nx = dx / dist;
+          const nz = dz / dist;
 
-      if (character.vy <= 0 && wasAbove && isNearOrBelow) {
-        const tileIdx = this.hexGrid.getTileAt(character.x, character.z, tierIdx);
-        if (tileIdx >= 0 && this.hexGrid.isTileSolid(tierIdx, tileIdx)) {
-          if (!character.grounded && character.isPlayer) {
-            HexAudio.sfxLand();
+          // Push apart to resolve overlap
+          const overlap = minDist - dist;
+          A.x -= nx * overlap * 0.5;
+          A.z -= nz * overlap * 0.5;
+          B.x += nx * overlap * 0.5;
+          B.z += nz * overlap * 0.5;
+
+          // Relative velocity
+          const rvx = B.vx - A.vx;
+          const rvz = B.vz - A.vz;
+          const velAlongNormal = rvx * nx + rvz * nz;
+
+          if (velAlongNormal < 0) {
+            // Elastic collision with extra bounce juice
+            let restitution = 1.35;
+
+            // Extra impulse if either is dashing or rocket powered!
+            let bonusImpulse = 0;
+            if (A.isDashing) {
+              bonusImpulse += 18.0;
+              B.lastAttacker = A;
+            }
+            if (B.isDashing) {
+              bonusImpulse += 18.0;
+              A.lastAttacker = B;
+            }
+
+            // Shield recoil
+            if (A.hasShield) {
+              B.vx += nx * 22;
+              B.vz += nz * 22;
+              B.lastAttacker = A;
+              HexAudio.sfxBump(2.0);
+              this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
+              continue;
+            }
+            if (B.hasShield) {
+              A.vx -= nx * 22;
+              A.vz -= nz * 22;
+              A.lastAttacker = B;
+              HexAudio.sfxBump(2.0);
+              this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
+              continue;
+            }
+
+            const impulseMag = -(1 + restitution) * velAlongNormal / (1 / A.mass + 1 / B.mass) + bonusImpulse;
+
+            A.vx -= (impulseMag / A.mass) * nx;
+            A.vz -= (impulseMag / A.mass) * nz;
+            B.vx += (impulseMag / B.mass) * nx;
+            B.vz += (impulseMag / B.mass) * nz;
+
+            // Attribute attacker
+            const relSpeed = Math.sqrt(rvx * rvx + rvz * rvz);
+            if (A.isPlayer || relSpeed > 10) {
+              if (Math.abs(A.vx) + Math.abs(A.vz) > Math.abs(B.vx) + Math.abs(B.vz)) {
+                B.lastAttacker = A;
+              } else {
+                A.lastAttacker = B;
+              }
+            }
+
+            // Impact audio and camera shake
+            const impactForce = Math.min(2.5, relSpeed / 8.0);
+            HexAudio.sfxBump(impactForce);
+            if (A.isPlayer || B.isPlayer) {
+              this.cameraShake = Math.max(this.cameraShake, impactForce * 0.18);
+            }
+
+            // Collision Spark Particles at contact point
+            this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, A.suitColor);
           }
-          character.y = landingY;
-          character.vy = 0;
-          character.grounded = true;
-          character.currentTier = tierIdx;
-          if (character.isPlayer) this.playerTier = tierIdx;
-          return;
         }
       }
     }
-
-    character.grounded = false;
   }
 
-  _checkTileStepping(character, isPlayer) {
-    if (!character.grounded || !character.alive) return;
+  _handleCraftKnockout(victim) {
+    HexAudio.sfxKill();
+    const attacker = victim.lastAttacker;
 
-    const tierIdx = character.currentTier;
-    const tileIdx = this.hexGrid.getTileAt(character.x, character.z, tierIdx);
-
-    if (tileIdx >= 0 && !character.frozenTiles) {
-      const tier = this.hexGrid.tiers[tierIdx];
-      if (tier && tier.states[tileIdx]) {
-        const state = tier.states[tileIdx];
-        if (state.active && !state.steppedOn) {
-          this.hexGrid.stepOnTile(tierIdx, tileIdx);
-          if (isPlayer) {
-            this.cameraShake = 0.12;
-          }
-        }
+    let killerName = 'Cyber Void';
+    if (attacker) {
+      killerName = attacker.pilotName;
+      if (attacker === this.player) {
+        this.kills++;
+        this.score += 350;
+        this.cameraShake = 0.3;
       }
     }
+
+    if (this.onKillFeed) {
+      this.onKillFeed({
+        killer: killerName,
+        victim: victim.pilotName,
+        isPlayerKill: attacker === this.player
+      });
+    }
   }
 
-  _checkPickups() {
-    if (!this.player || !this.player.alive) return;
+  _spawnSparks(x, z, colorHex) {
+    for (let i = 0; i < 8; i++) {
+      const geo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, 0.85, z);
+      this.scene.add(mesh);
 
-    const puType = this.hexGrid.checkPowerUp(this.player.x, this.player.z, this.playerTier);
-    if (puType) {
-      this.player.activatePowerUp(puType);
-      HexAudio.sfxPowerUp();
-      this.cameraShake = 0.22;
+      const angle = Math.random() * Math.PI * 2;
+      const spd = 4 + Math.random() * 8;
+      this.sparkParticles.push({
+        mesh,
+        vx: Math.cos(angle) * spd,
+        vy: 2 + Math.random() * 5,
+        vz: Math.sin(angle) * spd,
+        life: 0.35
+      });
     }
+  }
 
-    if (this.hexGrid.checkCrystal(this.player.x, this.player.z, this.playerTier)) {
-      this.crystalsCollected++;
-      HexAudio.sfxCollectCrystal();
+  _spawnEmpRingVFX(x, z) {
+    const geo = new THREE.RingGeometry(0.5, 1.2, 32);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x00E5FF,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.9
+    });
+    const ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.5, z);
+    this.scene.add(ring);
+
+    let scale = 1;
+    const expand = () => {
+      scale += 0.8;
+      ring.scale.set(scale, scale, 1);
+      ring.material.opacity -= 0.08;
+      if (ring.material.opacity > 0) {
+        requestAnimationFrame(expand);
+      } else {
+        this.scene.remove(ring);
+        ring.geometry.dispose();
+        ring.material.dispose();
+      }
+    };
+    expand();
+  }
+
+  _updateSparkParticles(dt) {
+    for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
+      const p = this.sparkParticles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        this.scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        this.sparkParticles.splice(i, 1);
+      } else {
+        p.vy -= 18 * dt;
+        p.mesh.position.x += p.vx * dt;
+        p.mesh.position.y += p.vy * dt;
+        p.mesh.position.z += p.vz * dt;
+      }
     }
   }
 
   _updateCamera(dt) {
     if (!this.player) return;
 
-    // Smooth follow target
     this.cameraTarget.lerp(
-      new THREE.Vector3(this.player.x, this.player.y + 1.2, this.player.z),
-      6 * dt
+      new THREE.Vector3(this.player.x, this.player.y + 0.5, this.player.z),
+      6.0 * dt
     );
 
-    // Compute orbit camera position based on yaw
-    const offsetX = Math.sin(this.cameraYaw) * this.cameraDistance;
-    const offsetZ = Math.cos(this.cameraYaw) * this.cameraDistance;
+    const offX = Math.sin(this.cameraYaw) * this.camDistance;
+    const offZ = Math.cos(this.cameraYaw) * this.camDistance;
 
-    const targetCamPos = new THREE.Vector3(
-      this.cameraTarget.x + offsetX,
-      this.cameraTarget.y + this.cameraHeight,
-      this.cameraTarget.z + offsetZ
+    const targetPos = new THREE.Vector3(
+      this.cameraTarget.x + offX,
+      this.cameraTarget.y + this.camHeight,
+      this.cameraTarget.z + offZ
     );
 
-    this.camera.position.lerp(targetCamPos, 4.5 * dt);
+    this.camera.position.lerp(targetPos, 5.0 * dt);
 
-    // Camera Shake
     if (this.cameraShake > 0) {
       this.cameraShake -= dt;
-      const sh = this.cameraShake * 2.5;
+      const sh = this.cameraShake * 3.5;
       this.camera.position.x += (Math.random() - 0.5) * sh;
       this.camera.position.y += (Math.random() - 0.5) * sh * 0.5;
     }
@@ -582,9 +715,8 @@ class HexFallEngine {
     if (this.onGameOver) {
       this.onGameOver({
         win: isWin,
-        time: Math.floor(this.survivalTime),
-        tier: this.playerTier + 1,
-        crystals: this.crystalsCollected,
+        time: Math.floor(this.matchTime),
+        kills: this.kills,
         score: this.score,
         pilot: this.pilotName,
         suitColor: this.suitColor
@@ -594,14 +726,11 @@ class HexFallEngine {
 
   _animate() {
     requestAnimationFrame(() => this._animate());
-
     const dt = Math.min(this.clock.getDelta(), 0.05);
 
     this._update(dt);
 
-    if (this.stars) {
-      this.stars.rotation.y += dt * 0.015;
-    }
+    if (this.stars) this.stars.rotation.y += dt * 0.015;
 
     this.renderer.render(this.scene, this.camera);
   }
