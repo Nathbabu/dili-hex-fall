@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <title>DILI: HEX-FALL | Dlicom 3D Cyber Arena</title>
+  <meta name="description" content="3D Hexagon Survival Arena — Be the Last Astronaut Standing in the Dlicom Cyber Universe!"/>
+  <meta name="theme-color" content="#050810"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/game.css"/>
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Sound Toggle Global Floating Button -->
+  <button id="globalAudioBtn" class="audio-btn" aria-label="Toggle Sound" title="Toggle Sound">
+    <span id="audioIcon">🔊</span>
+  </button>
+
+  <!-- TITLE SCREEN -->
+  <div id="titleScreen" class="screen active">
+    <div class="title-backdrop"></div>
+    <div class="title-content">
+      <div class="brand-badge">
+        <img src="assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo" onerror="this.style.display='none'"/>
+        <span class="brand-text">DLICOM AI GAME JAM</span>
+      </div>
+
+      <div class="logo-glow">
+        <h1 class="game-title">DILI<span class="title-accent">:</span> HEX<span class="title-dash">-</span>FALL</h1>
+        <p class="game-subtitle">3D CYBER HEXAGON SURVIVAL ARENA</p>
+      </div>
+
+      <!-- Suit Customization -->
+      <div class="suit-selector" id="suitSelector">
+        <p class="suit-label">CHOOSE ASTRONAUT SUIT</p>
+        <div class="suit-options">
+          <button class="suit-btn active" data-suit="mint" style="--suit:#00FFC6" title="Neon Mint Cadet">
+            <span class="suit-dot"></span>
+            <span class="suit-name">MINT</span>
+          </button>
+          <button class="suit-btn" data-suit="pink" style="--suit:#FF6EC7" title="Cyber Pink Dliever">
+            <span class="suit-dot"></span>
+            <span class="suit-name">PINK</span>
+          </button>
+          <button class="suit-btn" data-suit="gold" style="--suit:#FFD700" title="Sovereign Gold DCO">
+            <span class="suit-dot"></span>
+            <span class="suit-name">GOLD</span>
+          </button>
+          <button class="suit-btn" data-suit="cobalt" style="--suit:#4DA6FF" title="Cobalt Shield Decoded">
+            <span class="suit-dot"></span>
+            <span class="suit-name">COBALT</span>
+          </button>
+          <button class="suit-btn" data-suit="crimson" style="--suit:#FF4444" title="Crimson Fury">
+            <span class="suit-dot"></span>
+            <span class="suit-name">CRIMSON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pilot Name Input -->
+      <div class="pilot-input-wrap">
+        <span class="input-icon">👤</span>
+        <input type="text" id="pilotName" placeholder="ENTER PILOT CALLSIGN" maxlength="20" autocomplete="off" spellcheck="false"/>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="title-actions">
+        <button class="btn-primary" id="btnPlay">
+          <span class="btn-text">LAUNCH INTO ARENA</span>
+          <span class="btn-glow"></span>
+        </button>
+        <div class="btn-row">
+          <button class="btn-secondary" id="btnLeaderboard">
+            <span>🏆</span> GLOBAL LEADERBOARD
+          </button>
+          <button class="btn-secondary" id="btnHowToPlay">
+            <span>❓</span> HOW TO PLAY
+          </button>
+        </div>
+      </div>
+
+      <!-- Desktop Quick Controls Ribbon -->
+      <div class="desktop-controls-hint">
+        <span>🎮 PC: <b>WASD</b> or <b>ARROWS</b> to Move | <b>SPACE</b> Jump | <b>SHIFT</b> Dive | <b>DRAG</b> Rotate Camera</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-stat">
+        <span class="hud-label">TIME</span>
+        <span class="hud-value" id="hudTime">00:00</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">TIER</span>
+        <span class="hud-value" id="hudTier">1/4</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">ALIVE</span>
+        <span class="hud-value" id="hudAlive">5/5</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">CRYSTALS</span>
+        <span class="hud-value highlight-gold" id="hudCrystals">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">SCORE</span>
+        <span class="hud-value highlight-mint" id="hudScore">0</span>
+      </div>
+    </div>
+
+    <!-- Power-up Active Banner -->
+    <div id="powerUpBanner" class="powerup-banner hidden">
+      <span id="powerUpIcon">⚡</span>
+      <span id="powerUpText">SUPER JUMP READY</span>
+      <div class="powerup-progress"><div id="powerUpBar" class="powerup-bar"></div></div>
+    </div>
+
+    <!-- Pause Button -->
+    <button class="hud-pause-btn" id="btnPause" aria-label="Pause Game" title="Pause">
+      <span>❚❚</span>
+    </button>
+
+    <!-- Mobile Virtual Controls -->
+    <div class="mobile-controls" id="mobileControls">
+      <div class="joystick-zone" id="joystickZone">
+        <div class="joystick-base">
+          <div class="joystick-knob" id="joystickKnob"></div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button class="action-btn jump-btn" id="btnJump">
+          <span class="act-icon">▲</span>
+          <span class="act-txt">JUMP</span>
+        </button>
+        <button class="action-btn dive-btn" id="btnDive">
+          <span class="act-icon">▼</span>
+          <span class="act-txt">DIVE</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW TO PLAY MODAL -->
+  <div id="howToPlayModal" class="screen overlay">
+    <div class="overlay-card help-card">
+      <h2>ARENA PROTOCOL</h2>
+      <div class="help-content">
+        <div class="help-section">
+          <h3>🎯 MISSION OBJECTIVE</h3>
+          <p>Survive across <b>4 descending tiers</b> of hexagonal tiles. Once stepped on, tiles flash red and disintegrate into the void! Be the <b>Last Astronaut Standing</b> to claim victory!</p>
+        </div>
+        <div class="help-section">
+          <h3>🕹️ CONTROLS</h3>
+          <div class="controls-grid">
+            <div class="ctrl-item"><span class="badge">WASD / ARROWS</span> Move Pilot</div>
+            <div class="ctrl-item"><span class="badge">SPACE / TAP ▲</span> Jump over gaps</div>
+            <div class="ctrl-item"><span class="badge">SHIFT / TAP ▼</span> Fast Dive</div>
+            <div class="ctrl-item"><span class="badge">MOUSE / DRAG</span> Orbit Camera</div>
+          </div>
+        </div>
+        <div class="help-section">
+          <h3>⚡ CYBER POWER-UPS</h3>
+          <div class="powerups-grid">
+            <div class="pu-item"><span class="pu-badge cyan">⚡ SPRING</span> Launch High</div>
+            <div class="pu-item"><span class="pu-badge pink">🪂 GLIDER</span> Slow Fall Gliding</div>
+            <div class="pu-item"><span class="pu-badge blue">❄️ FREEZE</span> Solid Hex Tiles</div>
+            <div class="pu-item"><span class="pu-badge gold">💎 CRYSTAL</span> +100 Bonus Score</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" id="btnHelpClose">GOT IT, PILOT!</button>
+    </div>
+  </div>
+
+  <!-- PAUSE OVERLAY -->
+  <div id="pauseOverlay" class="screen overlay">
+    <div class="overlay-card">
+      <h2>SYSTEM PAUSED</h2>
+      <p class="pause-sub">Arena simulation frozen</p>
+      <div class="pause-actions">
+        <button class="btn-primary" id="btnResume">RESUME MISSION</button>
+        <button class="btn-secondary" id="btnQuit">ABORT TO MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER / VICTORY OVERLAY -->
+  <div id="gameOverScreen" class="screen overlay">
+    <div class="overlay-card game-over-card">
+      <div id="goHeaderGlow" class="go-header-glow">
+        <h2 id="goTitle">ELIMINATED</h2>
+        <p id="goSubtitle" class="go-sub">Fell into the Cyber Void</p>
+      </div>
+
+      <div id="newRecordBanner" class="record-banner hidden">
+        🏆 NEW PERSONAL BEST RECORD! 🏆
+      </div>
+
+      <div class="go-stats">
+        <div class="go-stat">
+          <span>SURVIVAL TIME</span>
+          <span id="goTime">00:00</span>
+        </div>
+        <div class="go-stat">
+          <span>FINAL TIER</span>
+          <span id="goTier">TIER 1</span>
+        </div>
+        <div class="go-stat">
+          <span>CRYSTALS</span>
+          <span id="goCrystals" class="highlight-gold">0</span>
+        </div>
+        <div class="go-stat">
+          <span>FINAL SCORE</span>
+          <span id="goScore" class="highlight-mint">0</span>
+        </div>
+        <div class="go-stat">
+          <span>GLOBAL RANK</span>
+          <span id="goRank" class="highlight-cyan">—</span>
+        </div>
+      </div>
+
+      <div class="go-actions">
+        <button class="btn-primary" id="btnRetry">
+          <span class="btn-text">DEPLOY AGAIN</span>
+          <span class="btn-glow"></span>
+        </button>
+        <div class="btn-row">
+          <button class="btn-secondary" id="btnGoLb">LEADERBOARD</button>
+          <button class="btn-secondary" id="btnGoMenu">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOBAL LEADERBOARD OVERLAY -->
+  <div id="leaderboardScreen" class="screen overlay">
+    <div class="overlay-card leaderboard-card">
+      <div class="lb-header">
+        <h2>GLOBAL HALL OF PILOTS</h2>
+        <p class="lb-sub">Powered by Dlicom Cloud High Scores</p>
+      </div>
+      <div class="lb-table-wrap">
+        <table class="lb-table">
+          <thead>
+            <tr>
+              <th style="width:15%">RANK</th>
+              <th style="width:40%">PILOT</th>
+              <th style="width:25%">SCORE</th>
+              <th style="width:20%">TIME</th>
+            </tr>
+          </thead>
+          <tbody id="lbBody">
+            <tr><td colspan="4" class="lb-loading">Loading top pilots...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="btn-secondary" id="btnLbClose">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
+  <!-- Game Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/hex-grid.js"></script>
+  <script src="js/character-3d.js"></script>
+  <script src="js/ai-astronauts.js"></script>
+  <script src="js/game-engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
