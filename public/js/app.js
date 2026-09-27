@@ -207,12 +207,10 @@
 
     const eg = getEngine();
     const pilot = pilotNameInput.value.trim() || ('Dili_' + Math.floor(Math.random() * 8999 + 1000));
-    const suitHex = suitColorMap[selectedSuit] || 0x00FFC6;
-
     showScreen('hud');
     killFeed.innerHTML = '';
     arenaAlert.classList.add('hidden');
-    eg.startGame(pilot, suitHex);
+    eg.startGame(pilot, selectedSuit);
   }
 
   btnPlay.addEventListener('click', launchGame);

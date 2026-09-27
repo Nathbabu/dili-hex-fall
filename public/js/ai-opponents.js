@@ -121,10 +121,10 @@ class AIBumperManager {
     this.scene = scene;
     this.bots = [];
     this.roster = [
-      { name: 'Vortex_Hunter', color: 0xFF6EC7 },
-      { name: 'Decoded_Titan', color: 0x4DA6FF },
-      { name: 'Cyber_Phantom', color: 0xFFD700 },
-      { name: 'Neon_Striker',  color: 0xFF3344 }
+      { name: 'Vortex_Hunter', color: 'pink' },
+      { name: 'Decoded_Titan', color: 'blue' },
+      { name: 'Cyber_Phantom', color: 'gold' },
+      { name: 'Neon_Striker',  color: 'crimson' }
     ];
   }
 

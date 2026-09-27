@@ -310,9 +310,9 @@ class BumperGameEngine {
     };
   }
 
-  startGame(pilotName, suitColorHex) {
+  startGame(pilotName, suitKey) {
     this.pilotName = pilotName || 'Commander_Dili';
-    this.suitColor = suitColorHex || 0x00FFC6;
+    this.suitKey = suitKey || 'mint';
     this.matchTime = 0;
     this.score = 0;
     this.crystals = 0;
@@ -331,7 +331,7 @@ class BumperGameEngine {
 
     // Reset Player Craft
     if (this.player) this.player.remove();
-    this.player = new BumperCraft(this.scene, this.suitColor, this.pilotName);
+    this.player = new BumperCraft(this.scene, this.suitKey, this.pilotName);
     this.player.isPlayer = true;
     this.player.reset(0, 11); // Start near bottom edge of arena
 
@@ -719,7 +719,7 @@ class BumperGameEngine {
         kills: this.kills,
         score: this.score,
         pilot: this.pilotName,
-        suitColor: this.suitColor
+        suitColor: this.suitKey
       });
     }
   }
