@@ -421,60 +421,49 @@ class ArenaColosseum {
     const craftRadius = character.radius || 1.15;
 
     // ============================================================
-    // 1. SOLID CENTRAL HYDRAULIC PILLAR (Impenetrable Cylinder at 0, 0)
-    // Pillar base radius ~1.65m + craft radius ~1.15m = 2.80m minimum distance
-    // You CANNOT drive into or through the center pillar!
+    // 1. SOLID CENTRAL HYDRAULIC PILLAR (Instant Repel at 0, 0)
     // ============================================================
     const pillarMinDist = 2.80;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
 
     if (distCenter < pillarMinDist) {
-      const overlap = pillarMinDist - distCenter;
       const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
       const nz = distCenter > 0.001 ? (character.z / distCenter) : 0;
 
-      // Hard positional push-out so craft CANNOT enter the center pillar
-      character.x += nx * overlap;
-      character.z += nz * overlap;
+      // Clean separation buffer
+      character.x = nx * (pillarMinDist + 0.18);
+      character.z = nz * (pillarMinDist + 0.18);
       character.group.position.set(character.x, character.y, character.z);
 
-      // Elastic bounce velocity outward
-      const vDotN = character.vx * nx + character.vz * nz;
-      if (vDotN < 0) {
-        character.vx -= vDotN * 1.65 * nx;
-        character.vz -= vDotN * 1.65 * nz;
-      } else {
-        character.vx += nx * 8.0;
-        character.vz += nz * 8.0;
-      }
+      // Immediate energetic bounce outward: NO delay!
+      character.vx = nx * 22.0;
+      character.vz = nz * 22.0;
+      character.knockbackTimer = 0.35;
 
       if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.35;
-        character.squashX = 1.35;
-        character.squashY = 0.70;
+        character.hazardHitCooldown = 0.30;
+        character.squashX = 1.45;
+        character.squashY = 0.65;
         if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.8);
         hitOccurred = true;
-        hitSpeed = 16.0;
+        hitSpeed = 22.0;
       }
     }
 
     // ============================================================
-    // 2. SOLID ROTATING HEAVY CYBER SWEEPER BAR (Impenetrable Oriented Box)
-    // Arm spans 10.6m (half-length 5.35m), thickness 0.70m (half-thickness 0.35m)
-    // Positional separation runs EVERY FRAME so crafts CANNOT pass through!
+    // 2. SOLID ROTATING HEAVY CYBER SWEEPER BAR (Instant Explosive Launch)
     // ============================================================
     const angle = this.hazardGroup.rotation.y;
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
 
-    // Transform character world pos to sweeper local space (origin at 0,0)
+    // Transform to bar local space
     const lx = character.x * cosA + character.z * sinA;
     const lz = -character.x * sinA + character.z * cosA;
 
     const L_half = 5.35;
     const W_half = 0.35;
 
-    // Closest point on the unrotated solid box in local space
     const cx = Math.max(-L_half, Math.min(L_half, lx));
     const cz = Math.max(-W_half, Math.min(W_half, lz));
 
@@ -482,29 +471,28 @@ class ArenaColosseum {
     const dz = lz - cz;
     const distSq = dx * dx + dz * dz;
 
-    // Check collision in height & planar box
     if (character.y <= 1.8 && (distSq < craftRadius * craftRadius || (dx === 0 && dz === 0))) {
       let nx_loc = 0;
       let nz_loc = 0;
       let overlap = 0;
 
       if (dx === 0 && dz === 0) {
-        // Deep penetration inside box - shortest exit is along local Z (thickness)
         nz_loc = lz >= 0 ? 1 : -1;
         nx_loc = 0;
-        overlap = W_half + craftRadius - Math.abs(lz) + 0.06;
+        overlap = W_half + craftRadius - Math.abs(lz);
       } else {
         const dist = Math.sqrt(distSq);
         nx_loc = dx / dist;
         nz_loc = dz / dist;
-        overlap = craftRadius - dist + 0.06;
+        overlap = craftRadius - dist;
       }
 
-      // A. HARD POSITIONAL SEPARATION: Move craft out of the solid bar in local space
-      const lx_new = lx + nx_loc * overlap;
-      const lz_new = lz + nz_loc * overlap;
+      // 1. HARD IMMEDIATE EXIT SEPARATION (with 0.32m clearance buffer)
+      // Craft is immediately placed outside the bar so it never sticks or lags
+      const exitBuffer = 0.32;
+      const lx_new = lx + nx_loc * (overlap + exitBuffer);
+      const lz_new = lz + nz_loc * (overlap + exitBuffer);
 
-      // Transform resolved local position back to world space:
       character.x = lx_new * cosA - lz_new * sinA;
       character.z = lx_new * sinA + lz_new * cosA;
       character.group.position.set(character.x, character.y, character.z);
@@ -513,41 +501,37 @@ class ArenaColosseum {
       const nx_world = nx_loc * cosA - nz_loc * sinA;
       const nz_world = nx_loc * sinA + nz_loc * cosA;
 
-      // B. ROTATIONAL TANGENTIAL VELOCITY TRANSFER & SMACK:
+      // 2. INSTANTANEOUS EXPLOSIVE KINETIC LAUNCH:
       const omega = this.hazardAngularSpeed || 1.08;
-      // Linear velocity of the point on the bar in world space: V_bar = (-omega * z, omega * x)
-      const vBarX = -omega * character.z;
-      const vBarZ = omega * character.x;
-
-      // Relative velocity of craft relative to bar:
-      const vRelX = character.vx - vBarX;
-      const vRelZ = character.vz - vBarZ;
-
-      // Relative velocity along the contact normal:
-      const velAlongNormal = vRelX * nx_world + vRelZ * nz_world;
-
-      // Radial distance from center for scaling launch speed
       const rCenter = Math.sqrt(character.x * character.x + character.z * character.z);
       const tipFactor = Math.min(1.0, rCenter / L_half);
-      const smackBoost = 20.0 + (tipFactor * 14.0); // 20 to 34 m/s launch!
 
-      // If moving toward bar or bar sweeping into craft:
-      if (velAlongNormal < 0) {
-        const restitution = 1.5;
-        const impulse = - (1 + restitution) * velAlongNormal + smackBoost;
-        character.vx += nx_world * impulse + vBarX * 0.85;
-        character.vz += nz_world * impulse + vBarZ * 0.85;
-      } else {
-        // Even if already moving away, apply the bar's forward sweep kick:
-        character.vx += nx_world * (smackBoost * 0.65) + vBarX * 0.65;
-        character.vz += nz_world * (smackBoost * 0.65) + vBarZ * 0.65;
-      }
+      // Tangential velocity of the sweeping bar:
+      const tangentX = -character.z / (rCenter || 1);
+      const tangentZ = character.x / (rCenter || 1);
 
-      // C. AUDIO, VFX & IMPACT REACTION (Protected by hit cooldown to prevent audio spam)
+      // Launch speed: 25 m/s at hub to 36 m/s at outer tips!
+      const launchSpeed = 25.0 + (tipFactor * 12.0);
+
+      // Launch direction: strong sweep tangent + outward normal push
+      let launchDirX = tangentX * 0.75 + nx_world * 0.60;
+      let launchDirZ = tangentZ * 0.75 + nz_world * 0.60;
+      const launchLen = Math.sqrt(launchDirX * launchDirX + launchDirZ * launchDirZ) || 1;
+      launchDirX /= launchLen;
+      launchDirZ /= launchLen;
+
+      // Apply explosive impulse immediately:
+      character.vx = launchDirX * launchSpeed;
+      character.vz = launchDirZ * launchSpeed;
+
+      // Trigger high-speed knockback state:
+      character.knockbackTimer = 0.42;
+
+      // 3. AUDIO, VFX & IMPACT REACTION
       if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.35; // cooldown ONLY for audio/emotes, NOT for physical solidity!
-        character.squashX = 1.60;
-        character.squashY = 0.58;
+        character.hazardHitCooldown = 0.30;
+        character.squashX = 1.65;
+        character.squashY = 0.55;
 
         const smackLines = ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
         const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
@@ -560,7 +544,7 @@ class ArenaColosseum {
         }
 
         hitOccurred = true;
-        hitSpeed = smackBoost;
+        hitSpeed = launchSpeed;
       }
     }
 

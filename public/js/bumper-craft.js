@@ -144,6 +144,7 @@ class BumperCraft {
     this.kills = 0;
     this.lastAttacker = null;
     this.hazardHitCooldown = 0;
+    this.knockbackTimer = 0;
 
     // Squash & Stretch Spring Physics
     this.squashX = 1.0;
@@ -651,8 +652,19 @@ class BumperCraft {
     this.squashX += (1.0 - this.squashX) * Math.min(1, 16 * dt);
     this.squashY += (1.0 - this.squashY) * Math.min(1, 16 * dt);
 
-    // Steering Physics
-    if (this.grounded) {
+    // Steering & Knockback Physics
+    if (this.knockbackTimer > 0) {
+      this.knockbackTimer -= dt;
+      // High-speed glide during knockback: no topSpeed clamp, smooth friction!
+      this.vx *= Math.pow(0.965, dt * 60);
+      this.vz *= Math.pow(0.965, dt * 60);
+
+      // Jet exhaust flame active during knockback flight
+      this.leftFlame.scale.set(1.0, 1.0, 1.6);
+      this.rightFlame.scale.set(1.0, 1.0, 1.6);
+      this.leftFlame.visible = true;
+      this.rightFlame.visible = true;
+    } else if (this.grounded) {
       const topSpeed = this.isDashing ? 26.5 : (this.hasRocket ? 17.5 : this.baseSpeed);
       const accel = this.hasRocket ? this.accel * 1.5 : this.accel;
 
