@@ -1,6 +1,22 @@
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || 'https://positive-cub-88368.upstash.io';
 const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || 'gQAAAAAAAVkwAAIgcDE3ZWY3ZWM2YWVlYjE0NDNkYWQ1ZTRiZGQ5ZWRmZWY3OA';
 
+const KNOWN_BOT_NAMES = [
+  'vortex_hunter', 'decoded_titan', 'cyber_phantom', 'neon_striker',
+  'dili_supreme', 'cyberghost_99', 'astrodecoded', 'vortex_rider',
+  'novacadet', 'astro_bot', 'ai_pilot', 'cyber_bot'
+];
+
+function isBotAccount(name) {
+  if (!name || typeof name !== 'string') return true;
+  const n = name.trim().toLowerCase().replace(/[\s\-_]+/g, '');
+  if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
+  return KNOWN_BOT_NAMES.some(b => {
+    const cleanB = b.replace(/[\s\-_]+/g, '');
+    return n === cleanB || n.includes(cleanB);
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -16,6 +32,12 @@ module.exports = async (req, res) => {
     }
 
     const cleanPilot = String(pilot).trim().slice(0, 25);
+
+    // Defense: Disallow bot accounts
+    if (isBotAccount(cleanPilot)) {
+      return res.status(403).json({ success: false, error: 'Bot accounts cannot submit to leaderboard' });
+    }
+
     const entry = {
       pilot: cleanPilot,
       score: Math.floor(score),
@@ -36,7 +58,9 @@ module.exports = async (req, res) => {
         const data = await getRes.json();
         if (data.result) {
           const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
-          if (Array.isArray(parsed)) current = parsed;
+          if (Array.isArray(parsed)) {
+            current = parsed.filter(e => e && e.pilot && !isBotAccount(e.pilot));
+          }
         }
       }
     } catch (e) {

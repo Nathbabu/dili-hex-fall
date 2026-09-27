@@ -18,16 +18,25 @@ app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Default mock scores
-const DEFAULT_SCORES = [
-  { pilot: 'Dili_Supreme', score: 3240, survivalTime: 124, tier: 4, crystals: 12, suitColor: 'mint', win: true, timestamp: new Date(Date.now() - 3600000).toISOString() },
-  { pilot: 'CyberGhost_99', score: 2680, survivalTime: 98, tier: 3, crystals: 8, suitColor: 'pink', win: false, timestamp: new Date(Date.now() - 7200000).toISOString() },
-  { pilot: 'AstroDecoded', score: 2150, survivalTime: 85, tier: 3, crystals: 6, suitColor: 'cobalt', win: false, timestamp: new Date(Date.now() - 10800000).toISOString() },
-  { pilot: 'Vortex_Rider', score: 1790, survivalTime: 72, tier: 2, crystals: 5, suitColor: 'gold', win: false, timestamp: new Date(Date.now() - 14400000).toISOString() },
-  { pilot: 'NovaCadet', score: 1320, survivalTime: 54, tier: 2, crystals: 3, suitColor: 'crimson', win: false, timestamp: new Date(Date.now() - 18000000).toISOString() }
+// Known Bot Names and Identification
+const KNOWN_BOT_NAMES = [
+  'vortex_hunter', 'decoded_titan', 'cyber_phantom', 'neon_striker',
+  'dili_supreme', 'cyberghost_99', 'astrodecoded', 'vortex_rider',
+  'novacadet', 'astro_bot', 'ai_pilot', 'cyber_bot'
 ];
 
-let leaderboardCache = [...DEFAULT_SCORES];
+function isBotAccount(name) {
+  if (!name || typeof name !== 'string') return true;
+  const n = name.trim().toLowerCase().replace(/[\s\-_]+/g, '');
+  if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
+  return KNOWN_BOT_NAMES.some(b => {
+    const cleanB = b.replace(/[\s\-_]+/g, '');
+    return n === cleanB || n.includes(cleanB);
+  });
+}
+
+// In-memory cache of strictly human player scores
+let leaderboardCache = [];
 
 async function getLeaderboardFromRedis() {
   if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return leaderboardCache;
@@ -40,8 +49,11 @@ async function getLeaderboardFromRedis() {
       const data = await res.json();
       if (data.result) {
         const arr = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
-        if (Array.isArray(arr) && arr.length > 0) {
-          leaderboardCache = arr.sort((a, b) => b.score - a.score);
+        if (Array.isArray(arr)) {
+          // Strictly exclude any bot accounts
+          leaderboardCache = arr
+            .filter(e => e && e.pilot && !isBotAccount(e.pilot))
+            .sort((a, b) => b.score - a.score);
           return leaderboardCache;
         }
       }
@@ -49,12 +61,20 @@ async function getLeaderboardFromRedis() {
   } catch (e) {
     console.warn('[HexFall] Fallback to cache:', e.message);
   }
-  return leaderboardCache;
+  return leaderboardCache.filter(e => !isBotAccount(e.pilot));
 }
 
 async function saveScoreToRedis(newEntry) {
+  // Reject bot entries from ever entering the database
+  if (isBotAccount(newEntry.pilot)) {
+    throw new Error('Bot accounts are prohibited from the leaderboard.');
+  }
+
   let current = await getLeaderboardFromRedis();
   
+  // Clean any legacy bot entries
+  current = current.filter(e => !isBotAccount(e.pilot));
+
   const existingIdx = current.findIndex(e => e.pilot.toLowerCase() === newEntry.pilot.toLowerCase());
   if (existingIdx !== -1) {
     if (newEntry.score > current[existingIdx].score) {
@@ -87,7 +107,9 @@ async function saveScoreToRedis(newEntry) {
 
 app.get('/api/leaderboard', async (req, res) => {
   const list = await getLeaderboardFromRedis();
-  res.json({ success: true, count: list.length, leaderboard: list });
+  // Filter once more as defense-in-depth
+  const cleanList = list.filter(e => !isBotAccount(e.pilot));
+  res.json({ success: true, count: cleanList.length, leaderboard: cleanList });
 });
 
 app.post('/api/score/submit', async (req, res) => {
@@ -98,6 +120,12 @@ app.post('/api/score/submit', async (req, res) => {
     }
 
     const cleanPilot = String(pilot).trim().slice(0, 25);
+
+    // Defense: Disallow bot accounts
+    if (isBotAccount(cleanPilot)) {
+      return res.status(403).json({ success: false, error: 'Bot accounts cannot submit to leaderboard' });
+    }
+
     const entry = {
       pilot: cleanPilot,
       score: Math.floor(score),
@@ -132,7 +160,7 @@ app.use((req, res, next) => {
 
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 [DILI: HEX-FALL] Server online at http://localhost:${PORT}`);
+    console.log(`[DILI: HEX-FALL] Server online at http://localhost:${PORT}`);
   });
 }
 

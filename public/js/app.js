@@ -292,28 +292,51 @@
     showScreen('titleScreen');
   });
 
-  // Leaderboard API
+    // Known Bot Names Filter
+  const KNOWN_BOT_NAMES = [
+    'vortex_hunter', 'decoded_titan', 'cyber_phantom', 'neon_striker',
+    'dili_supreme', 'cyberghost_99', 'astrodecoded', 'vortex_rider',
+    'novacadet', 'astro_bot', 'ai_pilot', 'cyber_bot'
+  ];
+
+  function isBotAccount(name) {
+    if (!name || typeof name !== 'string') return true;
+    const n = name.trim().toLowerCase().replace(/[\s\-_]+/g, '');
+    if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
+    return KNOWN_BOT_NAMES.some(b => {
+      const cleanB = b.replace(/[\s\-_]+/g, '');
+      return n === cleanB || n.includes(cleanB);
+    });
+  }
+
+  // Leaderboard API — Strictly Human Players Only
   async function fetchLeaderboard() {
     lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>';
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
       if (data.success && data.leaderboard && data.leaderboard.length > 0) {
-        lbBody.innerHTML = data.leaderboard.slice(0, 50).map((e, idx) => {
-          const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-          return `<tr>
-            <td>${rankBadge}</td>
-            <td><strong>${escapeHtml(e.pilot)}</strong></td>
-            <td class="highlight-pink">${e.crystals || e.tier || 0}</td>
-            <td class="highlight-gold">${e.score}</td>
-          </tr>`;
-        }).join('');
+        const realPilots = data.leaderboard.filter(e => e && e.pilot && !isBotAccount(e.pilot));
+        if (realPilots.length > 0) {
+          lbBody.innerHTML = realPilots.slice(0, 50).map((e, idx) => {
+            const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+            return `<tr>
+              <td>${rankBadge}</td>
+              <td><strong>${escapeHtml(e.pilot)}</strong></td>
+              <td class="highlight-pink">${e.crystals || e.tier || 0}</td>
+              <td class="highlight-gold">${e.score}</td>
+            </tr>`;
+          }).join('');
+        } else {
+          lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim #1 rank!</td></tr>';
+        }
       } else {
         lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim #1 rank!</td></tr>';
       }
     } catch (err) {
       lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
     }
+  }
   }
 
   async function submitScore(data) {
