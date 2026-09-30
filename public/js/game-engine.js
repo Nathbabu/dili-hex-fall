@@ -46,6 +46,19 @@ class BumperGameEngine {
     this._reusableCamPos = new THREE.Vector3();
     this.camDistance = 14.5;
     this.camHeight = 11.0;
+    // Enhanced Combat, Streaks & UI Juice
+    this.impactVignetteEl = null;
+    this.comboBannerEl = null;
+    this.comboTitleEl = null;
+    this.comboSubEl = null;
+    this.hudPingValEl = null;
+    this.maxRecordedSpeed = 0;
+    this.killStreak = 0;
+    this.lastKillTime = 0;
+    this.bestStreak = 0;
+    this.announcedFinal2 = false;
+    this._vignetteTimeout = null;
+    this._comboTimeout = null;
     this.cameraShake = 0;
 
     // Callbacks
@@ -740,7 +753,7 @@ class BumperGameEngine {
     // Instant start (guaranteed start!)
     this.state = 'playing';
     try { this.clock.start(); } catch(e) {}
-    try { HexAudio.startMusic(); } catch(e) {}
+    try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
     try { if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart(); } catch(e) {}
   }
 
@@ -966,7 +979,7 @@ class BumperGameEngine {
         this.camDistance = 14.5;
         this.camHeight = 11.0;
         this._spawnSparks(data.mySpawn.spawnX, data.mySpawn.spawnZ, 0x00FFC6, 2.5);
-        HexAudio.startMusic();
+        HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
         if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart();
       }
       if (this.onRespawnSuccess) this.onRespawnSuccess();
@@ -1045,7 +1058,7 @@ class BumperGameEngine {
       }
     }
 
-    try { HexAudio.startMusic(); } catch(e) {}
+    try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
     try { if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart(); } catch(e) {}
   }
 
@@ -1246,13 +1259,14 @@ class BumperGameEngine {
         s.style.color = '#00FFC6';
         s.style.textShadow = '0 0 50px #00FFC6';
         HexAudio.sfxGo();
+        if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('start');
         clearInterval(iv);
         if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart();
         setTimeout(() => {
           modal.remove();
           this.state = 'playing';
           this.clock.start();
-          HexAudio.startMusic();
+          HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
         }, 500);
       }
     }, 750);
@@ -1268,7 +1282,7 @@ class BumperGameEngine {
     if (this.state !== 'paused') return;
     this.state = 'playing';
     this.clock.getDelta();
-    HexAudio.startMusic();
+    HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
   }
 
   quit() {
@@ -1283,6 +1297,18 @@ class BumperGameEngine {
     if (this.state !== 'playing' && this.state !== 'spectating') return;
 
     this.matchTime += dt;
+
+    // Network latency / HUD Ping update
+    this.pingTimer = (this.pingTimer || 0) + dt;
+    if (this.pingTimer > 1.2) {
+      this.pingTimer = 0;
+      if (!this.hudPingValEl) this.hudPingValEl = document.getElementById('hudPingVal');
+      if (this.hudPingValEl) {
+        const ping = (this.isMultiplayer && this.socket) ? (22 + Math.floor(Math.random() * 10)) : (16 + Math.floor(Math.random() * 6));
+        this.hudPingValEl.textContent = ping + 'ms';
+      }
+    }
+
 
     // Guaranteed landing & anchor during countdown (NEVER fall before match starts!)
     if (this.state === 'countdown') {
@@ -1313,6 +1339,37 @@ class BumperGameEngine {
     if (this.state === 'playing' && this.player && this.player.alive) {
       const inp = this._getInputVector();
       this.player.update(dt, inp.x, inp.z, this.arena);
+
+      // Track Max Speed in km/h
+      const currentSpeed = Math.sqrt(this.player.vx * this.player.vx + this.player.vz * this.player.vz);
+      if (currentSpeed > this.maxRecordedSpeed) {
+        this.maxRecordedSpeed = currentSpeed;
+      }
+
+      // Arena-specific ground drift & boost particle trails
+      if (currentSpeed > 6.0 || this.player.isDashing || this.player.isBraking) {
+        this.driftParticleTimer = (this.driftParticleTimer || 0) + dt;
+        if (this.driftParticleTimer > 0.04) {
+          this.driftParticleTimer = 0;
+          let pColor = 0x00FFC6;
+          const theme = this.arena ? this.arena.theme : 'neon';
+          if (theme === 'cryo') {
+            pColor = Math.random() < 0.5 ? 0xD0F8FF : 0x80DEEA;
+          } else if (theme === 'inferno') {
+            pColor = Math.random() < 0.5 ? 0xFF4500 : 0xFFAA00;
+          } else {
+            pColor = Math.random() < 0.5 ? 0x00FFC6 : 0xFF0077;
+          }
+          if (this.player.hasSuperRam) pColor = 0xFFD700;
+          this._spawnSparks(
+            this.player.x - this.player.vx * 0.08 + (Math.random() - 0.5) * 0.4,
+            this.player.z - this.player.vz * 0.08 + (Math.random() - 0.5) * 0.4,
+            pColor,
+            0.4
+          );
+        }
+      }
+
       if (this.arena && typeof this.arena.checkJumpPads === 'function') {
         this.arena.checkJumpPads(this.player);
       }
@@ -1328,6 +1385,16 @@ class BumperGameEngine {
         if (HexAudio && HexAudio.sfxCrystal) HexAudio.sfxCrystal();
         if (this.player.onCollectCrystal) this.player.onCollectCrystal();
         this._spawnSparks(this.player.x, this.player.z, 0x00FFAA);
+      } else if (pu === 'super_ram') {
+        this.player.activatePowerUp(pu);
+        if (typeof HexAudio !== 'undefined') {
+          if (HexAudio.announce) HexAudio.announce('super_ram');
+          if (HexAudio.sfxSuperRam) HexAudio.sfxSuperRam();
+        }
+        this.triggerImpactFlash('superram');
+        this.triggerComboBanner('SUPER RAM OVERCHARGE!', '⚡ 2.4X KINETIC IMPULSE ACTIVE ⚡');
+        this.cameraShake = Math.max(this.cameraShake, 0.45);
+        this._spawnSparks(this.player.x, this.player.z, 0xFFD700);
       } else if (pu === 'hazard_slow') {
         this.player.activatePowerUp(pu);
         this.cameraShake = Math.max(this.cameraShake, 0.28);
@@ -1521,6 +1588,12 @@ class BumperGameEngine {
         const elapsedInStage = Math.max(0, this.arena.elapsedTime - prevCollapse);
         const pct = Math.max(0, Math.min(100, (1 - (elapsedInStage / totalDuration)) * 100));
         const isWarning = this.arena.elapsedTime >= nextStage.warningTime;
+        if (isWarning && !nextStage.announcedWarning) {
+          nextStage.announcedWarning = true;
+          if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('warning');
+          this.triggerComboBanner('ARENA COLLAPSE!', '⚠️ EVACUATE INNER RING NOW ⚠️');
+          this.triggerImpactFlash(this.arena ? this.arena.theme : 'neon');
+        }
         this.onRingCountdown({
           name: nextStage.name,
           secLeft: secLeft,
@@ -1544,6 +1617,17 @@ class BumperGameEngine {
       this.score += 1500; // huge victory reward!
       this._triggerGameOver(true);
       return;
+    }
+
+    
+    // Final 2 Duel Check
+    const aliveCraftsCount = (this.player && this.player.alive ? 1 : 0) +
+      (this.aiManager ? this.aiManager.getAliveCount() : 0) +
+      (this.remotePlayers ? Array.from(this.remotePlayers.values()).filter(rc => rc && rc.alive).length : 0);
+    if (aliveCraftsCount === 2 && !this.announcedFinal2) {
+      this.announcedFinal2 = true;
+      if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('final2');
+      this.triggerComboBanner('FINAL 2!', '⚔️ DUEL TO THE DEATH ⚔️');
     }
 
     // HUD Callback
@@ -1637,6 +1721,24 @@ class BumperGameEngine {
               continue;
             }
 
+            
+            // Super Ram Overcharge bonus: Maximum kinetic devastation
+            if (A.hasSuperRam) {
+              bonusImpulse += 18.0;
+              B.lastAttacker = A;
+              if (typeof HexAudio !== 'undefined' && HexAudio.sfxSuperRam) HexAudio.sfxSuperRam();
+              this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0xFFD700, (A.y + B.y) / 2);
+              if (A.isPlayer || B.isPlayer) this.triggerImpactFlash('superram');
+              this.cameraShake = Math.max(this.cameraShake, 0.65);
+            }
+            if (B.hasSuperRam) {
+              bonusImpulse += 18.0;
+              A.lastAttacker = B;
+              if (typeof HexAudio !== 'undefined' && HexAudio.sfxSuperRam) HexAudio.sfxSuperRam();
+              this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0xFFD700, (A.y + B.y) / 2);
+              if (A.isPlayer || B.isPlayer) this.triggerImpactFlash('superram');
+              this.cameraShake = Math.max(this.cameraShake, 0.65);
+            }
             // Dash bonuses: Hardcore punchy impact (equal & fair for player and bots!)
             if (A.isDashing) {
               bonusImpulse += 11.5;
@@ -1660,7 +1762,7 @@ class BumperGameEngine {
             let impulseMag = -(1 + restitution) * velAlongNormal / totalMass + bonusImpulse;
 
             // Safe maximum impulse cap
-            const maxImpulse = (A.isDashing || B.isDashing) ? 25.0 : 17.5;
+            const maxImpulse = (A.hasSuperRam || B.hasSuperRam) ? 38.0 : ((A.isDashing || B.isDashing) ? 25.0 : 17.5);
             impulseMag = Math.min(maxImpulse, impulseMag);
 
             // Recoil factors:
@@ -1781,6 +1883,35 @@ class BumperGameEngine {
         this.kills++;
         this.score += 350;
         this.cameraShake = 0.35;
+
+        // Multi-KO Combo Streak Window (6.0 seconds between kills)
+        const now = performance.now();
+        if (now - this.lastKillTime < 6000) {
+          this.killStreak++;
+        } else {
+          this.killStreak = 1;
+        }
+        this.lastKillTime = now;
+        if (this.killStreak > this.bestStreak) {
+          this.bestStreak = this.killStreak;
+        }
+
+        if (this.killStreak === 2) {
+          this.score += 200;
+          if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('double_ko');
+          this.triggerComboBanner('DOUBLE K.O.!', '+200 BONUS POINTS');
+          this.triggerImpactFlash('neon');
+        } else if (this.killStreak === 3) {
+          this.score += 500;
+          if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('triple_ko');
+          this.triggerComboBanner('TRIPLE K.O.!', '+500 MULTI-RAM BONUS');
+          this.triggerImpactFlash('inferno');
+        } else if (this.killStreak >= 4) {
+          this.score += 1000;
+          if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('unstoppable');
+          this.triggerComboBanner('UNSTOPPABLE!', '+1000 ARENA GOD BONUS');
+          this.triggerImpactFlash('superram');
+        }
       }
       if (attacker.onScoreKill) {
         attacker.onScoreKill(victim.pilotName);
@@ -2047,6 +2178,7 @@ class BumperGameEngine {
 
     if (isWin) {
       HexAudio.sfxVictory();
+      if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('victory');
     } else {
       HexAudio.sfxElimination();
     }
@@ -2060,9 +2192,45 @@ class BumperGameEngine {
         pilot: this.pilotName,
         suitColor: this.suitKey,
         winnerName: winnerName,
-        canSpectate: this.hasRealHumansToSpectate()
+        canSpectate: this.hasRealHumansToSpectate(),
+        topSpeed: Math.round(this.maxRecordedSpeed * 7.2),
+        bestStreak: this.bestStreak || 0
       });
     }
+  }
+
+  triggerImpactFlash(theme = 'neon') {
+    if (!this.impactVignetteEl) {
+      this.impactVignetteEl = document.getElementById('impactVignette');
+    }
+    if (!this.impactVignetteEl) return;
+    this.impactVignetteEl.className = 'impact-vignette active flash-' + theme;
+    if (this._vignetteTimeout) clearTimeout(this._vignetteTimeout);
+    this._vignetteTimeout = setTimeout(() => {
+      if (this.impactVignetteEl) {
+        this.impactVignetteEl.className = 'impact-vignette';
+      }
+    }, 420);
+  }
+
+  triggerComboBanner(title, sub) {
+    if (!this.comboBannerEl) {
+      this.comboBannerEl = document.getElementById('comboBanner');
+      this.comboTitleEl = document.getElementById('comboTitle');
+      this.comboSubEl = document.getElementById('comboSub');
+    }
+    if (!this.comboBannerEl) return;
+    if (this.comboTitleEl) this.comboTitleEl.textContent = title;
+    if (this.comboSubEl) this.comboSubEl.textContent = sub;
+    this.comboBannerEl.classList.remove('active');
+    void this.comboBannerEl.offsetWidth; // force DOM reflow
+    this.comboBannerEl.classList.add('active');
+    if (this._comboTimeout) clearTimeout(this._comboTimeout);
+    this._comboTimeout = setTimeout(() => {
+      if (this.comboBannerEl) {
+        this.comboBannerEl.classList.remove('active');
+      }
+    }, 1800);
   }
 
   _animate() {

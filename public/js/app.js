@@ -78,6 +78,9 @@
   const goKills = document.getElementById('goKills');
   const goScore = document.getElementById('goScore');
   const goRank = document.getElementById('goRank');
+  const goTopSpeed = document.getElementById('goTopSpeed');
+  const goStreak = document.getElementById('goStreak');
+  const btnFullscreenToggle = document.getElementById('btnFullscreenToggle');
   const newRecordBanner = document.getElementById('newRecordBanner');
   const btnRetry = document.getElementById('btnRetry');
   const btnGoLb = document.getElementById('btnGoLb');
@@ -127,6 +130,13 @@
       btnFullscreen.title = isFs ? 'Exit Fullscreen' : 'Toggle Fullscreen';
       btnFullscreen.classList.toggle('fullscreen-active', isFs);
     };
+
+    const btnFullscreenToggle = document.getElementById('btnFullscreenToggle');
+    if (btnFullscreenToggle) {
+      btnFullscreenToggle.addEventListener('click', () => {
+        if (btnFullscreen) btnFullscreen.click();
+      });
+    }
 
     btnFullscreen.addEventListener('click', () => {
       if (typeof HexAudio !== 'undefined' && HexAudio.haptic) HexAudio.haptic('bump');
@@ -362,6 +372,8 @@
         goKills.textContent = data.kills;
         goScore.textContent = data.score;
         goRank.textContent = 'Submitting...';
+        if (goTopSpeed) goTopSpeed.textContent = (data.topSpeed || 0) + ' KM/H';
+        if (goStreak) goStreak.textContent = (data.bestStreak && data.bestStreak >= 2) ? ('x' + data.bestStreak + ' STREAK') : 'NONE';
 
         if (data.score > personalBest) {
           personalBest = data.score;

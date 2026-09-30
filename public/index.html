@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/game.css?v=v39-fast-cryo"/>
+  <link rel="stylesheet" href="css/game.css?v=v40-ultimate-polish"/>
 </head>
 <body>
   <!-- 3D WebGL Canvas -->
@@ -285,6 +285,15 @@
 
   <!-- IN-GAME HUD -->
   <div id="hud" class="screen">
+    <!-- Screen Edge Impact Flash Vignette (Rotor smacks, super-ram, geysers) -->
+    <div id="impactVignette" class="impact-vignette"></div>
+
+    <!-- Multi-KO Combo Streak Banner -->
+    <div id="comboBanner" class="combo-banner hidden">
+      <div id="comboTitle" class="combo-title">KNOCKOUT! 💥</div>
+      <div id="comboSub" class="combo-sub">+350 PTS</div>
+    </div>
+
     <!-- Arcade Speed Lines on Screen Edges (Hyper Nitro & Dash) -->
     <div id="speedLines" class="speed-lines"></div>
     <div class="hud-top-bar">
@@ -309,6 +318,11 @@
           <span class="hud-label">ARENA</span>
           <span class="hud-value highlight-cyan" id="hudArenaName">🏟️ NEON</span>
         </div>
+        <div class="hud-stat hud-ping-badge" id="hudPingBadge" title="Network Latency">
+          <span class="hud-label">PING</span>
+          <span class="hud-value ping-text"><span class="ping-dot"></span><span id="hudPingVal">22ms</span></span>
+        </div>
+        <button id="btnFullscreenToggle" class="fullscreen-toggle-btn" title="Toggle Fullscreen">⛶</button>
       </div>
 
       <!-- Ring Collapse Countdown Badge -->
@@ -481,6 +495,14 @@
           <span>GLOBAL RANK</span>
           <span id="goRank" class="highlight-cyan">#1</span>
         </div>
+        <div class="go-stat">
+          <span>TOP SPEED</span>
+          <span id="goTopSpeed" class="highlight-cyan">0 km/h</span>
+        </div>
+        <div class="go-stat">
+          <span>BEST COMBO</span>
+          <span id="goStreak" class="highlight-gold">0x</span>
+        </div>
       </div>
 
       <div class="go-actions">
@@ -530,11 +552,11 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <!-- Game Scripts -->
-  <script src="js/audio.js?v=v39-fast-cryo"></script>
-  <script src="js/arena.js?v=v39-fast-cryo"></script>
-  <script src="js/bumper-craft.js?v=v39-fast-cryo"></script>
-  <script src="js/ai-opponents.js?v=v39-fast-cryo"></script>
-  <script src="js/game-engine.js?v=v39-fast-cryo"></script>
-  <script src="js/app.js?v=v39-fast-cryo"></script>
+  <script src="js/audio.js?v=v40-ultimate-polish"></script>
+  <script src="js/arena.js?v=v40-ultimate-polish"></script>
+  <script src="js/bumper-craft.js?v=v40-ultimate-polish"></script>
+  <script src="js/ai-opponents.js?v=v40-ultimate-polish"></script>
+  <script src="js/game-engine.js?v=v40-ultimate-polish"></script>
+  <script src="js/app.js?v=v40-ultimate-polish"></script>
 </body>
 </html>

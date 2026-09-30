@@ -247,18 +247,21 @@ class ArenaColosseum {
       this._spawnPowerUp('rocket', 0, 11.5);
       this._spawnPowerUp('shield', 11.5, 0);
       this._spawnPowerUp('crystal', 0, -11.5);
+      this._spawnPowerUp('super_ram', 0, 8.5);
       this._spawnPowerUp('hazard_slow', -11.5, 0);
       this._spawnPowerUp('hazard_jam', 0, 0);
     } else if (this.theme === 'cryo') {
       this._spawnPowerUp('rocket', 0, 6.2);
       this._spawnPowerUp('shield', 6.2, 0);
       this._spawnPowerUp('crystal', 0, -6.2);
+      this._spawnPowerUp('super_ram', 0, 8.5);
       this._spawnPowerUp('hazard_slow', -6.2, 0);
       this._spawnPowerUp('hazard_jam', 4.5, 4.5);
     } else {
       this._spawnPowerUp('rocket', 0, 6.2);
       this._spawnPowerUp('shield', 6.2, 0);
       this._spawnPowerUp('crystal', 0, -6.2);
+      this._spawnPowerUp('super_ram', 0, 8.5);
       this._spawnPowerUp('hazard_slow', -6.2, 0);
       this._spawnPowerUp('hazard_jam', 5.0, 5.0);
     }
@@ -918,6 +921,7 @@ class ArenaColosseum {
     if (type === 'rocket') mesh = this._buildRocketMesh();
     else if (type === 'shield') mesh = this._buildShieldMesh();
     else if (type === 'crystal') mesh = this._buildCrystalMesh();
+    else if (type === 'super_ram') mesh = this._buildSuperRamMesh();
     else if (type === 'hazard_slow') mesh = this._buildHazardSlowMesh();
     else if (type === 'hazard_jam') mesh = this._buildHazardJamMesh();
 
@@ -968,6 +972,23 @@ class ArenaColosseum {
     const mat = new THREE.MeshStandardMaterial({ color: 0xBF00FF, emissive: 0x9900FF, emissiveIntensity: 1.8 });
     const tet = new THREE.Mesh(geo, mat);
     group.add(tet);
+    return group;
+  }
+
+  _buildSuperRamMesh() {
+    const group = new THREE.Group();
+    const geo = new THREE.OctahedronGeometry(0.38);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xFFD700, emissive: 0xFFAA00, emissiveIntensity: 2.2, metalness: 0.9, roughness: 0.15
+    });
+    const oct = new THREE.Mesh(geo, mat);
+    group.add(oct);
+
+    const ringGeo = new THREE.TorusGeometry(0.52, 0.05, 8, 20);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xFFEA00 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
     return group;
   }
 
@@ -1034,23 +1055,44 @@ class ArenaColosseum {
     this.rings.forEach(stage => {
       if (stage.collapsed) return;
 
-      // 1. Warning Phase: Pulsing Red Strobe Alarm
+      // 1. Warning Phase: Accelerating Red Strobe Alarm & Earthquake Tremor
       if (this.elapsedTime >= stage.warningTime && this.elapsedTime < stage.collapseTime) {
         if (!stage.warned) {
           stage.warned = true;
-          if (HexAudio && HexAudio.sfxAlarm) HexAudio.sfxAlarm();
+          if (HexAudio) {
+            if (HexAudio.announce) HexAudio.announce('warning');
+            else if (HexAudio.sfxAlarm) HexAudio.sfxAlarm();
+          }
           if (this.onAlert) {
             const secLeft = Math.max(1, Math.round(stage.collapseTime - this.elapsedTime));
             this.onAlert(`⚠️ ${stage.name} COLLAPSING IN ${secLeft}s! RETREAT TO CENTER!`);
           }
         }
 
-        const flash = Math.sin((this.elapsedTime - stage.warningTime) * 16) > 0;
+        const warnProgress = Math.min(1.0, Math.max(0.0, (this.elapsedTime - stage.warningTime) / (stage.collapseTime - stage.warningTime)));
+        const flashRate = 12 + warnProgress * 26; // Strobe gets faster and faster!
+        const flash = Math.sin((this.elapsedTime - stage.warningTime) * flashRate) > 0;
         const col = flash ? this._reusableAlertCol : this._reusableStageCol.setHex(stage.color);
         for (let i = 0; i < stage.count; i++) {
           stage.mesh.instanceColor.setXYZ(i, col.r, col.g, col.b);
         }
         stage.mesh.instanceColor.needsUpdate = true;
+
+        // Visual Earthquake Tremor on hex tiles
+        if (warnProgress > 0.4) {
+          const tremorY = Math.sin(this.elapsedTime * 35) * 0.05 * warnProgress;
+          for (let i = 0; i < stage.count; i++) {
+            stage.mesh.getMatrixAt(i, matrix);
+            pos.setFromMatrixPosition(matrix);
+            pos.y = tremorY;
+            this._dummy.position.copy(pos);
+            this._dummy.scale.set(1, 1, 1);
+            this._dummy.rotation.set(0, 0, 0);
+            this._dummy.updateMatrix();
+            stage.mesh.setMatrixAt(i, this._dummy.matrix);
+          }
+          stage.mesh.instanceMatrix.needsUpdate = true;
+        }
       }
 
       // 2. Collapse Trigger Phase

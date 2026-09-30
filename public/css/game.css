@@ -2546,3 +2546,123 @@ canvas#gameCanvas {
     font-size: 0.82rem;
   }
 }
+
+/* ============================================================
+   IMPACT SCREEN VIGNETTE FLASH (Heavy smacks & rotor hits)
+   ============================================================ */
+.impact-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  opacity: 0;
+  transition: opacity 0.35s ease-out;
+}
+.impact-vignette.flash-cryo {
+  opacity: 1;
+  box-shadow: inset 0 0 120px rgba(0, 240, 255, 0.85), inset 0 0 45px rgba(255, 255, 255, 0.55);
+  transition: none;
+}
+.impact-vignette.flash-inferno {
+  opacity: 1;
+  box-shadow: inset 0 0 120px rgba(255, 68, 0, 0.85), inset 0 0 45px rgba(255, 170, 0, 0.55);
+  transition: none;
+}
+.impact-vignette.flash-neon {
+  opacity: 1;
+  box-shadow: inset 0 0 120px rgba(255, 0, 128, 0.85), inset 0 0 45px rgba(0, 255, 200, 0.55);
+  transition: none;
+}
+.impact-vignette.flash-superram {
+  opacity: 1;
+  box-shadow: inset 0 0 130px rgba(255, 215, 0, 0.90), inset 0 0 50px rgba(255, 255, 255, 0.7);
+  transition: none;
+}
+
+/* ============================================================
+   MULTI-KO COMBO STREAK ARCADE BANNER
+   ============================================================ */
+.combo-banner {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%) scale(1);
+  pointer-events: none;
+  z-index: 95;
+  text-align: center;
+  animation: comboPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.combo-banner.hidden {
+  display: none !important;
+}
+.combo-title {
+  font-family: 'Orbitron', monospace, sans-serif;
+  font-size: 2.3rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #FFD700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 35px rgba(255, 68, 0, 0.65);
+  text-transform: uppercase;
+}
+.combo-sub {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #00F0FF;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+}
+@keyframes comboPop {
+  0% { transform: translateX(-50%) scale(0.35); opacity: 0; }
+  65% { transform: translateX(-50%) scale(1.18); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ============================================================
+   HUD PING BADGE & FULLSCREEN TOGGLE
+   ============================================================ */
+.hud-ping-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ping-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+}
+.ping-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00FF88;
+  box-shadow: 0 0 6px #00FF88;
+  animation: pingPulse 1.8s infinite;
+}
+@keyframes pingPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+.fullscreen-toggle-btn {
+  background: rgba(4, 13, 26, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  color: #00F0FF;
+  font-size: 1.15rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(6px);
+  margin-left: 6px;
+}
+.fullscreen-toggle-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: #00F0FF;
+  transform: scale(1.08);
+}

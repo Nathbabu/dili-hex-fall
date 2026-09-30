@@ -110,7 +110,18 @@ const HexAudio = (() => {
           break;
         case 'smash':
         case 'heavy':
-          navigator.vibrate([45, 30, 45]);
+        case 'sweeper':
+        case 'rotor':
+          navigator.vibrate([55, 30, 75]);
+          break;
+        case 'super_ram':
+          navigator.vibrate([80, 40, 110]);
+          break;
+        case 'boost_vent':
+          navigator.vibrate([35, 25, 45]);
+          break;
+        case 'kill':
+          navigator.vibrate([40, 30, 80]);
           break;
         case 'dash':
           navigator.vibrate(35);
@@ -247,11 +258,36 @@ const HexAudio = (() => {
   }
 
   function sfxVictory() {
+    haptic('victory');
     const fanfare = [523.25, 659.25, 783.99, 1046.50, 880.00, 1046.50, 1318.51, 1567.98];
     fanfare.forEach((f, i) => {
       setTimeout(() => playTone(f, 0.3, 'triangle', sfxGain, 0.42), i * 110);
     });
     setTimeout(sfxCheer, 350);
+  }
+
+  // Super Ram Kinetic Discharge Thunder
+  function sfxSuperRam() {
+    haptic('super_ram');
+    playPunch(0.55, 1.0); // Devastating sub punch
+    playTone(85, 0.65, 'sawtooth', sfxGain, 0.75);
+    playTone(175, 0.35, 'square', sfxGain, 0.55);
+    setTimeout(() => playTone(350, 0.22, 'sawtooth', sfxGain, 0.50), 30);
+    setTimeout(() => playTone(720, 0.18, 'triangle', sfxGain, 0.45), 70);
+  }
+
+  // Ice Freeze Mine Deploy & Detonation
+  function sfxMineDrop() {
+    playTone(420, 0.08, 'sine', sfxGain, 0.35);
+    setTimeout(() => playTone(580, 0.12, 'triangle', sfxGain, 0.38), 40);
+  }
+
+  function sfxMineFreeze() {
+    haptic('sweeper');
+    playPunch(0.30, 0.60);
+    playTone(880, 0.25, 'sawtooth', sfxGain, 0.50);
+    playTone(1320, 0.35, 'sine', sfxGain, 0.45);
+    setTimeout(() => playTone(660, 0.30, 'square', sfxGain, 0.40), 60);
   }
 
   function sfxCountdown() { playTone(440, 0.12, 'square', sfxGain, 0.28); }
@@ -325,29 +361,100 @@ const HexAudio = (() => {
     setTimeout(() => playTone(1174, 0.14, 'sine', sfxGain, 0.35), 70);
   }
 
-  // Fast Techno-Cyber Bassline (130 BPM)
-  const bgmNotes = [
-    { n: 110.00, d: 0.15 }, { n: 110.00, d: 0.15 }, { n: 130.81, d: 0.15 }, { n: 146.83, d: 0.15 },
-    { n: 110.00, d: 0.15 }, { n: 164.81, d: 0.15 }, { n: 146.83, d: 0.15 }, { n: 130.81, d: 0.15 },
-    { n: 98.00,  d: 0.15 }, { n: 98.00,  d: 0.15 }, { n: 123.47, d: 0.15 }, { n: 146.83, d: 0.15 },
-    { n: 130.81, d: 0.15 }, { n: 164.81, d: 0.15 }, { n: 196.00, d: 0.20 }, { n: 164.81, d: 0.15 }
+  // ============================================================
+  // DISTINCT DYNAMIC SOUNDTRACKS PER ARENA
+  // ============================================================
+  // 1. NEON COLOSSEUM (132 BPM Driving Cyber Synthwave in A Minor)
+  const neonBgmNotes = [
+    { n: 110.00, d: 0.14, type: 'sawtooth', kick: true },  // A2
+    { n: 110.00, d: 0.14, type: 'sawtooth', kick: false },
+    { n: 130.81, d: 0.14, type: 'sawtooth', kick: false }, // C3
+    { n: 146.83, d: 0.14, type: 'sawtooth', kick: false }, // D3
+    { n: 110.00, d: 0.14, type: 'sawtooth', kick: true },  // A2
+    { n: 164.81, d: 0.14, type: 'triangle', kick: false }, // E3
+    { n: 220.00, d: 0.14, type: 'sine',     kick: false }, // A3 arpeggio
+    { n: 164.81, d: 0.14, type: 'triangle', kick: false }, // E3
+    { n: 98.00,  d: 0.14, type: 'sawtooth', kick: true },  // G2
+    { n: 123.47, d: 0.14, type: 'sawtooth', kick: false }, // B2
+    { n: 146.83, d: 0.14, type: 'sawtooth', kick: false }, // D3
+    { n: 196.00, d: 0.14, type: 'sine',     kick: false }, // G3
+    { n: 130.81, d: 0.14, type: 'sawtooth', kick: true },  // C3
+    { n: 164.81, d: 0.14, type: 'triangle', kick: false }, // E3
+    { n: 261.63, d: 0.18, type: 'sine',     kick: false }, // C4
+    { n: 164.81, d: 0.14, type: 'triangle', kick: false }  // E3
   ];
 
-  function startMusic() {
+  // 2. INFERNO FORGE (150 BPM Heavy Industrial Bassline & Metal Rhythm in D Minor)
+  const infernoBgmNotes = [
+    { n: 73.42,  d: 0.12, type: 'sawtooth', kick: true },  // D2 heavy sub
+    { n: 73.42,  d: 0.12, type: 'square',   kick: true },  // Double punch kick
+    { n: 87.31,  d: 0.12, type: 'sawtooth', kick: false }, // F2
+    { n: 98.00,  d: 0.12, type: 'square',   kick: false }, // G2
+    { n: 73.42,  d: 0.12, type: 'sawtooth', kick: true },  // D2
+    { n: 110.00, d: 0.12, type: 'sawtooth', kick: false }, // A2
+    { n: 146.83, d: 0.12, type: 'square',   kick: true },  // D3 industrial slap
+    { n: 130.81, d: 0.12, type: 'sawtooth', kick: false }, // C3
+    { n: 65.41,  d: 0.12, type: 'sawtooth', kick: true },  // C2 deep growl
+    { n: 73.42,  d: 0.12, type: 'sawtooth', kick: false }, // D2
+    { n: 87.31,  d: 0.12, type: 'square',   kick: false }, // F2
+    { n: 110.00, d: 0.12, type: 'sawtooth', kick: true },  // A2
+    { n: 61.74,  d: 0.14, type: 'sawtooth', kick: true },  // B1
+    { n: 73.42,  d: 0.12, type: 'square',   kick: false }, // D2
+    { n: 146.83, d: 0.18, type: 'sawtooth', kick: false }, // D3
+    { n: 164.81, d: 0.12, type: 'square',   kick: false }  // E3
+  ];
+
+  // 3. CRYO GLACIER (164 BPM Rapid Arctic Drum-and-Bass Drift in F# Minor)
+  const cryoBgmNotes = [
+    { n: 92.50,  d: 0.10, type: 'sawtooth', kick: true },  // F#2
+    { n: 185.00, d: 0.09, type: 'sine',     kick: false }, // F#3 bell
+    { n: 110.00, d: 0.09, type: 'sawtooth', kick: false }, // A2
+    { n: 220.00, d: 0.09, type: 'triangle', kick: true },  // A3 icy pluck
+    { n: 123.47, d: 0.09, type: 'sawtooth', kick: false }, // B2
+    { n: 246.94, d: 0.09, type: 'sine',     kick: false }, // B3
+    { n: 92.50,  d: 0.10, type: 'sawtooth', kick: true },  // F#2
+    { n: 277.18, d: 0.11, type: 'sine',     kick: false }, // C#4 crystal chime
+    { n: 82.41,  d: 0.10, type: 'sawtooth', kick: true },  // E2
+    { n: 164.81, d: 0.09, type: 'sine',     kick: false }, // E3
+    { n: 92.50,  d: 0.09, type: 'sawtooth', kick: false }, // F#2
+    { n: 220.00, d: 0.09, type: 'triangle', kick: true },  // A3
+    { n: 110.00, d: 0.09, type: 'sawtooth', kick: false }, // A2
+    { n: 277.18, d: 0.09, type: 'sine',     kick: false }, // C#4
+    { n: 329.63, d: 0.13, type: 'sine',     kick: false }, // E4 high frost ping
+    { n: 277.18, d: 0.09, type: 'triangle', kick: false }  // C#4
+  ];
+
+  let currentMusicTheme = 'neon';
+
+  function startMusic(theme = 'neon') {
     if (!ctx) init();
     resumeCtx();
+    if (bgmInterval && currentMusicTheme === theme) return; // Already playing this track
     stopMusic();
+
+    currentMusicTheme = (theme === 'inferno' || theme === 'cryo') ? theme : 'neon';
     bgmStep = 0;
+
+    let notes = neonBgmNotes;
+    let tempoMs = 175; // ~132 BPM
+
+    if (currentMusicTheme === 'inferno') {
+      notes = infernoBgmNotes;
+      tempoMs = 155;   // ~150 BPM
+    } else if (currentMusicTheme === 'cryo') {
+      notes = cryoBgmNotes;
+      tempoMs = 138;   // ~164 BPM
+    }
+
     bgmInterval = setInterval(() => {
       if (isMuted) return;
-      const b = bgmNotes[bgmStep % bgmNotes.length];
-      playTone(b.n, b.d, 'sawtooth', musicGain, 0.18);
-      // Kick drum punch on quarter beats
-      if (bgmStep % 4 === 0) {
-        playPunch(0.09, 0.25);
+      const b = notes[bgmStep % notes.length];
+      playTone(b.n, b.d, b.type || 'sawtooth', musicGain, 0.19);
+      if (b.kick) {
+        playPunch(0.08, currentMusicTheme === 'inferno' ? 0.35 : 0.25);
       }
       bgmStep++;
-    }, 175);
+    }, tempoMs);
   }
 
   function stopMusic() {
@@ -357,6 +464,62 @@ const HexAudio = (() => {
     }
   }
 
+  // ============================================================
+  // CYBER ANNOUNCER ENGINE
+  // ============================================================
+  function announce(event) {
+    if (isMuted) return;
+    try {
+      switch (event) {
+        case 'start':
+          playTone(523, 0.12, 'square', sfxGain, 0.4);
+          setTimeout(() => playTone(659, 0.12, 'square', sfxGain, 0.4), 80);
+          setTimeout(() => playTone(1046, 0.35, 'triangle', sfxGain, 0.5), 160);
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('FIGHT!', 'attack', true);
+          break;
+        case 'double_ko':
+          haptic('kill');
+          playPunch(0.35, 0.85);
+          playTone(620, 0.15, 'sawtooth', sfxGain, 0.6);
+          setTimeout(() => playTone(930, 0.30, 'triangle', sfxGain, 0.65), 70);
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('DOUBLE K.O.!', 'attack', true);
+          break;
+        case 'triple_ko':
+          haptic('kill');
+          playPunch(0.45, 0.95);
+          playTone(740, 0.15, 'sawtooth', sfxGain, 0.65);
+          setTimeout(() => playTone(1110, 0.35, 'square', sfxGain, 0.70), 70);
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('TRIPLE K.O.! UNSTOPPABLE!', 'attack', true);
+          break;
+        case 'unstoppable':
+          haptic('kill');
+          playPunch(0.55, 1.0);
+          [523, 784, 1046, 1567].forEach((f, i) => setTimeout(() => playTone(f, 0.18, 'triangle', sfxGain, 0.6), i * 60));
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('BUMPER GOD!', 'attack', true);
+          break;
+        case 'warning':
+          haptic('smash');
+          playTone(660, 0.20, 'square', sfxGain, 0.45);
+          setTimeout(() => playTone(440, 0.25, 'sawtooth', sfxGain, 0.50), 120);
+          break;
+        case 'final2':
+          playPunch(0.40, 0.8);
+          playTone(440, 0.25, 'triangle', sfxGain, 0.5);
+          setTimeout(() => playTone(880, 0.45, 'sawtooth', sfxGain, 0.55), 140);
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('FINAL TWO FIGHTERS!', 'panic', true);
+          break;
+        case 'super_ram':
+          sfxSuperRam();
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('SUPER RAM READY!', 'attack', true);
+          break;
+        case 'victory':
+          sfxVictory();
+          if (typeof DiliVoice !== 'undefined') DiliVoice.speak('ARENA CHAMPION!', 'happy', true);
+          break;
+      }
+    } catch (_) {}
+  }
+
   return {
     init, resumeCtx, toggleMute, getIsMuted, haptic,
     sfxBump, sfxHeavyCrash, sfxDash,
@@ -364,6 +527,7 @@ const HexAudio = (() => {
     sfxPowerUp, sfxCrystal, sfxElimination, sfxVictory,
     sfxCountdown, sfxGo,
     sfxVoiceOof, sfxVoiceHappy, sfxVoicePanic, sfxVoiceScream, sfxVoiceTaunt, sfxSweeperSmack, sfxTrapGlitch, sfxTrapJam,
+    sfxSuperRam, sfxMineDrop, sfxMineFreeze, announce,
     startMusic, stopMusic
   };
 })();

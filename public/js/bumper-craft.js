@@ -535,6 +535,8 @@ class BumperCraft {
     this.shieldTimer = 0;
     this.hasRocket = false;
     this.rocketTimer = 0;
+    this.hasSuperRam = false;
+    this.superRamTimer = 0;
     this.isGlitchSlow = false;
     this.glitchSlowTimer = 0;
     this.isJammed = false;
@@ -1023,6 +1025,12 @@ class BumperCraft {
       if (this.shieldMesh) this.shieldMesh.visible = true;
       if (HexAudio && HexAudio.sfxPowerUp) HexAudio.sfxPowerUp();
       this.setEmotion('celebrate', 1.3, 'FORCEFIELD!', '🛡️');
+    } else if (type === 'super_ram') {
+      this.hasSuperRam = true;
+      this.superRamTimer = 10.0;
+      if (HexAudio && HexAudio.announce) HexAudio.announce('super_ram');
+      else if (HexAudio && HexAudio.sfxPowerUp) HexAudio.sfxPowerUp();
+      this.setEmotion('attack', 1.5, 'SUPER RAM READY! ⚡', '💥');
     } else if (type === 'hazard_slow') {
       this.isGlitchSlow = true;
       this.glitchSlowTimer = 4.0;
@@ -1116,6 +1124,13 @@ class BumperCraft {
         this.hasRocket = false;
         this._redrawExpressiveDili();
     if (this.dili3D) this.dili3D.setEmotion(this.currentEmotion);
+      }
+    }
+
+    if (this.hasSuperRam) {
+      this.superRamTimer -= dt;
+      if (this.superRamTimer <= 0) {
+        this.hasSuperRam = false;
       }
     }
 
@@ -1320,7 +1335,13 @@ class BumperCraft {
         const flicker = Math.sin(performance.now() * 0.04) > 0 ? 2.6 : 0.2;
         this.bumperRing.material.emissiveIntensity = flicker;
       } else {
-        this.bumperRing.material.emissiveIntensity = this.isDashing ? 2.8 : (this.hasShield ? 2.2 : (this.isGlitchSlow ? 0.4 : 0.95));
+        if (this.hasSuperRam) {
+      this.bumperRing.material.emissive.setHex(0xFFD700);
+      this.bumperRing.material.emissiveIntensity = 3.2;
+    } else {
+      this.bumperRing.material.emissive.setHex(this.suitTheme.ring);
+      this.bumperRing.material.emissiveIntensity = this.isDashing ? 2.8 : (this.hasShield ? 2.2 : (this.isGlitchSlow ? 0.4 : 0.95));
+    }
       }
     }
 
@@ -1407,6 +1428,8 @@ class BumperCraft {
     this.isDashing = false;
     this.hasShield = false;
     this.hasRocket = false;
+    this.hasSuperRam = false;
+    this.superRamTimer = 0;
     this.shieldTimer = 0;
     this.rocketTimer = 0;
     this.isGlitchSlow = false;
