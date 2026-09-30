@@ -6,6 +6,8 @@
 
   // Screens
   const titleScreen = document.getElementById('titleScreen');
+  const soloModeScreen = document.getElementById('soloModeScreen');
+  const waitingRoomScreen = document.getElementById('waitingRoomScreen');
   const hud = document.getElementById('hud');
   const pauseOverlay = document.getElementById('pauseOverlay');
   const gameOverScreen = document.getElementById('gameOverScreen');
@@ -15,7 +17,6 @@
   // Title inputs
   const pilotNameInput = document.getElementById('pilotName');
   const suitButtons = document.querySelectorAll('.suit-btn');
-  const btnPlay = document.getElementById('btnPlay');
   const btnLeaderboard = document.getElementById('btnLeaderboard');
   const btnHowToPlay = document.getElementById('btnHowToPlay');
   const btnHelpClose = document.getElementById('btnHelpClose');
@@ -33,6 +34,26 @@
   const killFeed = document.getElementById('killFeed');
   const arenaAlert = document.getElementById('arenaAlert');
   const alertText = document.getElementById('alertText');
+
+  // Ring Countdown HUD
+  const ringCountdownHud = document.getElementById('ringCountdownHud');
+  const rcRingName = document.getElementById('rcRingName');
+  const rcTimer = document.getElementById('rcTimer');
+  const rcProgressBar = document.getElementById('rcProgressBar');
+
+  // Central Knockout Banner
+  const knockoutBanner = document.getElementById('knockoutBanner');
+  const koIcon = document.getElementById('koIcon');
+  const koTitle = document.getElementById('koTitle');
+  const koSub = document.getElementById('koSub');
+
+  // Spectator Bar
+  const spectatorBar = document.getElementById('spectatorBar');
+  const btnSpecPrev = document.getElementById('btnSpecPrev');
+  const btnSpecNext = document.getElementById('btnSpecNext');
+  const specPilotName = document.getElementById('specPilotName');
+  const btnSpecRespawn = document.getElementById('btnSpecRespawn');
+  const btnGoSpectate = document.getElementById('btnGoSpectate');
 
   // Cooldown Overlays (Mobile & Desktop)
   const dashCooldownOverlay = document.getElementById('dashCooldownOverlay');
@@ -80,10 +101,53 @@
   };
 
   function showScreen(id) {
-    [titleScreen, hud, pauseOverlay, gameOverScreen, leaderboardScreen, howToPlayModal].forEach(s => {
-      s.classList.remove('active');
+    const allScreens = [titleScreen, soloModeScreen, waitingRoomScreen, hud, pauseOverlay, gameOverScreen, leaderboardScreen, howToPlayModal];
+    allScreens.forEach(s => {
+      if (s) {
+        s.classList.remove('active');
+        s.style.display = 'none';
+      }
     });
-    if (id) document.getElementById(id).classList.add('active');
+    if (id) {
+      const target = document.getElementById(id);
+      if (target) {
+        target.classList.add('active');
+        target.style.display = 'flex';
+      }
+    }
+  }
+
+  // Fullscreen Mode Toggle
+  const btnFullscreen = document.getElementById('btnFullscreen');
+  const fullscreenIcon = document.getElementById('fullscreenIcon');
+  if (btnFullscreen) {
+    const updateFsState = () => {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (fullscreenIcon) fullscreenIcon.innerHTML = isFs ? '&#x25A3;' : '&#x26F6;';
+      btnFullscreen.title = isFs ? 'Exit Fullscreen' : 'Toggle Fullscreen';
+      btnFullscreen.classList.toggle('fullscreen-active', isFs);
+    };
+
+    btnFullscreen.addEventListener('click', () => {
+      if (typeof HexAudio !== 'undefined' && HexAudio.haptic) HexAudio.haptic('bump');
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {});
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    });
+
+    document.addEventListener('fullscreenchange', updateFsState);
+    document.addEventListener('webkitfullscreenchange', updateFsState);
   }
 
   // Audio Toggle
@@ -91,7 +155,9 @@
     HexAudio.init();
     HexAudio.resumeCtx();
     const isUnmuted = HexAudio.toggleMute();
-    audioIcon.textContent = isUnmuted ? '🔊' : '🔇';
+    const audioIcon = document.getElementById('audioIcon');
+    if (audioIcon) audioIcon.innerHTML = isUnmuted ? '&#128266;' : '&#128263;';
+    globalAudioBtn.classList.toggle('muted', !isUnmuted);
   });
 
   // Authentic Dlicom Mascot Showcase Controls
@@ -101,10 +167,18 @@
 
   const suitQuotes = {
     mint:    { quote: '🚀 READY TO SMASH!', color: '#00FFC6' },
-    pink:    { quote: '⚡ HYPER SPEED ENGAGED!', color: '#FF6EC7' },
+    pink:    { quote: 'HYPER SPEED ENGAGED! ⚡', color: '#FF6EC7' },
     gold:    { quote: '👑 SOVEREIGN TITAN POWER!', color: '#FFD700' },
     cobalt:  { quote: '🛡️ ENFORCER ONLINE!', color: '#4DA6FF' },
     crimson: { quote: '🔥 MAXIMUM IMPACT!', color: '#FF3344' }
+  };
+
+  const suitImgKeyMap = {
+    mint: 'mint',
+    pink: 'pink',
+    gold: 'gold',
+    cobalt: 'cobalt',
+    crimson: 'crimson'
   };
 
   // Suit Selection
@@ -113,10 +187,19 @@
       suitButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedSuit = btn.dataset.suit;
+      const suitActiveTag = document.getElementById('suitActiveTag');
+      if (suitActiveTag) {
+        suitActiveTag.textContent = { mint: 'MINT CADET', pink: 'CYBER PINK', gold: 'SOVEREIGN TITAN', cobalt: 'COBALT ENFORCER', crimson: 'CRIMSON CRUSHER' }[selectedSuit] || 'MINT CADET';
+        suitActiveTag.style.color = (suitQuotes[selectedSuit] || suitQuotes.mint).color;
+      }
 
       const info = suitQuotes[selectedSuit] || suitQuotes.mint;
+      const imgKey = suitImgKeyMap[selectedSuit] || selectedSuit;
       if (mascotPreviewImg) {
-        mascotPreviewImg.src = `assets/characters/dili-fight-cutout-${selectedSuit}.png`;
+        mascotPreviewImg.onerror = function() {
+          this.src = 'assets/characters/dili-fight-cutout-blue.png';
+        };
+        mascotPreviewImg.src = `assets/characters/dili-fight-cutout-${imgKey}.png`;
         mascotPreviewImg.style.filter = `drop-shadow(0 8px 18px ${info.color}66)`;
       }
       if (mascotRing) {
@@ -147,6 +230,21 @@
         hudKills.textContent = data.kills;
         hudScore.textContent = data.score;
 
+        const hudArenaName = document.getElementById('hudArenaName');
+        if (hudArenaName && data.arenaName) {
+          hudArenaName.textContent = `${data.arenaIcon || '🏟️'} ${data.arenaName}`;
+          if (data.arenaTheme === 'inferno') {
+            hudArenaName.style.color = '#FFAA00';
+            hudArenaName.style.textShadow = '0 0 10px rgba(255, 85, 0, 0.6)';
+          } else if (data.arenaTheme === 'cryo') {
+            hudArenaName.style.color = '#DCF8FF';
+            hudArenaName.style.textShadow = '0 0 10px rgba(0, 229, 255, 0.6)';
+          } else {
+            hudArenaName.style.color = '#00FFC6';
+            hudArenaName.style.textShadow = '0 0 10px rgba(0, 255, 198, 0.6)';
+          }
+        }
+
         // Cooldown bars
         const dashCdPct = Math.floor(data.dashCooldown * 100);
         const empCdPct = Math.floor(data.empCooldown * 100);
@@ -156,19 +254,34 @@
         if (pcDashCooldown) pcDashCooldown.style.width = `${100 - dashCdPct}%`;
         if (pcEmpCooldown) pcEmpCooldown.style.width = `${100 - empCdPct}%`;
 
-        // Active Power-up banner
+        // Active Power-up & Cursed Hazard banner
         if (data.hasRocket) {
-          powerUpBanner.classList.remove('hidden');
-          powerUpIcon.textContent = '🚀';
-          powerUpText.textContent = 'MEGA ROCKET ACTIVE';
+          powerUpBanner.classList.remove('hidden', 'shield', 'hazard-slow', 'hazard-jam');
+          powerUpBanner.classList.add('rocket');
+          powerUpIcon.innerHTML = '&#128640;';
+          powerUpText.textContent = 'HYPER NITRO ACTIVE';
           powerUpBar.style.width = `${Math.max(0, data.rocketProgress)}%`;
         } else if (data.hasShield) {
-          powerUpBanner.classList.remove('hidden');
-          powerUpIcon.textContent = '🛡️';
-          powerUpText.textContent = 'FORCE SHIELD ACTIVE';
+          powerUpBanner.classList.remove('hidden', 'rocket', 'hazard-slow', 'hazard-jam');
+          powerUpBanner.classList.add('shield');
+          powerUpIcon.innerHTML = '&#128737;&#65039;';
+          powerUpText.textContent = 'AEGIS FORCE SHIELD';
           powerUpBar.style.width = `${Math.max(0, data.shieldProgress)}%`;
+        } else if (data.isGlitchSlow) {
+          powerUpBanner.classList.remove('hidden', 'rocket', 'shield', 'hazard-jam');
+          powerUpBanner.classList.add('hazard-slow');
+          powerUpIcon.innerHTML = '&#9763;&#65039;';
+          powerUpText.textContent = 'TOXIC SLUDGE! SLOWED!';
+          powerUpBar.style.width = `${Math.max(0, data.slowProgress)}%`;
+        } else if (data.isJammed) {
+          powerUpBanner.classList.remove('hidden', 'rocket', 'shield', 'hazard-slow');
+          powerUpBanner.classList.add('hazard-jam');
+          powerUpIcon.innerHTML = '&#9889;';
+          powerUpText.textContent = 'CIRCUITS JAMMED! NO ABILITIES!';
+          powerUpBar.style.width = `${Math.max(0, data.jamProgress)}%`;
         } else {
           powerUpBanner.classList.add('hidden');
+          powerUpBanner.classList.remove('rocket', 'shield', 'hazard-slow', 'hazard-jam');
         }
       };
 
@@ -178,12 +291,43 @@
         item.className = 'kill-item';
         if (data.isPlayerKill) {
           item.style.borderColor = '#00FFC6';
-          item.innerHTML = `💥 <b>YOU</b> knocked out ${escapeHtml(data.victim)}! <span style="color:#FFD700">+350</span>`;
+          item.innerHTML = `&#128165; <b>YOU</b> knocked out ${escapeHtml(data.victim)}! <span style="color:#FFD700">+350</span>`;
         } else {
-          item.innerHTML = `💥 ${escapeHtml(data.killer)} eliminated ${escapeHtml(data.victim)}`;
+          item.innerHTML = `&#128165; ${escapeHtml(data.killer)} eliminated ${escapeHtml(data.victim)}`;
         }
         killFeed.prepend(item);
         setTimeout(() => { item.remove(); }, 3500);
+      };
+
+      // Real-Time Ring Collapse Countdown HUD
+      engine.onRingCountdown = (data) => {
+        if (ringCountdownHud) {
+          if (data.isCore) {
+            if (rcRingName) rcRingName.textContent = 'CORE DUEL PIT';
+            if (rcTimer) rcTimer.textContent = 'FINAL';
+            if (rcProgressBar) {
+              rcProgressBar.style.width = '100%';
+              rcProgressBar.style.background = 'linear-gradient(90deg, #FFD700, #FF3366)';
+            }
+            ringCountdownHud.classList.remove('warning');
+          } else {
+            if (rcRingName) rcRingName.textContent = data.name;
+            if (rcTimer) rcTimer.textContent = `${data.secLeft}s`;
+            if (rcProgressBar) {
+              rcProgressBar.style.width = `${data.pct}%`;
+              if (data.isWarning) {
+                rcProgressBar.style.background = 'linear-gradient(90deg, #FF3344, #FF0055)';
+              } else {
+                rcProgressBar.style.background = 'linear-gradient(90deg, #00E5FF, #FF0077)';
+              }
+            }
+            if (data.isWarning) {
+              ringCountdownHud.classList.add('warning');
+            } else {
+              ringCountdownHud.classList.remove('warning');
+            }
+          }
+        }
       };
 
       // Arena Alert Event
@@ -196,6 +340,13 @@
       // Game Over / Victory
       engine.onGameOver = (data) => {
         showScreen('gameOverScreen');
+        if (spectatorBar) spectatorBar.classList.add('hidden');
+
+        // Spectate button ONLY appears if there are actual real human players alive to spectate!
+        const canSpec = data.canSpectate !== undefined ? data.canSpectate : (engine && engine.hasRealHumansToSpectate());
+        if (btnGoSpectate) {
+          btnGoSpectate.style.display = canSpec ? 'inline-flex' : 'none';
+        }
 
         if (data.win) {
           goTitle.textContent = '🏆 ARENA CHAMPION! 🏆';
@@ -204,7 +355,7 @@
         } else {
           goTitle.textContent = 'KNOCKED OUT!';
           goTitle.style.color = '#FF3344';
-          goSubtitle.textContent = 'Plunged into the cyber abyss!';
+          goSubtitle.textContent = data.winnerName ? (data.winnerName + ' won the match!') : 'Plunged into the cyber abyss!';
         }
 
         goTime.textContent = formatTime(data.time);
@@ -230,23 +381,359 @@
         });
       };
     }
-    return engine;
+          engine.onRespawnSuccess = () => {
+        showScreen('hud');
+        if (spectatorBar) spectatorBar.classList.add('hidden');
+      };
+
+      engine.onSpectatorEnded = () => {
+        if (spectatorBar) spectatorBar.classList.add('hidden');
+        showScreen('gameOverScreen');
+        if (btnGoSpectate) btnGoSpectate.style.display = 'none';
+      };
+
+      return engine;
   }
 
-  function launchGame() {
+  // ============================================================
+  // MODE SELECTION SYSTEM
+  // ============================================================
+  let currentModeConfig = { mode: 'solo', difficulty: 'hard', botCount: 4, totalPlayers: 5, arenaTheme: 'neon' };
+  let socket = null;
+
+  function getSocket() {
+    if (!socket && typeof io !== 'undefined') {
+      socket = io();
+    }
+    return socket;
+  }
+  // Pre-connect socket in background so click to join is instantaneous
+  if (typeof io !== 'undefined') {
+    setTimeout(() => { getSocket(); }, 50);
+  }
+  let waitingInterval = null;
+
+  function getOrInitPilotName() {
+    let entered = pilotNameInput.value.trim().replace(/[^\w\s@\-\.]/g, '').trim();
+    if (!entered) {
+      entered = localStorage.getItem('dili_jump_pilot') || 
+                localStorage.getItem('cyberbumpers_pilot') || 
+                localStorage.getItem('dili_pilot_name') || 
+                ('Dili_' + Math.floor(Math.random() * 8999 + 1000));
+      entered = entered.replace(/[^\w\s@\-\.]/g, '').trim();
+    }
+    if (entered.startsWith('Pilot_')) {
+      entered = entered.replace('Pilot_', 'Dili_');
+    }
+    pilotNameInput.value = entered;
+    localStorage.setItem('dili_jump_pilot', entered);
+    localStorage.setItem('cyberbumpers_pilot', entered);
+    localStorage.setItem('dili_pilot_name', entered);
+    return entered;
+  }
+
+  function launchGame(modeConfig) {
     HexAudio.init();
     HexAudio.resumeCtx();
 
+    currentModeConfig = modeConfig || currentModeConfig;
     const eg = getEngine();
-    const pilot = pilotNameInput.value.trim() || ('Dili_' + Math.floor(Math.random() * 8999 + 1000));
+    const pilot = getOrInitPilotName();
     showScreen('hud');
+    if (spectatorBar) spectatorBar.classList.add('hidden');
+    if (knockoutBanner) knockoutBanner.classList.add('hidden');
     killFeed.innerHTML = '';
     arenaAlert.classList.add('hidden');
-    eg.startGame(pilot, selectedSuit);
+    eg.startGame(pilot, selectedSuit, currentModeConfig);
   }
 
-  btnPlay.addEventListener('click', launchGame);
-  btnRetry.addEventListener('click', launchGame);
+  // Solo Play Button -> Show difficulty selection
+  const btnSoloPlay = document.getElementById('btnSoloPlay');
+  const btnPublicRoom = document.getElementById('btnPublicRoom');
+  const btnSoloBack = document.getElementById('btnSoloBack');
+  const btnWaitingBack = document.getElementById('btnWaitingBack');
+  const btnEasy = document.getElementById('btnEasy');
+  const btnMedium = document.getElementById('btnMedium');
+  const btnHard = document.getElementById('btnHard');
+
+  btnSoloPlay.addEventListener('click', () => {
+    showScreen('soloModeScreen');
+  });
+  btnSoloPlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showScreen('soloModeScreen');
+    }
+  });
+  btnPublicRoom.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      btnPublicRoom.click();
+    }
+  });
+
+  btnSoloBack.addEventListener('click', () => {
+    showScreen('titleScreen');
+  });
+
+  // Arena Selection in Solo Screen
+  let selectedArenaTheme = 'neon';
+  const arenaPillBtns = document.querySelectorAll('.arena-pill');
+  const arenaActiveTag = document.getElementById('arenaActiveTag');
+
+  const ARENA_NAME_MAP = {
+    neon: { name: 'NEON COLOSSEUM', color: '#00FFC6' },
+    inferno: { name: 'INFERNO FORGE', color: '#FFAA00' },
+    cryo: { name: 'CRYO GLACIER', color: '#DCF8FF' },
+    random: { name: 'RANDOM COLOSSEUM', color: '#F0A3FF' }
+  };
+
+  arenaPillBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof HexAudio !== 'undefined' && HexAudio.sfxTap) HexAudio.sfxTap();
+      arenaPillBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedArenaTheme = btn.dataset.theme;
+
+      if (arenaActiveTag && ARENA_NAME_MAP[selectedArenaTheme]) {
+        arenaActiveTag.textContent = ARENA_NAME_MAP[selectedArenaTheme].name;
+        arenaActiveTag.style.color = ARENA_NAME_MAP[selectedArenaTheme].color;
+      }
+    });
+  });
+
+  // Difficulty buttons launch solo game with selected arena theme
+  [btnEasy, btnMedium, btnHard].forEach(btn => {
+    btn.addEventListener('click', () => {
+      const botCount = parseInt(btn.dataset.bots);
+      const difficulty = btn.dataset.diff;
+      launchGame({
+        mode: 'solo',
+        difficulty: difficulty,
+        botCount: botCount,
+        totalPlayers: botCount + 1,
+        arenaTheme: selectedArenaTheme
+      });
+    });
+  });
+
+  // ============================================================
+    // ============================================================
+  // REAL-TIME MULTIPLAYER WAITING LOBBY (Socket.io)
+  // ============================================================
+  btnPublicRoom.addEventListener('click', () => {
+    HexAudio.init();
+    HexAudio.resumeCtx();
+    const playerName = getOrInitPilotName();
+    const s = getSocket();
+
+    // Immediate visual feedback: transition to HUD with drop-in alert
+    showScreen('hud');
+    if (spectatorBar) spectatorBar.classList.add('hidden');
+    if (knockoutBanner) knockoutBanner.classList.add('hidden');
+    killFeed.innerHTML = '';
+    arenaAlert.classList.remove('hidden');
+    if (alertText) alertText.textContent = '⚡ CONNECTING TO THE COLOSSEUM...';
+
+    if (!s) {
+      if (alertText) alertText.textContent = '⚠️ SERVER OFFLINE — STARTING SOLO TRAINING';
+      setTimeout(() => {
+        launchGame({ mode: 'solo', difficulty: 'hard', botCount: 3, totalPlayers: 4, arenaTheme: 'neon' });
+      }, 700);
+      return;
+    }
+
+    currentModeConfig = { mode: 'multiplayer' };
+    let joined = false;
+
+    // Register listeners BEFORE emitting
+    s.off('arena_joined_live');
+    s.on('arena_joined_live', (data) => {
+      joined = true;
+      currentModeConfig = { mode: 'multiplayer' };
+      showScreen('hud');
+      killFeed.innerHTML = '';
+      arenaAlert.classList.add('hidden');
+      try {
+        const eg = getEngine();
+        eg.startPersistentPublicGame(Object.assign({}, data, {
+          myPilotName: playerName,
+          mySuitKey: selectedSuit || 'mint'
+        }), s);
+      } catch (err) {
+        console.error('Error starting multiplayer game:', err);
+        launchGame({ mode: 'solo', difficulty: 'hard', botCount: 3, totalPlayers: 4, arenaTheme: data.arenaTheme || 'neon' });
+      }
+    });
+
+    s.off('arena_reset');
+    s.on('arena_reset', () => {
+      showScreen('hud');
+      if (killFeed) killFeed.innerHTML = '';
+      if (arenaAlert) arenaAlert.classList.add('hidden');
+    });
+
+    s.off('respawn_success');
+    s.on('respawn_success', () => {
+      showScreen('hud');
+      if (killFeed) killFeed.innerHTML = '';
+      if (arenaAlert) arenaAlert.classList.add('hidden');
+    });
+
+    // Fallback if socket fails to reply within 4.5 seconds
+    setTimeout(() => {
+      if (!joined && document.getElementById('hud') && document.getElementById('hud').style.display === 'flex') {
+        const eg = getEngine();
+        if (eg && eg.state !== 'playing' && eg.state !== 'countdown') {
+          console.warn('Socket join timeout. Falling back to solo colosseum.');
+          if (alertText) alertText.textContent = '⚡ ENTERING SOLO BATTLEGROUND...';
+          setTimeout(() => {
+            launchGame({ mode: 'solo', difficulty: 'hard', botCount: 3, totalPlayers: 4, arenaTheme: 'neon' });
+          }, 500);
+        }
+      }
+    }, 4500);
+
+    // Emit join event
+    s.emit('join_public_room', {
+      pilotName: playerName,
+      suitColor: selectedSuit || 'mint'
+    });
+  });
+
+  btnWaitingBack.addEventListener('click', () => {
+    leaveRealPublicLobby();
+    showScreen('titleScreen');
+  });
+
+  const btnForceStart = document.getElementById('btnForceStart');
+  if (btnForceStart) {
+    btnForceStart.addEventListener('click', () => {
+      const s = getSocket();
+      if (s) s.emit('force_start');
+    });
+  }
+
+  function joinRealPublicLobby() {
+    const waitingPilots = document.getElementById('waitingPilots');
+    const waitingTimer = document.getElementById('waitingTimer');
+    const waitingRoster = document.getElementById('waitingRoster');
+    const waitingPulseText = document.querySelector('.pulse-text');
+    const forceStartBtn = document.getElementById('btnForceStart');
+
+    const playerName = getOrInitPilotName();
+    const s = getSocket();
+
+    if (!s) {
+      console.warn('Socket.io not available, running fallback mode.');
+      return;
+    }
+
+    waitingRoster.innerHTML = '<div class="roster-pilot you"><span class="roster-dot" style="background:#00FFC6;box-shadow:0 0 8px #00FFC6"></span> ' + escapeHtml(playerName) + ' (YOU)</div>';
+    waitingPilots.textContent = '1 / 6';
+    waitingTimer.textContent = 'WAITING';
+    if (waitingPulseText) waitingPulseText.textContent = 'CONNECTING TO PUBLIC ARENA...';
+    if (forceStartBtn) forceStartBtn.style.display = 'none';
+
+    s.emit('join_public_room', {
+      pilotName: playerName,
+      suitColor: selectedSuit || 'mint'
+    });
+
+    s.off('lobby_update');
+    s.off('match_start');
+
+    s.on('lobby_update', (data) => {
+      waitingPilots.textContent = (data.players ? data.players.length : 1) + ' / ' + (data.maxPlayers || 6);
+
+      if (data.status === 'countdown') {
+        waitingTimer.textContent = data.countdown;
+        if (waitingPulseText) waitingPulseText.textContent = 'MATCH STARTING IN ' + data.countdown + 's...';
+      } else {
+        waitingTimer.textContent = 'WAITING';
+        if (waitingPulseText) {
+          waitingPulseText.textContent = (data.players && data.players.length >= 2) ? 'PILOTS ASSEMBLED! READY TO BATTLE' : 'SEARCHING FOR REAL OPPONENTS...';
+        }
+      }
+
+      if (forceStartBtn) {
+        forceStartBtn.style.display = (data.players && data.players.length >= 2) ? 'block' : 'none';
+      }
+
+      if (data.players) {
+        const suitHexMap = {
+          mint: '#00FFC6',
+          pink: '#FF6EC7',
+          gold: '#FFD700',
+          cobalt: '#4DA6FF',
+          crimson: '#FF3344',
+          blue: '#3388FF'
+        };
+
+        waitingRoster.innerHTML = data.players.map(p => {
+          const isYou = p.id === s.id;
+          const dotColor = suitHexMap[p.suitColor] || '#00FFC6';
+          return '<div class="roster-pilot ' + (isYou ? 'you' : '') + '">' +
+            '<span class="roster-dot" style="background:' + dotColor + '; box-shadow:0 0 8px ' + dotColor + '"></span> ' +
+            escapeHtml(p.pilotName) + (isYou ? ' (YOU)' : '') +
+            '</div>';
+        }).join('');
+      }
+    });
+
+    s.on('match_start', (data) => {
+      showScreen('hud');
+      killFeed.innerHTML = '';
+      arenaAlert.classList.add('hidden');
+      const eg = getEngine();
+      eg.startMultiplayerGame(data, s);
+    });
+  }
+
+  function leaveRealPublicLobby() {
+    const s = getSocket();
+    if (s) {
+      s.emit('leave_room');
+      s.off('lobby_update');
+      s.off('match_start');
+    }
+  }
+
+  // Retry button - relaunch with same mode
+  let rematchDebounce = 0;
+  function handleRematch(e) {
+    if (e) {
+      try { e.preventDefault(); } catch(err) {}
+      try { e.stopPropagation(); } catch(err) {}
+    }
+    const now = Date.now();
+    if (now - rematchDebounce < 400) return;
+    rematchDebounce = now;
+
+    console.log('[Rematch] Triggered!');
+    HexAudio.init();
+    HexAudio.resumeCtx();
+    showScreen('hud');
+    if (killFeed) killFeed.innerHTML = '';
+    if (arenaAlert) arenaAlert.classList.add('hidden');
+
+    const eg = getEngine();
+    const isMp = eg && (eg.isMultiplayer || (currentModeConfig && currentModeConfig.mode === 'multiplayer'));
+
+    if (spectatorBar) spectatorBar.classList.add('hidden');
+    if (eg) eg.stopSpectating();
+
+    if (isMp) {
+      console.log('[Rematch] Respawning in Persistent Arena...');
+      eg.requestRespawn();
+    } else {
+      console.log('[Rematch] Restarting Solo match with config:', currentModeConfig);
+      launchGame(currentModeConfig || { mode: 'solo', difficulty: 'hard', botCount: 4, totalPlayers: 5 });
+    }
+  }
+
+  btnRetry.addEventListener('click', handleRematch);
+  btnRetry.addEventListener('touchend', handleRematch);
 
   // How to play
   btnHowToPlay.addEventListener('click', () => { showScreen('howToPlayModal'); });
@@ -270,11 +757,13 @@
 
   btnQuit.addEventListener('click', () => {
     if (engine) engine.quit();
+    leaveRealPublicLobby();
     showScreen('titleScreen');
   });
 
   btnGoMenu.addEventListener('click', () => {
     if (engine) engine.quit();
+    leaveRealPublicLobby();
     showScreen('titleScreen');
   });
 
@@ -435,13 +924,71 @@
     return d.innerHTML;
   }
 
-  const savedPilot = localStorage.getItem('cyberbumpers_pilot');
-  if (savedPilot) pilotNameInput.value = savedPilot;
-  pilotNameInput.addEventListener('change', () => {
-    if (pilotNameInput.value.trim()) {
-      localStorage.setItem('cyberbumpers_pilot', pilotNameInput.value.trim());
+  // Dili Jump Unified Pilot Name Persistence Scheme
+  let savedPilot = localStorage.getItem('dili_jump_pilot') || 
+                   localStorage.getItem('cyberbumpers_pilot') || 
+                   localStorage.getItem('dili_pilot_name') || '';
+  if (savedPilot) {
+    // Sanitize any corrupted mojibake characters
+    savedPilot = savedPilot.replace(/[^\w\s@\-\.]/g, '').trim();
+    if (savedPilot.startsWith('Pilot_')) savedPilot = savedPilot.replace('Pilot_', 'Dili_');
+    if (!savedPilot) savedPilot = 'Dili_' + Math.floor(Math.random() * 8999 + 1000);
+    pilotNameInput.value = savedPilot;
+    localStorage.setItem('dili_jump_pilot', savedPilot);
+    localStorage.setItem('cyberbumpers_pilot', savedPilot);
+  }
+
+  const syncPilotName = () => {
+    const val = pilotNameInput.value.trim();
+    if (val) {
+      localStorage.setItem('dili_jump_pilot', val);
+      localStorage.setItem('cyberbumpers_pilot', val);
+      localStorage.setItem('dili_pilot_name', val);
     }
-  });
+  };
+  pilotNameInput.addEventListener('input', syncPilotName);
+  pilotNameInput.addEventListener('change', syncPilotName);
 
   showScreen('titleScreen');
+
+  // =============================================
+  // SPECTATOR CONTROLS
+  // =============================================
+  if (btnSpecPrev) {
+    btnSpecPrev.addEventListener('click', () => {
+      const eg = getEngine();
+      if (eg) eg.spectatePrev();
+    });
+  }
+  if (btnSpecNext) {
+    btnSpecNext.addEventListener('click', () => {
+      const eg = getEngine();
+      if (eg) eg.spectateNext();
+    });
+  }
+  if (btnSpecRespawn) {
+    btnSpecRespawn.addEventListener('click', () => {
+      if (spectatorBar) spectatorBar.classList.add('hidden');
+      showScreen('hud');
+      const eg = getEngine();
+      if (eg) {
+        eg.stopSpectating();
+        eg.requestRespawn();
+      } else {
+        launchGame(currentModeConfig);
+      }
+    });
+  }
+  if (btnGoSpectate) {
+    btnGoSpectate.addEventListener('click', () => {
+      const eg = getEngine();
+      if (eg && eg.hasRealHumansToSpectate()) {
+        showScreen('hud');
+        if (spectatorBar) spectatorBar.classList.remove('hidden');
+        eg.startSpectating();
+        if (specPilotName) specPilotName.textContent = eg.getSpectateName();
+      }
+    });
+  }
 })();
+

@@ -9,121 +9,350 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/game.css"/>
+  <link rel="stylesheet" href="css/game.css?v=v39-fast-cryo"/>
 </head>
 <body>
   <!-- 3D WebGL Canvas -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Global Audio Toggle -->
-  <button id="globalAudioBtn" class="audio-btn" aria-label="Toggle Audio" title="Toggle Sound">
-    <span id="audioIcon">🔊</span>
-  </button>
+  <!-- Top Right Header Controls -->
+  <div class="top-header-controls">
+    <button id="btnFullscreen" class="hdr-btn fullscreen-btn" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
+      <span id="fullscreenIcon" class="hdr-icon">&#x26F6;</span>
+    </button>
+    <button id="globalAudioBtn" class="hdr-btn audio-btn" aria-label="Toggle Audio" title="Toggle Sound">
+      <span id="audioIcon" class="audio-icon">&#128266;</span>
+    </button>
+  </div>
 
   <!-- TITLE SCREEN -->
   <div id="titleScreen" class="screen active">
     <div class="title-backdrop"></div>
     <div class="title-content">
-      <div class="brand-badge">
-        <img src="assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo" onerror="this.style.display='none'"/>
-        <span class="brand-text">DLICOM 3D ACTION JAM</span>
-      </div>
+      <div class="title-grid-columns">
+        <!-- Left Panel: Branding, Mascot & Craft Selection -->
+        <div class="title-panel-left">
+          <!-- Top Brand & Live Server Status -->
+          <div class="top-status-bar">
+            <div class="brand-badge">
+              <img src="assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo" onerror="this.style.display='none'"/>
+              <span class="brand-text">DLICOM 3D ACTION JAM</span>
+            </div>
+            <div class="live-server-pill" title="24/7 Persistent Server Running">
+              <span class="pulse-green-dot"></span>
+              <span class="live-pill-text">24/7 LIVE COLOSSEUM</span>
+            </div>
+          </div>
 
-      <div class="logo-glow">
-        <h1 class="game-title">DILI<span class="title-accent">:</span> CYBER<span class="title-dash"> </span>BUMPERS</h1>
-        <p class="game-subtitle">⚡ 3D HIGH-SPEED SUMO KNOCKOUT ARENA ⚡</p>
-      </div>
+          <!-- Hero Game Title -->
+          <div class="logo-glow">
+            <h1 class="game-title">DILI<span class="title-accent">:</span> CYBER<span class="title-dash"> </span>BUMPERS</h1>
+            <div class="tagline-wrap">
+              <span class="tagline-spark">⚡</span>
+              <span class="tagline-text">3D HIGH-SPEED SUMO KNOCKOUT ARENA</span>
+              <span class="tagline-spark">⚡</span>
+            </div>
+          </div>
 
-      <!-- Authentic Dlicom Mascot Showcase -->
-      <div class="mascot-showcase" id="mascotShowcase">
-        <div class="mascot-bubble-wrap">
-          <span class="mascot-speech" id="mascotSpeech">🚀 READY TO SMASH!</span>
+          <!-- Centerpiece: Dili Mascot Combat Stage -->
+          <div class="mascot-showcase" id="mascotShowcase">
+            <div class="mascot-bubble-wrap">
+              <div class="mascot-speech-bubble">
+                <span class="speech-spark">🚀</span>
+                <span class="mascot-speech" id="mascotSpeech">READY TO SMASH!</span>
+              </div>
+            </div>
+            <div class="mascot-stage">
+              <img id="mascotPreviewImg" src="assets/characters/dili-fight-cutout-mint.png" alt="Dili Combat Pilot" class="mascot-preview-img"/>
+              <div class="mascot-pedestal-ring" id="mascotRing"></div>
+            </div>
+          </div>
+
+          <!-- Suit Customization Chips -->
+          <div class="suit-selector" id="suitSelector">
+            <div class="suit-header">
+              <span class="suit-label">SELECT COMBAT GYRO-CRAFT</span>
+              <span class="suit-active-tag" id="suitActiveTag" style="color:#00FFC6">MINT CADET</span>
+            </div>
+            <div class="suit-options">
+              <button class="suit-btn active" data-suit="mint" style="--suit:#00FFC6" title="Neon Mint Cadet">
+                <span class="suit-dot"></span>
+                <span class="suit-name">MINT</span>
+              </button>
+              <button class="suit-btn" data-suit="pink" style="--suit:#FF6EC7" title="Cyber Pink Striker">
+                <span class="suit-dot"></span>
+                <span class="suit-name">PINK</span>
+              </button>
+              <button class="suit-btn" data-suit="gold" style="--suit:#FFD700" title="Sovereign Titan">
+                <span class="suit-dot"></span>
+                <span class="suit-name">GOLD</span>
+              </button>
+              <button class="suit-btn" data-suit="cobalt" style="--suit:#4DA6FF" title="Cobalt Enforcer">
+                <span class="suit-dot"></span>
+                <span class="suit-name">COBALT</span>
+              </button>
+              <button class="suit-btn" data-suit="crimson" style="--suit:#FF3344" title="Crimson Crusher">
+                <span class="suit-dot"></span>
+                <span class="suit-name">CRIMSON</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Pilot Name Input Terminal -->
+          <div class="pilot-input-wrap">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <input type="text" id="pilotName" placeholder="ENTER PILOT CALLSIGN" maxlength="20" autocomplete="off" spellcheck="false"/>
+            <span class="input-badge">PILOT ID</span>
+          </div>
         </div>
-        <div class="mascot-stage">
-          <img id="mascotPreviewImg" src="assets/characters/dili-fight-cutout-mint.png" alt="Dili" class="mascot-preview-img"/>
-          <div class="mascot-pedestal-ring" id="mascotRing"></div>
+
+        <!-- Right Panel: Game Modes, Feature Ticker & Actions -->
+        <div class="title-panel-right">
+          <!-- Dual Action Game Modes (Prominent & Responsive) -->
+          <div class="game-modes-grid">
+            <!-- Live Public Arena Hero Card -->
+            <div class="mode-card mode-card-live" id="btnPublicRoom" role="button" tabindex="0">
+              <div class="mode-card-header">
+                <span class="mode-live-indicator"><span class="ping-circle"></span> LIVE DROP-IN</span>
+                <span class="mode-stat">24/7 ONLINE</span>
+              </div>
+              <div class="mode-title-row">
+                <div class="mode-icon-wrap live-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                </div>
+                <div class="mode-title-group">
+                  <span class="mode-title">JOIN PUBLIC ARENA</span>
+                  <span class="mode-desc">Instant Drop-in! 2 Permanent Bots + Live Pilots</span>
+                </div>
+              </div>
+              <div class="mode-btn-cta">
+                <span>DROP IN BATTLE</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </div>
+            </div>
+
+            <!-- Solo Combat Card -->
+            <div class="mode-card mode-card-solo" id="btnSoloPlay" role="button" tabindex="0">
+              <div class="mode-card-header">
+                <span class="mode-tag solo-tag">PRACTICE ARENA</span>
+                <span class="mode-stat">3 TIERS</span>
+              </div>
+              <div class="mode-title-row">
+                <div class="mode-icon-wrap solo-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                </div>
+                <div class="mode-title-group">
+                  <span class="mode-title">SOLO TRAINING</span>
+                  <span class="mode-desc">Brawl with Easy, Medium & Hard Predator Bots</span>
+                </div>
+              </div>
+              <div class="mode-btn-cta solo-cta">
+                <span>SELECT DIFFICULTY</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature Badges Ticker -->
+          <div class="feature-pills-row">
+            <div class="feature-pill"><span class="pill-dot mint"></span> 3D Sumo Bumper Physics</div>
+            <div class="feature-pill"><span class="pill-dot cyan"></span> Crumbling Hex Floor</div>
+            <div class="feature-pill"><span class="pill-dot pink"></span> EMP Radial Blast</div>
+            <div class="feature-pill"><span class="pill-dot gold"></span> Predator Hunting AI</div>
+            <div class="feature-pill"><span class="pill-dot purple"></span> Dili Voice SFX</div>
+          </div>
+
+          <!-- Action Navigation Row -->
+          <div class="title-bottom-actions">
+            <button class="btn-secondary nav-btn" id="btnLeaderboard">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 14.66V17c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M14 14.66V22"></path><path d="M10 14.66V22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+              <span>LEADERBOARD</span>
+            </button>
+            <button class="btn-secondary nav-btn" id="btnHowToPlay">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <span>COMBAT GUIDE</span>
+            </button>
+          </div>
+
+          <!-- Desktop Controls Pill Hint -->
+          <div class="desktop-controls-hint">
+            <div class="control-key-group">
+              <span class="key-badge">WASD / ARROWS</span> <span class="key-label">Steer</span>
+            </div>
+            <span class="key-divider">•</span>
+            <div class="control-key-group">
+              <span class="key-badge">SPACE</span> <span class="key-label">Ram Dash</span>
+            </div>
+            <span class="key-divider">•</span>
+            <div class="control-key-group">
+              <span class="key-badge">F / SHIFT</span> <span class="key-label">EMP Blast</span>
+            </div>
+          </div>
+
+          <!-- Mobile Touch Hint (Auto-shown on touch devices) -->
+          <div class="mobile-touch-hint">
+            <span>📱 VIRTUAL TOUCH JOYSTICK & ABILITIES IN BATTLE</span>
+          </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Craft Customization -->
-      <div class="suit-selector" id="suitSelector">
-        <p class="suit-label">SELECT COMBAT GYRO-CRAFT</p>
-        <div class="suit-options">
-          <button class="suit-btn active" data-suit="mint" style="--suit:#00FFC6" title="Neon Mint Cadet">
-            <span class="suit-dot"></span>
-            <span class="suit-name">MINT</span>
+  <div id="soloModeScreen" class="screen overlay">
+    <div class="overlay-card solo-card">
+      <h2>🎯 SOLO ARENA</h2>
+      <p class="solo-sub">Select Battleground & Difficulty</p>
+
+      <!-- 3 Arenas Selection Section -->
+      <div class="arena-selector-section" id="arenaSelectorSection">
+        <div class="arena-selector-header">
+          <span class="arena-selector-label">CHOOSE COLOSSEUM</span>
+          <span class="arena-active-tag" id="arenaActiveTag">NEON COLOSSEUM</span>
+        </div>
+        <div class="arena-pills-row" id="arenaPillsRow">
+          <button class="arena-pill active" data-theme="neon" type="button" title="Neon Colosseum - Classic Cyber Grid">
+            <span class="arena-pill-icon">🏟️</span>
+            <span class="arena-pill-text">NEON</span>
           </button>
-          <button class="suit-btn" data-suit="pink" style="--suit:#FF6EC7" title="Cyber Pink Striker">
-            <span class="suit-dot"></span>
-            <span class="suit-name">PINK</span>
+          <button class="arena-pill" data-theme="inferno" type="button" title="Inferno Forge - Molten Basalt & Magma Sweeper">
+            <span class="arena-pill-icon">🌋</span>
+            <span class="arena-pill-text">INFERNO</span>
           </button>
-          <button class="suit-btn" data-suit="gold" style="--suit:#FFD700" title="Sovereign Titan">
-            <span class="suit-dot"></span>
-            <span class="suit-name">GOLD</span>
+          <button class="arena-pill" data-theme="cryo" type="button" title="Cryo Glacier - Crystalline Ice & Low Friction Drift">
+            <span class="arena-pill-icon">❄️</span>
+            <span class="arena-pill-text">CRYO</span>
           </button>
-          <button class="suit-btn" data-suit="cobalt" style="--suit:#4DA6FF" title="Cobalt Enforcer">
-            <span class="suit-dot"></span>
-            <span class="suit-name">COBALT</span>
-          </button>
-          <button class="suit-btn" data-suit="crimson" style="--suit:#FF3344" title="Crimson Crusher">
-            <span class="suit-dot"></span>
-            <span class="suit-name">CRIMSON</span>
+          <button class="arena-pill" data-theme="random" type="button" title="Random Colosseum Selection">
+            <span class="arena-pill-icon">🎲</span>
+            <span class="arena-pill-text">RANDOM</span>
           </button>
         </div>
       </div>
-
-      <!-- Pilot Name Input -->
-      <div class="pilot-input-wrap">
-        <span class="input-icon">👤</span>
-        <input type="text" id="pilotName" placeholder="ENTER PILOT CALLSIGN" maxlength="20" autocomplete="off" spellcheck="false"/>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="title-actions">
-        <button class="btn-primary" id="btnPlay">
-          <span class="btn-text">ENTER BATTLE ARENA</span>
-          <span class="btn-glow"></span>
+      <div class="difficulty-grid">
+        <button class="diff-btn diff-easy" id="btnEasy" data-bots="2" data-diff="easy">
+          <span class="diff-icon">🟢</span>
+          <span class="diff-name">EASY</span>
+          <span class="diff-desc">2 Bot Rivals</span>
+          <span class="diff-tag">Beginner</span>
         </button>
-        <div class="btn-row">
-          <button class="btn-secondary" id="btnLeaderboard">
-            <span>🏆</span> LEADERBOARD
-          </button>
-          <button class="btn-secondary" id="btnHowToPlay">
-            <span>❓</span> COMBAT GUIDE
-          </button>
+        <button class="diff-btn diff-medium" id="btnMedium" data-bots="3" data-diff="medium">
+          <span class="diff-icon">🟡</span>
+          <span class="diff-name">MEDIUM</span>
+          <span class="diff-desc">3 Bot Rivals</span>
+          <span class="diff-tag">Fighter</span>
+        </button>
+        <button class="diff-btn diff-hard" id="btnHard" data-bots="4" data-diff="hard">
+          <span class="diff-icon">🔴</span>
+          <span class="diff-name">HARD</span>
+          <span class="diff-desc">4 Bot Rivals</span>
+          <span class="diff-tag">Champion</span>
+        </button>
+      </div>
+      <button class="btn-secondary" id="btnSoloBack">← BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- PUBLIC WAITING ROOM -->
+  <div id="waitingRoomScreen" class="screen overlay">
+    <div class="overlay-card waiting-card">
+      <h2>🌐 PUBLIC ARENA</h2>
+      <p class="waiting-sub">Waiting for pilots to join...</p>
+      <div class="waiting-info">
+        <div class="waiting-stat">
+          <span class="waiting-label">PILOTS JOINED</span>
+          <span class="waiting-value" id="waitingPilots">1 / 6</span>
+        </div>
+        <div class="waiting-stat">
+          <span class="waiting-label">MATCH STARTS IN</span>
+          <span class="waiting-value waiting-timer" id="waitingTimer">15</span>
         </div>
       </div>
-
-      <div class="desktop-controls-hint">
-        <span>🎮 <b>WASD/ARROWS</b> Steer | <b>SPACE</b> Turbo Ram Dash | <b>E / SHIFT</b> EMP Shockwave</span>
+      <div class="waiting-roster" id="waitingRoster">
+        <div class="roster-pilot you"><span class="roster-dot"></span> YOU</div>
       </div>
+      <div class="waiting-pulse">
+        <div class="pulse-ring"></div>
+        <span class="pulse-text">SEARCHING FOR OPPONENTS...</span>
+      </div>
+      <button class="btn-secondary" id="btnWaitingBack">← CANCEL</button>
     </div>
   </div>
 
   <!-- IN-GAME HUD -->
   <div id="hud" class="screen">
-    <div class="hud-top">
-      <div class="hud-stat">
-        <span class="hud-label">TIME</span>
-        <span class="hud-value" id="hudTime">00:00</span>
+    <!-- Arcade Speed Lines on Screen Edges (Hyper Nitro & Dash) -->
+    <div id="speedLines" class="speed-lines"></div>
+    <div class="hud-top-bar">
+      <div class="hud-top">
+        <div class="hud-stat">
+          <span class="hud-label">TIME</span>
+          <span class="hud-value" id="hudTime">00:00</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">PILOTS ALIVE</span>
+          <span class="hud-value highlight-cyan" id="hudAlive">5/5</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">KNOCKOUTS</span>
+          <span class="hud-value highlight-pink" id="hudKills">0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">SCORE</span>
+          <span class="hud-value highlight-gold" id="hudScore">0</span>
+        </div>
+        <div class="hud-stat hud-arena-badge">
+          <span class="hud-label">ARENA</span>
+          <span class="hud-value highlight-cyan" id="hudArenaName">🏟️ NEON</span>
+        </div>
       </div>
-      <div class="hud-stat">
-        <span class="hud-label">PILOTS ALIVE</span>
-        <span class="hud-value highlight-cyan" id="hudAlive">5/5</span>
+
+      <!-- Ring Collapse Countdown Badge -->
+      <div id="ringCountdownHud" class="ring-countdown-hud">
+        <div class="rc-info">
+          <span class="rc-label">NEXT DROP:</span>
+          <span id="rcRingName" class="rc-ring-name">OUTER RING</span>
+          <span id="rcTimer" class="rc-timer">24s</span>
+        </div>
+        <div class="rc-progress-track">
+          <div id="rcProgressBar" class="rc-progress-bar"></div>
+        </div>
       </div>
-      <div class="hud-stat">
-        <span class="hud-label">KNOCKOUTS</span>
-        <span class="hud-value highlight-pink" id="hudKills">0</span>
+    </div>
+
+    <!-- Cyber Radar / Mini-Map (Top Right) -->
+    <div id="radarContainer" class="radar-container" title="Cyber Colosseum Radar">
+      <canvas id="radarCanvas" width="130" height="130"></canvas>
+      <div class="radar-scanline"></div>
+    </div>
+
+    <!-- Central Flashy Knockout & Multi-Kill Banner -->
+    <div id="knockoutBanner" class="knockout-banner hidden">
+      <div id="koIcon" class="ko-icon">&#128165;</div>
+      <div class="ko-text-wrap">
+        <div id="koTitle" class="ko-title">KNOCKOUT!</div>
+        <div id="koSub" class="ko-sub">+350 PTS</div>
       </div>
-      <div class="hud-stat">
-        <span class="hud-label">SCORE</span>
-        <span class="hud-value highlight-gold" id="hudScore">0</span>
+    </div>
+
+    <!-- Spectator Mode Bar (Active when eliminated) -->
+    <div id="spectatorBar" class="spectator-bar hidden">
+      <button id="btnSpecPrev" class="spec-btn" aria-label="Previous Pilot" title="Previous Pilot">&#9664;</button>
+      <div class="spec-info">
+        <span class="spec-badge">&#128065;&#65039; SPECTATING</span>
+        <span id="specPilotName" class="spec-name">Loading...</span>
       </div>
+      <button id="btnSpecNext" class="spec-btn" aria-label="Next Pilot" title="Next Pilot">&#9654;</button>
+      <button id="btnSpecRespawn" class="spec-respawn-btn" title="Respawn Back in Match">&#9889; RESPAWN NOW</button>
     </div>
 
     <!-- Arena Collapse Alert -->
     <div id="arenaAlert" class="arena-alert hidden">
-      <span class="alert-icon">⚠️</span>
+      <span class="alert-icon">&#9888;&#65039;</span>
       <span id="alertText">OUTER RING COLLAPSING!</span>
     </div>
 
@@ -132,26 +361,26 @@
 
     <!-- Power-up Active Banner -->
     <div id="powerUpBanner" class="powerup-banner hidden">
-      <span id="powerUpIcon">🚀</span>
+      <span id="powerUpIcon">&#9889;</span>
       <span id="powerUpText">MEGA ROCKET ACTIVE</span>
       <div class="powerup-progress"><div id="powerUpBar" class="powerup-bar"></div></div>
     </div>
 
     <!-- Pause Button -->
     <button class="hud-pause-btn" id="btnPause" aria-label="Pause Game" title="Pause">
-      <span>❚❚</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
     </button>
 
     <!-- Mobile Virtual Controls -->
     <div class="mobile-controls" id="mobileControls">
       <div class="joystick-zone" id="joystickZone">
-        <div class="joystick-base">
+        <div class="joystick-base" id="joystickBase">
           <div class="joystick-knob" id="joystickKnob"></div>
         </div>
       </div>
       <div class="action-buttons">
-        <button class="action-btn dash-btn" id="btnDash">
-          <span class="act-icon">⚡</span>
+                <button class="action-btn dash-btn" id="btnDash">
+          <span class="act-icon">🚀</span>
           <span class="act-txt">RAM DASH</span>
           <div id="dashCooldownOverlay" class="cooldown-overlay"></div>
         </button>
@@ -165,14 +394,14 @@
 
     <!-- Desktop Ability HUD (Bottom Center) -->
     <div class="desktop-abilities" id="desktopAbilities">
-      <div class="ability-card" id="cardDash">
+            <div class="ability-card" id="cardDash">
         <span class="ability-key">SPACE</span>
         <span class="ability-name">RAM DASH</span>
         <div id="pcDashCooldown" class="ability-cd-bar"></div>
       </div>
-      <div class="ability-card" id="cardEmp">
-        <span class="ability-key">E / SHIFT</span>
-        <span class="ability-name">EMP SHOCKWAVE</span>
+            <div class="ability-card" id="cardEmp">
+        <span class="ability-key">F / SHIFT / R-CLICK</span>
+        <span class="ability-name">EMP BLAST</span>
         <div id="pcEmpCooldown" class="ability-cd-bar"></div>
       </div>
     </div>
@@ -188,21 +417,22 @@
           <p>You and 4 rival pilots are dropped into a floating cyber colosseum. <b>Ram rival crafts off the edge into the void</b>! The outer rings will collapse over time, forcing high-stakes close-quarters combat!</p>
         </div>
         <div class="help-section">
-          <h3>🕹️ COMBAT CONTROLS</h3>
+          <h3>🎮 COMBAT CONTROLS</h3>
           <div class="controls-grid">
-            <div class="ctrl-item"><span class="badge">WASD / ARROWS</span> Steer Bumper Craft</div>
-            <div class="ctrl-item"><span class="badge">SPACE / TAP ⚡</span> Ram Dash (Rocket Ram)</div>
-            <div class="ctrl-item"><span class="badge">E, SHIFT / TAP 💥</span> EMP Radial Shockwave</div>
+            <div class="ctrl-item"><span class="badge">WASD / ARROWS</span> Steer Bumper Craft (Dynamic Left/Right Turn Leaning)</div>
+                      <div class="ctrl-item"><span class="badge">SPACE / TAP 🚀</span> Ram Dash (Rocket Ram)</div>
+            <div class="ctrl-item"><span class="badge">E, SHIFT, R-CLICK / TAP 💥</span> EMP Radial Shockwave</div>
             <div class="ctrl-item"><span class="badge">MOUSE DRAG</span> Orbit / Look Around</div>
           </div>
         </div>
         <div class="help-section">
-          <h3>⚡ ARENA POWER-UPS</h3>
+          <h3>⚡ ARENA BOOSTS & CURSED HAZARDS</h3>
           <div class="powerups-grid">
-            <div class="pu-item"><span class="pu-badge gold">🚀 MEGA ROCKET</span> 3x Ramming Power</div>
-            <div class="pu-item"><span class="pu-badge cyan">🛡️ FORCE SHIELD</span> Zero Knockback Reflector</div>
-            <div class="pu-item"><span class="pu-badge pink">💣 PULSE MINE</span> Detonates on Contact</div>
-            <div class="pu-item"><span class="pu-badge mint">💎 DLICOM CORE</span> +150 Bonus Score</div>
+            <div class="pu-item"><span class="pu-badge gold">🚀 HYPER NITRO</span> 2.5x Ramming Mass & Turbo Speed</div>
+            <div class="pu-item"><span class="pu-badge cyan">🛡️ AEGIS SHIELD</span> Kinetic Absorber & Opponent Deflector</div>
+            <div class="pu-item"><span class="pu-badge mint">💎 CYBER PRISM</span> +150 Energy Crystals & Score</div>
+            <div class="pu-item"><span class="pu-badge purple">🧪 TOXIC SLUDGE</span> Hazard! 50% Speed Slow & Muddy Drag</div>
+            <div class="pu-item"><span class="pu-badge crimson">⚡ EMP OVERLOAD</span> Hazard! Jams Dash & EMP Abilities for 4s</div>
           </div>
         </div>
       </div>
@@ -249,7 +479,7 @@
         </div>
         <div class="go-stat">
           <span>GLOBAL RANK</span>
-          <span id="goRank" class="highlight-cyan">—</span>
+          <span id="goRank" class="highlight-cyan">#1</span>
         </div>
       </div>
 
@@ -259,6 +489,7 @@
           <span class="btn-glow"></span>
         </button>
         <div class="btn-row">
+          <button class="btn-secondary" id="btnGoSpectate" style="display:none;">&#128065;&#65039; SPECTATE</button>
           <button class="btn-secondary" id="btnGoLb">LEADERBOARD</button>
           <button class="btn-secondary" id="btnGoMenu">MAIN MENU</button>
         </div>
@@ -295,12 +526,15 @@
   <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
   <!-- Game Scripts -->
-  <script src="js/audio.js"></script>
-  <script src="js/arena.js"></script>
-  <script src="js/bumper-craft.js"></script>
-  <script src="js/ai-opponents.js"></script>
-  <script src="js/game-engine.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/audio.js?v=v39-fast-cryo"></script>
+  <script src="js/arena.js?v=v39-fast-cryo"></script>
+  <script src="js/bumper-craft.js?v=v39-fast-cryo"></script>
+  <script src="js/ai-opponents.js?v=v39-fast-cryo"></script>
+  <script src="js/game-engine.js?v=v39-fast-cryo"></script>
+  <script src="js/app.js?v=v39-fast-cryo"></script>
 </body>
 </html>
