@@ -105,8 +105,6 @@ class ArenaColosseum {
     this.elapsedTime = 0;
     this.hazardLaser = null;
     this.powerUps = [];
-    this.jumpPads = [];
-    this.infernoGeysers = [];
     this.cryoFreezeRays = [];
     this.particles = [];
     this.ambientParticlePoints = null;
@@ -234,13 +232,10 @@ class ArenaColosseum {
     // Central & Interactive Hazards according to theme:
     if (this.theme === 'cryo') {
       this._buildCryoSpireHazard();
-      this._buildCryoBoostVents();
     } else if (this.theme === 'inferno') {
       this._buildInfernoForgeHazard();
-      this._buildInfernoGeysers();
     } else {
       this._buildNeonCenterHazard();
-      this._buildNeonJumpPads();
     }
 
     // Ambient floating particles (volcanic embers, arctic frost, cyber sparks)
@@ -274,6 +269,97 @@ class ArenaColosseum {
   // ============================================================
   // 1. NEON COLOSSEUM HAZARDS & JUMP PADS
   // ============================================================
+  
+  _createSweeperBar(themeCfg, defaultBladeColor, defaultTipColor) {
+    const sweeper = new THREE.Group();
+
+    // Central Turret Collar Hub
+    const turretGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.72, 18);
+    const turretMat = new THREE.MeshStandardMaterial({
+      color: 0x121927,
+      metalness: 0.95,
+      roughness: 0.2
+    });
+    const turretMesh = new THREE.Mesh(turretGeo, turretMat);
+    turretMesh.position.y = 0.88;
+    sweeper.add(turretMesh);
+
+    // Main Heavy Bumper Beam (10.6m length, 0.60m height, 0.68m depth)
+    const beamGeo = new THREE.BoxGeometry(10.6, 0.60, 0.68);
+    const beamMat = new THREE.MeshStandardMaterial({
+      color: themeCfg.sweeperBarColor || 0x0e1522,
+      metalness: 0.9,
+      roughness: 0.25
+    });
+    const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+    beamMesh.position.y = 0.88;
+    sweeper.add(beamMesh);
+
+    // Dual Forward & Rear Energy Impact Pads (Glowing neon cushions)
+    const bladeColor = themeCfg.sweeperBladeColor || defaultBladeColor;
+    for (const face of [-0.36, 0.36]) {
+      const padGeo = new THREE.BoxGeometry(10.3, 0.36, 0.12);
+      const padMat = new THREE.MeshStandardMaterial({
+        color: bladeColor,
+        emissive: bladeColor,
+        emissiveIntensity: 2.2,
+        roughness: 0.2
+      });
+      const pad = new THREE.Mesh(padGeo, padMat);
+      pad.position.set(0, 0.88, face);
+      sweeper.add(pad);
+    }
+
+    // Reinforced Ram Tips on both ends (x = -5.3 and x = +5.3)
+    const tipColor = themeCfg.sweeperTipColor || defaultTipColor;
+    for (const side of [-5.3, 5.3]) {
+      const ramCapGeo = new THREE.BoxGeometry(0.45, 0.72, 0.82);
+      const ramCapMat = new THREE.MeshStandardMaterial({
+        color: 0x1c2436,
+        metalness: 0.95,
+        roughness: 0.2
+      });
+      const ramCap = new THREE.Mesh(ramCapGeo, ramCapMat);
+      ramCap.position.set(side, 0.88, 0);
+      sweeper.add(ramCap);
+
+      // Flashing Warning Beacon on tips
+      const tipLightGeo = new THREE.SphereGeometry(0.20, 14, 10);
+      const tipLightMat = new THREE.MeshStandardMaterial({
+        color: tipColor,
+        emissive: tipColor,
+        emissiveIntensity: 2.8
+      });
+      const tipLight = new THREE.Mesh(tipLightGeo, tipLightMat);
+      tipLight.position.set(side, 1.25, 0);
+      sweeper.add(tipLight);
+    }
+
+    // Caution Accent Chevrons along top of beam
+    for (const xPos of [-3.8, -2.4, -1.0, 1.0, 2.4, 3.8]) {
+      const stripeGeo = new THREE.BoxGeometry(0.65, 0.03, 0.45);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0xFFCC00 });
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.position.set(xPos, 1.19, 0);
+      sweeper.add(stripe);
+    }
+
+    // Ground Laser Projection Line
+    const lineGeo = new THREE.PlaneGeometry(10.6, 0.18);
+    const lineMat = new THREE.MeshBasicMaterial({
+      color: bladeColor,
+      transparent: true,
+      opacity: 0.70,
+      side: THREE.DoubleSide
+    });
+    const groundLaser = new THREE.Mesh(lineGeo, lineMat);
+    groundLaser.rotation.x = Math.PI / 2;
+    groundLaser.position.set(0, 0.06, 0.95);
+    sweeper.add(groundLaser);
+
+    return { sweeper, beamMesh };
+  }
+
   _buildNeonCenterHazard() {
     const cfg = ARENA_THEMES.neon;
     this.hazardGroup = new THREE.Group();
@@ -310,62 +396,12 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    this.hazardGroup = null;
-    this.hazardLaser = null;
-    this.sweeperBar = null;
-  }
-
-  _buildNeonJumpPads() {
-    this.jumpPads = [];
-    const padPositions = [
-      { x: 0, z: 10.5 },
-      { x: 0, z: -10.5 },
-      { x: 10.5, z: 0 },
-      { x: -10.5, z: 0 }
-    ];
-
-    padPositions.forEach(p => {
-      const group = new THREE.Group();
-      group.position.set(p.x, 0.08, p.z);
-
-      const baseGeo = new THREE.CylinderGeometry(1.3, 1.45, 0.18, 16);
-      const baseMat = new THREE.MeshStandardMaterial({ color: 0x0a1526, metalness: 0.8, roughness: 0.2 });
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      group.add(base);
-
-      const padRingGeo = new THREE.TorusGeometry(1.2, 0.06, 8, 24);
-      const padRingMat = new THREE.MeshBasicMaterial({ color: 0x00FFC6 });
-      const padRing = new THREE.Mesh(padRingGeo, padRingMat);
-      padRing.rotation.x = Math.PI / 2;
-      group.add(padRing);
-
-      const padCoreGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.22, 16);
-      const padCoreMat = new THREE.MeshStandardMaterial({ color: 0x00E5FF, emissive: 0x00FFC6, emissiveIntensity: 1.6 });
-      const padCore = new THREE.Mesh(padCoreGeo, padCoreMat);
-      group.add(padCore);
-
-      this.scene.add(group);
-      this.jumpPads.push({ x: p.x, z: p.z, group, core: padCore });
-    });
-  }
-
-  checkJumpPads(character) {
-    if (!character || !character.alive || !character.grounded || !this.jumpPads.length) return null;
-    for (const pad of this.jumpPads) {
-      const dx = pad.x - character.x;
-      const dz = pad.z - character.z;
-      if (dx * dx + dz * dz < 2.2) {
-        character.grounded = false;
-        character.vy = 24.0;
-        const angle = Math.atan2(-pad.x, -pad.z);
-        character.vx = Math.sin(angle) * 11.5;
-        character.vz = Math.cos(angle) * 11.5;
-        character.knockbackTimer = 0.45;
-        if (HexAudio && HexAudio.sfxJump) HexAudio.sfxJump();
-        return pad;
-      }
-    }
-    return null;
+    // Rotating Dual Heavy Bumper Bar (Mounted at exact Bumper Height y = 0.88!)
+    const { sweeper, beamMesh } = this._createSweeperBar(cfg, 0x00FFC6, 0xFFDD00);
+    this.sweeperBar = sweeper;
+    this.hazardLaser = beamMesh;
+    this.hazardGroup.add(this.sweeperBar);
+    this.scene.add(this.hazardGroup);
   }
 
   // ============================================================
@@ -398,106 +434,12 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    this.hazardGroup = null;
-    this.hazardLaser = null;
-    this.sweeperBar = null;
-  }
-
-  _buildInfernoGeysers() {
-    this.infernoGeysers = [];
-    const geyserCoords = [
-      { x: 0, z: 15.0 },
-      { x: 0, z: -15.0 },
-      { x: 15.0, z: 0 },
-      { x: -15.0, z: 0 }
-    ];
-
-    geyserCoords.forEach((p, idx) => {
-      const group = new THREE.Group();
-      group.position.set(p.x, 0.05, p.z);
-
-      // Basalt Caldera Crater Rim
-      const rimGeo = new THREE.TorusGeometry(1.6, 0.35, 12, 24);
-      const rimMat = new THREE.MeshStandardMaterial({ color: 0x220703, metalness: 0.8, roughness: 0.4 });
-      const rim = new THREE.Mesh(rimGeo, rimMat);
-      rim.rotation.x = Math.PI / 2;
-      group.add(rim);
-
-      // Bubbling Lava Core
-      const lavaGeo = new THREE.CircleGeometry(1.5, 20);
-      const lavaMat = new THREE.MeshStandardMaterial({ color: 0xFF3300, emissive: 0xFFAA00, emissiveIntensity: 1.8 });
-      const lava = new THREE.Mesh(lavaGeo, lavaMat);
-      lava.rotation.x = -Math.PI / 2;
-      lava.position.y = 0.04;
-      group.add(lava);
-
-      // Erupting Flame Geyser Column (starts hidden/scaled to 0)
-      const colGeo = new THREE.CylinderGeometry(1.2, 1.6, 9.0, 16);
-      const colMat = new THREE.MeshBasicMaterial({
-        color: 0xFFAA00, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending
-      });
-      const column = new THREE.Mesh(colGeo, colMat);
-      column.position.y = 4.5;
-      column.scale.set(0, 0, 0);
-      group.add(column);
-
-      this.scene.add(group);
-      this.infernoGeysers.push({
-        x: p.x,
-        z: p.z,
-        group,
-        lava,
-        column,
-        state: 'idle', // 'idle' | 'warning' | 'erupting'
-        timer: idx * 1.3 // Staggered start
-      });
-    });
-  }
-
-  _updateInfernoGeysers(dt, character) {
-    if (!this.infernoGeysers.length) return;
-
-    this.infernoGeysers.forEach(g => {
-      g.timer += dt;
-      const cycle = g.timer % 5.5;
-
-      if (cycle < 2.8) {
-        // Idle
-        g.state = 'idle';
-        g.column.scale.set(0, 0, 0);
-        g.lava.material.emissiveIntensity = 1.2;
-      } else if (cycle < 4.0) {
-        // Warning (pulsing orange heat)
-        g.state = 'warning';
-        g.column.scale.set(0.15, 0.1, 0.15);
-        g.lava.material.emissiveIntensity = 2.5 + Math.sin(cycle * 25) * 1.5;
-      } else {
-        // Active Eruption (blast!)
-        g.state = 'erupting';
-        const blastProgress = (cycle - 4.0) / 1.5;
-        const scaleY = Math.sin(blastProgress * Math.PI);
-        g.column.scale.set(1.0, scaleY, 1.0);
-        g.column.rotation.y += dt * 4.0;
-        g.lava.material.emissiveIntensity = 4.0;
-
-        // Blast collision with character
-        if (character && character.alive && character.grounded) {
-          const dx = character.x - g.x;
-          const dz = character.z - g.z;
-          if (dx * dx + dz * dz < 1.35) {
-            character.grounded = false;
-            character.vy = 20.0;
-            const dirX = dx || (Math.random() - 0.5);
-            const dirZ = dz || (Math.random() - 0.5);
-            const len = Math.hypot(dirX, dirZ) || 1;
-            character.vx = (dirX / len) * 14.0;
-            character.vz = (dirZ / len) * 14.0;
-            character.knockbackTimer = 0.18;
-            if (HexAudio && HexAudio.sfxHeavyCrash) HexAudio.sfxHeavyCrash(1.8);
-          }
-        }
-      }
-    });
+    // Rotating Dual Heavy Bumper Bar (Inferno Molten Forge Styling)
+    const { sweeper, beamMesh } = this._createSweeperBar(cfg, 0xFF4400, 0xFFFF00);
+    this.sweeperBar = sweeper;
+    this.hazardLaser = beamMesh;
+    this.hazardGroup.add(this.sweeperBar);
+    this.scene.add(this.hazardGroup);
   }
 
   // ============================================================
@@ -547,92 +489,134 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    this.hazardGroup = null;
-    this.hazardLaser = null;
-    this.rotorBar = null;
-  }
-
-  _buildCryoBoostVents() {
-    this.cryoBoostVents = [];
-    const ventPositions = [
-      { x: 8.5, z: 8.5 },
-      { x: -8.5, z: 8.5 },
-      { x: 8.5, z: -8.5 },
-      { x: -8.5, z: -8.5 }
-    ];
-
-    ventPositions.forEach(p => {
-      const group = new THREE.Group();
-      group.position.set(p.x, 0.08, p.z);
-
-      const baseGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.16, 16);
-      const baseMat = new THREE.MeshStandardMaterial({ color: 0x082138, metalness: 0.8, roughness: 0.2 });
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      group.add(base);
-
-      const ringGeo = new THREE.TorusGeometry(1.1, 0.06, 8, 24);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      group.add(ring);
-
-      const coreGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.20, 16);
-      const coreMat = new THREE.MeshStandardMaterial({ color: 0x88EEFF, emissive: 0x00E5FF, emissiveIntensity: 1.8 });
-      const core = new THREE.Mesh(coreGeo, coreMat);
-      group.add(core);
-
-      this.scene.add(group);
-      this.cryoBoostVents.push({ x: p.x, z: p.z, group, core });
-    });
-  }
-
-  checkCryoBoostVents(character) {
-    if (!character || !character.alive || !character.grounded || !this.cryoBoostVents || !this.cryoBoostVents.length) return null;
-    for (const vent of this.cryoBoostVents) {
-      const dx = vent.x - character.x;
-      const dz = vent.z - character.z;
-      if (dx * dx + dz * dz < 2.2) {
-        if (character.boostCooldown > 0) return null;
-        character.boostCooldown = 0.8;
-        const curSpd = Math.sqrt(character.vx * character.vx + character.vz * character.vz);
-        const boostSpd = Math.min(26.0, Math.max(18.0, curSpd * 1.55));
-        const heading = character.rotY || Math.atan2(character.vx, character.vz);
-        character.vx = Math.sin(heading) * boostSpd;
-        character.vz = Math.cos(heading) * boostSpd;
-        character.squashX = 0.85; character.squashY = 1.35;
-        if (HexAudio && HexAudio.sfxEmp) HexAudio.sfxEmp();
-        if (typeof character.setEmotion === 'function') {
-          character.setEmotion('celebrate', 1.0, 'GLACIAL SURGE! ⚡', '🚀');
-        }
-        return vent;
-      }
-    }
-    return null;
+    // Rotating Dual Heavy Bumper Bar (Cryo Glacial Styling)
+    const cfg = ARENA_THEMES.cryo;
+    const { sweeper, beamMesh } = this._createSweeperBar(cfg, 0x00F0FF, 0xFFFFFF);
+    this.sweeperBar = sweeper;
+    this.hazardLaser = beamMesh;
+    this.hazardGroup.add(this.sweeperBar);
+    this.scene.add(this.hazardGroup);
   }
 
   // ============================================================
-  // HAZARD COLLISION DISPATCHER
+  // HAZARD COLLISION DISPATCHER (Stationary Pylon & Rotating Sweeper Bumper)
   // ============================================================
-    checkHazardCollision(character) {
-    if (!character || !character.alive || !character.grounded) return null;
+  checkHazardCollision(character) {
+    if (!character || !character.alive || !character.grounded || !this.hazardGroup) return null;
 
+    const craftRadius = character.radius || 1.10;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
-    const pillarMinDist = 1.30;
 
-    // Smooth cylindrical boundary push around the central pillar core
-    if (distCenter < pillarMinDist && distCenter > 0.001) {
-      const nx = character.x / distCenter;
-      const nz = character.z / distCenter;
-      character.x = nx * (pillarMinDist + 0.04);
-      character.z = nz * (pillarMinDist + 0.04);
+    // 1. Central Stationary Hydraulic Pillar Core Collision
+    const pillarMinDist = 1.75;
+    if (distCenter < pillarMinDist) {
+      const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
+      const nz = distCenter > 0.001 ? (character.z / distCenter) : 0;
+      character.x = nx * (pillarMinDist + 0.08);
+      character.z = nz * (pillarMinDist + 0.08);
       if (character.group) character.group.position.set(character.x, character.y, character.z);
-      // Deflect velocity smoothly along tangent without violent knockback or locking controls
-      const dot = character.vx * nx + character.vz * nz;
-      if (dot < 0) {
-        character.vx -= dot * nx;
-        character.vz -= dot * nz;
+      character.vx = nx * 8.5;
+      character.vz = nz * 8.5;
+      character.knockbackTimer = 0.15;
+      if (character.hazardHitCooldown <= 0) {
+        character.hazardHitCooldown = 0.35;
+        character.squashX = 1.35;
+        character.squashY = 0.70;
+        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
       }
-      return null;
+      return { hit: true, x: character.x, z: character.z, type: 'pillar' };
+    }
+
+    // 2. Rotating Heavy Cyber Sweeper Bumper Bar Collision (Exact Three.js Synchronized)
+    const theta = this.hazardGroup.rotation.y;
+    const cosA = Math.cos(theta);
+    const sinA = Math.sin(theta);
+
+    // World to Bar-local coordinate transform:
+    const lx = character.x * cosA - character.z * sinA;
+    const lz = character.x * sinA + character.z * cosA;
+
+    // Bar dimensions: length 10.6m (half 5.3m), thickness 0.68m (half 0.34m)
+    const L_half = 5.30;
+    const W_half = 0.34;
+
+    const cx = Math.max(-L_half, Math.min(L_half, lx));
+    const cz = Math.max(-W_half, Math.min(W_half, lz));
+
+    const dx = lx - cx;
+    const dz = lz - cz;
+    const distSq = dx * dx + dz * dz;
+
+    const effectiveRadius = craftRadius * 0.95;
+    if (character.y <= 1.8 && (distSq < effectiveRadius * effectiveRadius || (dx === 0 && dz === 0))) {
+      let nx_loc = 0;
+      let nz_loc = 0;
+      let overlap = 0;
+
+      if (dx === 0 && dz === 0) {
+        nz_loc = lz >= 0 ? 1 : -1;
+        nx_loc = 0;
+        overlap = W_half + effectiveRadius - Math.abs(lz);
+      } else {
+        const dist = Math.sqrt(distSq);
+        nx_loc = dx / dist;
+        nz_loc = dz / dist;
+        overlap = effectiveRadius - dist;
+      }
+
+      // Hard immediate separation so craft does not clip or stick inside
+      const exitBuffer = 0.08;
+      const lx_new = lx + nx_loc * (overlap + exitBuffer);
+      const lz_new = lz + nz_loc * (overlap + exitBuffer);
+
+      character.x = lx_new * cosA + lz_new * sinA;
+      character.z = -lx_new * sinA + lz_new * cosA;
+      if (character.group) character.group.position.set(character.x, character.y, character.z);
+
+      const nx_world = nx_loc * cosA + nz_loc * sinA;
+      const nz_world = -nx_loc * sinA + nz_loc * cosA;
+
+      const omega = this.hazardAngularSpeed || 1.08;
+      const vBarX = omega * character.z;
+      const vBarZ = -omega * character.x;
+
+      const rCenter = Math.sqrt(character.x * character.x + character.z * character.z);
+      const tipFactor = Math.min(1.0, rCenter / L_half);
+
+      const tangentX = (rCenter > 0.001) ? (vBarX / (omega * rCenter)) : 0;
+      const tangentZ = (rCenter > 0.001) ? (vBarZ / (omega * rCenter)) : -1;
+
+      // Balanced launch velocity: 10.5 m/s near hub to 14.5 m/s at outer tips (clean ~3m knockback)
+      const launchSpeed = 10.5 + (tipFactor * 4.0);
+
+      let launchDirX = tangentX * 0.65 + nx_world * 0.45;
+      let launchDirZ = tangentZ * 0.65 + nz_world * 0.45;
+      const launchLen = Math.sqrt(launchDirX * launchDirX + launchDirZ * launchDirZ) || 1;
+      launchDirX /= launchLen;
+      launchDirZ /= launchLen;
+
+      character.vx = launchDirX * launchSpeed;
+      character.vz = launchDirZ * launchSpeed;
+      character.knockbackTimer = 0.22;
+
+      if (character.hazardHitCooldown <= 0) {
+        character.hazardHitCooldown = 0.30;
+        character.squashX = 1.55;
+        character.squashY = 0.60;
+
+        const smackLines = ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
+        const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
+        if (typeof character.setEmotion === 'function') {
+          character.setEmotion('hit', 1.0, txt, '💥');
+        }
+
+        if (HexAudio && HexAudio.sfxSweeperSmack) {
+          HexAudio.sfxSweeperSmack();
+        } else if (HexAudio && HexAudio.sfxBump) {
+          HexAudio.sfxBump(2.0);
+        }
+      }
+      return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
     }
 
     return null;
@@ -835,12 +819,8 @@ class ArenaColosseum {
       this.hazardGroup.rotation.y += dt * this.hazardAngularSpeed;
     }
 
-    if (this.theme === 'inferno') {
-      this._updateInfernoGeysers(dt, playerCraft);
-    } else if (this.theme === 'neon' && playerCraft) {
-      this.checkJumpPads(playerCraft);
-    } else if (this.theme === 'cryo' && playerCraft) {
-      this.checkCryoBoostVents(playerCraft);
+    if (playerCraft) {
+      this.checkHazardCollision(playerCraft);
     }
 
     if (this.theme === 'cryo') {
@@ -980,26 +960,7 @@ class ArenaColosseum {
       }
     });
 
-    if (this.jumpPads && this.jumpPads.length) {
-      this.jumpPads.forEach(jp => {
-        if (jp.group && jp.group.parent) this.scene.remove(jp.group);
-      });
-      this.jumpPads = [];
-    }
 
-    if (this.cryoBoostVents && this.cryoBoostVents.length) {
-      this.cryoBoostVents.forEach(v => {
-        if (v.group && v.group.parent) this.scene.remove(v.group);
-      });
-      this.cryoBoostVents = [];
-    }
-
-    if (this.infernoGeysers && this.infernoGeysers.length) {
-      this.infernoGeysers.forEach(g => {
-        if (g.group && g.group.parent) this.scene.remove(g.group);
-      });
-      this.infernoGeysers = [];
-    }
 
     if (this.hazardGroup && this.hazardGroup.parent) {
       this.scene.remove(this.hazardGroup);

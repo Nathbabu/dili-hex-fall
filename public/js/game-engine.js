@@ -1370,9 +1370,7 @@ class BumperGameEngine {
         }
       }
 
-      if (this.arena && typeof this.arena.checkJumpPads === 'function') {
-        this.arena.checkJumpPads(this.player);
-      }
+
     }
 
 

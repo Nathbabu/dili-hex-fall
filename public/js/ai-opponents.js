@@ -51,9 +51,7 @@ class AIBumperBot {
         }
       }
     }
-    if (arena && typeof arena.checkJumpPads === 'function') {
-      arena.checkJumpPads(this.craft);
-    }
+
 
     // 2. Tactical AI Decision Cycle
     this.thinkTimer += dt;
@@ -310,12 +308,19 @@ class AIBumperBot {
       const dist = Math.hypot(dx, dz);
       const rivalDistFromCenter = Math.hypot(c.x, c.z);
 
-      // Distance-based priority (closer targets are primary focus)
-      let score = 40.0 - dist * 1.6;
+      // Distance-based priority
+      let score = 40.0 - dist * 1.5;
+
+      // Human Player Detection & Prime Target Assignment
+      const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
+      if (isHumanRival) {
+        // Human is the prime target! Bots aggressively hunt and challenge the human player!
+        score += 32.0 * this.personality.aggression;
+      }
 
       // Target persistence bonus: stick to current duel rather than whipping around every tick
       if (c === this.targetCraft && isCurrentTargetValid) {
-        score += 8.0;
+        score += 6.0;
       }
 
       // Tactical opportunism
