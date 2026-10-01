@@ -1341,6 +1341,22 @@ class BumperGameEngine {
         });
       }
       this.arena.update(dt, this.player, allActiveCrafts);
+
+      // Check for Spire Sub-Zero Blizzard Shockwave pulse
+      if (this.arena && this.arena.blizzardShockwaveTriggered) {
+        this.arena.blizzardShockwaveTriggered = false;
+        this.spawnDeckShockwave(0, 0, 0x00F0FF, 22.0, 0.75, 0.40);
+        this.cameraShake = Math.max(this.cameraShake, 0.45);
+        for (let i = 0; i < 24; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const r = 3.0 + Math.random() * 15.0;
+          this._spawnSparks(Math.cos(ang) * r, Math.sin(ang) * r, 0x00F0FF, 0.6);
+          this._spawnSparks(Math.cos(ang) * r, Math.sin(ang) * r, 0xDCF8FF, 0.6);
+        }
+        if (typeof HexAudio !== 'undefined' && HexAudio.haptic) {
+          HexAudio.haptic('emp');
+        }
+      }
     }
 
     const arenaRadius = this.arena.currentRadius;

@@ -496,6 +496,8 @@ class BumperCraft {
     this.hazardHitCooldown = 0;
     this.boostCooldown = 0;
     this.knockbackTimer = 0;
+    this.isFrostDrift = false;
+    this.frostDriftTimer = 0;
 
     // Squash & Stretch Spring Physics
     this.squashX = 1.0;
@@ -1017,6 +1019,15 @@ class BumperCraft {
     this.setEmotion('celebrate', 1.0, txt, '💎');
   }
 
+  applyFrostDrift(duration = 2.8) {
+    if (!this.alive || !this.grounded) return;
+    this.isFrostDrift = true;
+    this.frostDriftTimer = Math.max(this.frostDriftTimer || 0, duration);
+    if (typeof this.setEmotion === 'function') {
+      this.setEmotion('panic', 1.2, '❄️ ICY SLIDE! 🥶', '❄️');
+    }
+  }
+
   activatePowerUp(type) {
     if (type === 'rocket') {
       this.hasRocket = true;
@@ -1086,6 +1097,12 @@ class BumperCraft {
     // Cooldowns
     if (this.hazardHitCooldown > 0) this.hazardHitCooldown -= dt;
     if (this.boostCooldown > 0) this.boostCooldown -= dt;
+    if (this.isFrostDrift) {
+      this.frostDriftTimer -= dt;
+      if (this.frostDriftTimer <= 0) {
+        this.isFrostDrift = false;
+      }
+    }
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
     if (this.empCooldown > 0) this.empCooldown -= dt;
 
@@ -1208,7 +1225,7 @@ class BumperCraft {
         const vParallel = this.vx * ix + this.vz * iz;
         const vPerpX = this.vx - vParallel * ix;
         const vPerpZ = this.vz - vParallel * iz;
-        const lateralGrip = Math.pow(0.84, dt * 60);
+        const lateralGrip = this.isFrostDrift ? Math.pow(0.95, dt * 60) : Math.pow(0.84, dt * 60);
         this.vx = vParallel * ix + vPerpX * lateralGrip;
         this.vz = vParallel * iz + vPerpZ * lateralGrip;
       }
@@ -1221,8 +1238,9 @@ class BumperCraft {
         this.vz = (this.vz / curSpeed) * maxAllowedSpeed;
       }
 
-      // Effective drag: honors arena surface physics (up to 0.985 for ice drift)
-      const effectiveDrag = inKnockback ? 0.96 : Math.min(0.985, this.drag || 0.93);
+      // Effective drag: honors arena surface physics (up to 0.995 for sub-zero ice drift)
+      let effectiveDrag = inKnockback ? 0.96 : Math.min(0.985, this.drag || 0.93);
+      if (this.isFrostDrift) effectiveDrag = 0.995;
       this.vx *= Math.pow(effectiveDrag, dt * 60);
       this.vz *= Math.pow(effectiveDrag, dt * 60);
 
@@ -1355,6 +1373,11 @@ class BumperCraft {
     this.z += this.vz * dt;
 
     this.group.position.set(this.x, this.y, this.z);
+
+    // Continuous Hard Hazard Clamping: Guarantee craft cannot penetrate central rotating blades or pillars
+    if (arenaInfo && typeof arenaInfo.checkHazardCollision === 'function') {
+      arenaInfo.checkHazardCollision(this);
+    }
 
     if (this.bumperRing && this.bumperRing.material) {
       if (this.isJammed) {

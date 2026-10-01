@@ -103,8 +103,11 @@ class ArenaColosseum {
     this.infernoGeysers = [];
     this.forgeTowers = [];
     this.lavaVeins = [];
-    this.cryoBoostVents = [];
-    this.cryoMonoliths = [];
+    this.cryoBoulders = [];
+    this.cryoCrevasses = [];
+    this.cryoBlizzardTimer = 0;
+    this.blizzardWarned = false;
+    this.blizzardShockwaveTriggered = false;
 
     this._setupRingStages(totalPlayers);
     this.upperRadius = this.currentRadius;
@@ -995,216 +998,375 @@ class ArenaColosseum {
     this.scene.add(this.hazardGroup);
 
     // Build Unique Cryo Glacier Architecture:
-    this._buildCryoBoostVents();
-    this._buildCryoMonoliths();
+    this._buildCryoBoulders();
+    this._buildCryoCrevasses();
   }
 
   // ------------------------------------------------------------
-  // CRYO GLACIER: 4 SUB-ZERO GLACIAL NITROGEN BOOST VENTS
+  // CRYO GLACIER: 3 INTERACTIVE GLACIAL ICE BOULDERS (CURLING STONES)
   // ------------------------------------------------------------
-  _buildCryoBoostVents() {
-    this.cryoBoostVents = [];
-    // 4 diagonal drift boost pads in the mid-ring zone
-    const ventCoords = [
-      { x: 9.2, z: 9.2 },
-      { x: -9.2, z: 9.2 },
-      { x: 9.2, z: -9.2 },
-      { x: -9.2, z: -9.2 }
+  _buildCryoBoulders() {
+    this.cryoBoulders = [];
+    const boulderSpawns = [
+      { x: 0, z: 10.2 },
+      { x: 8.8, z: -5.1 },
+      { x: -8.8, z: -5.1 }
     ];
 
-    ventCoords.forEach(p => {
+    boulderSpawns.forEach((p, idx) => {
       const group = new THREE.Group();
-      group.position.set(p.x, 0.06, p.z);
+      group.position.set(p.x, 0.85, p.z);
 
-      // Arctic frost base plate
-      const baseGeo = new THREE.CylinderGeometry(1.35, 1.55, 0.16, 16);
-      const baseMat = new THREE.MeshStandardMaterial({
-        color: 0x082138,
-        metalness: 0.85,
-        roughness: 0.2,
-        emissive: 0x005577,
-        emissiveIntensity: 0.3
+      // Faceted Glacial Ice Geosphere (1.25m radius)
+      const iceGeo = new THREE.IcosahedronGeometry(1.25, 1);
+      const iceMat = new THREE.MeshStandardMaterial({
+        color: 0x99EEFF,
+        emissive: 0x00A0E0,
+        emissiveIntensity: 1.4,
+        metalness: 0.15,
+        roughness: 0.08,
+        transparent: true,
+        opacity: 0.90
       });
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      group.add(base);
+      const iceMesh = new THREE.Mesh(iceGeo, iceMat);
+      group.add(iceMesh);
 
-      // Glowing cryogenic turbine ring
-      const ringGeo = new THREE.TorusGeometry(1.22, 0.08, 8, 24);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.09;
-      group.add(ring);
-
-      // Pulsing cryogenic nitrogen core
-      const coreGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.20, 16);
+      // Pulsing cryogenic core sphere inside
+      const coreGeo = new THREE.SphereGeometry(0.52, 16, 12);
       const coreMat = new THREE.MeshStandardMaterial({
         color: 0xDCF8FF,
-        emissive: 0x00E5FF,
-        emissiveIntensity: 2.2,
-        roughness: 0.1
+        emissive: 0x00F0FF,
+        emissiveIntensity: 3.2
       });
-      const core = new THREE.Mesh(coreGeo, coreMat);
-      core.position.y = 0.12;
-      group.add(core);
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      group.add(coreMesh);
 
-      // Subtle vertical frost particle beam
-      const beamGeo = new THREE.CylinderGeometry(0.45, 0.75, 1.8, 12, 1, true);
-      const beamMat = new THREE.MeshBasicMaterial({
-        color: 0x88EEFF,
+      // Base Curling Skid Ring
+      const skidGeo = new THREE.TorusGeometry(1.15, 0.08, 8, 24);
+      const skidMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF });
+      const skidMesh = new THREE.Mesh(skidGeo, skidMat);
+      skidMesh.rotation.x = Math.PI / 2;
+      skidMesh.position.y = -0.55;
+      group.add(skidMesh);
+
+      this.scene.add(group);
+      this.cryoBoulders.push({
+        id: idx,
+        homeX: p.x,
+        homeZ: p.z,
+        x: p.x,
+        y: 0.85,
+        z: p.z,
+        vx: 0,
+        vz: 0,
+        vy: 0,
+        radius: 1.25,
+        mass: 1.85,
+        grounded: true,
+        alive: true,
+        respawnTimer: 0,
+        lastPushedBy: null,
+        group,
+        iceMesh,
+        coreMesh
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // CRYO GLACIER: GLACIAL CREVASSES & PERIMETER ICE CRAGS
+  // ------------------------------------------------------------
+  _buildCryoCrevasses() {
+    this.cryoCrevasses = [];
+
+    // 6 Glowing Glacial Crevasses embedded in the ice floor
+    const crevasseAngles = [0.35, 1.40, 2.45, 3.50, 4.55, 5.60];
+    crevasseAngles.forEach(ang => {
+      const r = 13.0;
+      const cx = Math.cos(ang) * r;
+      const cz = Math.sin(ang) * r;
+
+      const group = new THREE.Group();
+      group.position.set(cx, 0.05, cz);
+      group.rotation.y = ang + Math.PI / 2;
+
+      // Glowing cyan/teal crevasse fissure plane
+      const fissureGeo = new THREE.PlaneGeometry(5.2, 0.65);
+      const fissureMat = new THREE.MeshBasicMaterial({
+        color: 0x00F0FF,
         transparent: true,
-        opacity: 0.35,
-        blending: THREE.AdditiveBlending,
+        opacity: 0.75,
         side: THREE.DoubleSide
       });
-      const beam = new THREE.Mesh(beamGeo, beamMat);
-      beam.position.y = 1.0;
-      group.add(beam);
+      const fissure = new THREE.Mesh(fissureGeo, fissureMat);
+      fissure.rotation.x = Math.PI / 2;
+      group.add(fissure);
 
-      this.scene.add(group);
-      this.cryoBoostVents.push({
-        x: p.x,
-        z: p.z,
-        group,
-        core,
-        ring,
-        beam
-      });
-    });
-  }
-
-  // ------------------------------------------------------------
-  // CRYO GLACIER: 4 TOWERING CRYSTALLINE ICE MONOLITHS
-  // ------------------------------------------------------------
-  _buildCryoMonoliths() {
-    this.cryoMonoliths = [];
-    // 4 cardinal ice crags on the outer glacier rim
-    const monolithCoords = [
-      { x: 0, z: 14.5 },
-      { x: 14.5, z: 0 },
-      { x: 0, z: -14.5 },
-      { x: -14.5, z: 0 }
-    ];
-
-    monolithCoords.forEach(p => {
-      const group = new THREE.Group();
-      group.position.set(p.x, 0, p.z);
-
-      // Glacial ice pedestal base
-      const baseGeo = new THREE.CylinderGeometry(1.5, 1.8, 0.55, 6);
-      const baseMat = new THREE.MeshStandardMaterial({
-        color: 0x071b30,
-        metalness: 0.4,
-        roughness: 0.1,
-        emissive: 0x00D0FF,
-        emissiveIntensity: 0.6,
-        transparent: true,
-        opacity: 0.95
-      });
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      base.position.y = 0.28;
-      group.add(base);
-
-      // Towering Hexagonal Crystalline Ice Obelisk (Height 4.2m)
-      const colGeo = new THREE.CylinderGeometry(0.9, 1.35, 4.2, 6);
-      const colMat = new THREE.MeshStandardMaterial({
-        color: 0x88EEFF,
-        emissive: 0x00A0E0,
-        emissiveIntensity: 1.8,
-        metalness: 0.15,
-        roughness: 0.05,
-        transparent: true,
-        opacity: 0.92
-      });
-      const col = new THREE.Mesh(colGeo, colMat);
-      col.position.y = 2.4;
-      group.add(col);
-
-      // Crystalline Faceted Spire Peak
-      const peakGeo = new THREE.ConeGeometry(0.88, 1.4, 6);
-      const peakMat = new THREE.MeshStandardMaterial({
-        color: 0xDCF8FF,
-        emissive: 0x00F0FF,
-        emissiveIntensity: 2.4,
-        roughness: 0.05,
-        transparent: true,
-        opacity: 0.95
-      });
-      const peak = new THREE.Mesh(peakGeo, peakMat);
-      peak.position.y = 5.0;
-      group.add(peak);
-
-      // Floating Mid-Level Frost Energy Ring
-      const frostRingGeo = new THREE.TorusGeometry(1.4, 0.06, 8, 24);
-      const frostRingMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF, transparent: true, opacity: 0.85 });
-      const frostRing = new THREE.Mesh(frostRingGeo, frostRingMat);
-      frostRing.rotation.x = Math.PI / 2;
-      frostRing.position.y = 2.6;
-      group.add(frostRing);
-
-      // Summit Frost Beacon
-      const beaconGeo = new THREE.SphereGeometry(0.22, 14, 10);
-      const beaconMat = new THREE.MeshStandardMaterial({
-        color: 0xFFFFFF,
-        emissive: 0xFFFFFF,
-        emissiveIntensity: 3.5
-      });
-      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-      beacon.position.y = 5.8;
-      group.add(beacon);
-
-      this.scene.add(group);
-      this.cryoMonoliths.push({
-        x: p.x,
-        z: p.z,
-        radius: 1.45, // Solid physical collision radius
-        group,
-        col,
-        frostRing
-      });
-    });
-  }
-
-  // ------------------------------------------------------------
-  // CRYO GLACIER: BOOST VENT INTERACTION & BOOST PHYSICS
-  // ------------------------------------------------------------
-  _checkCryoBoostVents(crafts) {
-    if (!this.cryoBoostVents || !this.cryoBoostVents.length) return;
-    const list = Array.isArray(crafts) ? crafts : (crafts ? [crafts] : []);
-
-    list.forEach(character => {
-      if (!character || !character.alive || !character.grounded) return;
-      if (character.boostCooldown > 0) {
-        character.boostCooldown -= 0.016;
-        return;
+      // Flanking frozen crystal ice shards on the edges
+      for (const sx of [-2.2, 2.2]) {
+        const shardGeo = new THREE.ConeGeometry(0.35, 1.4, 5);
+        const shardMat = new THREE.MeshStandardMaterial({
+          color: 0x88EEFF,
+          emissive: 0x00A0E0,
+          emissiveIntensity: 1.8,
+          transparent: true,
+          opacity: 0.88,
+          roughness: 0.1
+        });
+        const shard = new THREE.Mesh(shardGeo, shardMat);
+        shard.position.set(sx, 0.7, 0);
+        shard.rotation.z = (sx > 0 ? -0.2 : 0.2);
+        group.add(shard);
       }
 
-      for (const vent of this.cryoBoostVents) {
-        const dx = character.x - vent.x;
-        const dz = character.z - vent.z;
-        if (dx * dx + dz * dz < 3.2) {
-          character.boostCooldown = 0.85;
+      this.scene.add(group);
+      this.cryoCrevasses.push(group);
+    });
+  }
 
-          // Rocket forward in drive heading at 24.0 m/s!
-          const curSpd = Math.hypot(character.vx, character.vz);
-          const boostSpd = Math.min(27.0, Math.max(20.0, curSpd * 1.65));
-          const heading = (curSpd > 0.5) ? Math.atan2(character.vx, character.vz) : character.facing;
+  // ------------------------------------------------------------
+  // CRYO GLACIER: SPIRE BLIZZARD PULSE & BOULDER PHYSICS
+  // ------------------------------------------------------------
+  _updateCryoMechanics(dt, craftsList) {
+    // 1. Spire Blizzard Overcharge Cycle (12 seconds)
+    this.cryoBlizzardTimer = (this.cryoBlizzardTimer || 0) + dt;
 
-          character.vx = Math.sin(heading) * boostSpd;
-          character.vz = Math.cos(heading) * boostSpd;
-          character.squashX = 0.82;
-          character.squashY = 1.38;
+    if (this.cryoBlizzardTimer > 9.0 && this.cryoBlizzardTimer < 11.5) {
+      const chargeProgress = (this.cryoBlizzardTimer - 9.0) / 2.5;
+      if (this.cryoSpireMesh && this.cryoSpireMesh.material) {
+        this.cryoSpireMesh.material.emissiveIntensity = 1.8 + chargeProgress * 3.2;
+      }
+      if (this.cryoOrbitalRing1) this.cryoOrbitalRing1.rotation.z += dt * (0.75 + chargeProgress * 4.0);
+      if (this.cryoOrbitalRing2) this.cryoOrbitalRing2.rotation.z -= dt * (0.60 + chargeProgress * 4.0);
 
-          // Vent reaction
-          vent.core.material.emissiveIntensity = 4.5;
-          if (HexAudio && HexAudio.sfxEmp) HexAudio.sfxEmp();
-          if (typeof character.setEmotion === 'function') {
-            character.setEmotion('celebrate', 1.0, 'GLACIAL SURGE! ⚡', '🚀');
+      if (!this.blizzardWarned) {
+        this.blizzardWarned = true;
+        if (this.onAlert) {
+          this.onAlert('❄️ SPIRE OVERCHARGE: SUB-ZERO BLIZZARD IN 2s! ❄️');
+        }
+        if (HexAudio && HexAudio.sfxAlarm) HexAudio.sfxAlarm();
+      }
+    }
+
+    if (this.cryoBlizzardTimer >= 11.5) {
+      this.cryoBlizzardTimer = 0;
+      this.blizzardWarned = false;
+
+      if (this.cryoSpireMesh && this.cryoSpireMesh.material) {
+        this.cryoSpireMesh.material.emissiveIntensity = 5.0;
+      }
+      if (this.onAlert) {
+        this.onAlert('❄️ BLIZZARD SURGE UNLEASHED! ULTRA ICE DRIFT! ❄️');
+      }
+      if (HexAudio && HexAudio.sfxEmp) HexAudio.sfxEmp();
+
+      this.blizzardShockwaveTriggered = true;
+
+      if (craftsList && craftsList.length) {
+        craftsList.forEach(c => {
+          if (c && c.alive && c.grounded && typeof c.applyFrostDrift === 'function') {
+            c.applyFrostDrift(3.0);
           }
-          break;
+        });
+      }
+    } else if (this.cryoBlizzardTimer < 9.0 && this.cryoSpireMesh && this.cryoSpireMesh.material) {
+      this.cryoSpireMesh.material.emissiveIntensity += (1.8 - this.cryoSpireMesh.material.emissiveIntensity) * Math.min(1, dt * 3.0);
+    }
+
+    // 2. Interactive Glacial Ice Boulders Physics
+    if (!this.cryoBoulders || !this.cryoBoulders.length) return;
+
+    // A. Integration & Edge Fall Check
+    for (const b of this.cryoBoulders) {
+      if (!b.alive) {
+        b.respawnTimer -= dt;
+        if (b.respawnTimer <= 0) {
+          b.alive = true;
+          b.x = b.homeX;
+          b.z = b.homeZ;
+          b.y = 0.85;
+          b.vx = 0;
+          b.vz = 0;
+          b.vy = 0;
+          b.grounded = true;
+          b.group.scale.set(1, 1, 1);
+          b.group.position.set(b.x, b.y, b.z);
+          b.group.visible = true;
+        }
+        continue;
+      }
+
+      if (b.grounded) {
+        b.x += b.vx * dt;
+        b.z += b.vz * dt;
+        // High-glide ice friction (0.992)
+        b.vx *= Math.pow(0.992, dt * 60);
+        b.vz *= Math.pow(0.992, dt * 60);
+
+        if (Math.hypot(b.vx, b.vz) < 0.05) {
+          b.vx = 0;
+          b.vz = 0;
+        }
+
+        // Tumble rotation
+        b.iceMesh.rotation.x += b.vz * dt * 0.9;
+        b.iceMesh.rotation.z -= b.vx * dt * 0.9;
+
+        // Glow decay
+        if (b.coreMesh && b.coreMesh.material) {
+          b.coreMesh.material.emissiveIntensity += (3.2 - b.coreMesh.material.emissiveIntensity) * Math.min(1, dt * 3.0);
+        }
+
+        // Check if pushed off platform
+        const distFromCenter = Math.hypot(b.x, b.z);
+        if (distFromCenter > this.currentRadius + 0.35) {
+          b.grounded = false;
+        }
+      } else {
+        // Falling into abyss
+        b.vy -= 36 * dt;
+        b.y += b.vy * dt;
+        b.x += b.vx * dt;
+        b.z += b.vz * dt;
+
+        const shrink = Math.max(0.02, 1.0 - Math.abs(b.y - 0.85) * 0.14);
+        b.group.scale.set(shrink, shrink, shrink);
+
+        if (b.y < -12) {
+          b.alive = false;
+          b.group.visible = false;
+          b.respawnTimer = 4.0;
         }
       }
-    });
+
+      b.group.position.set(b.x, b.y, b.z);
+    }
+
+    // B. Boulders vs Central Glacial Pedestal & Sweeper Blades
+    for (const b of this.cryoBoulders) {
+      if (!b.alive || !b.grounded) continue;
+      const distCenter = Math.hypot(b.x, b.z);
+      const pylonMin = 2.85 + b.radius;
+      if (distCenter < pylonMin) {
+        const nx = distCenter > 0.001 ? (b.x / distCenter) : 1;
+        const nz = distCenter > 0.001 ? (b.z / distCenter) : 0;
+        b.x = nx * (pylonMin + 0.10);
+        b.z = nz * (pylonMin + 0.10);
+        b.vx = nx * Math.max(9.0, Math.hypot(b.vx, b.vz) * 1.15);
+        b.vz = nz * Math.max(9.0, Math.hypot(b.vx, b.vz) * 1.15);
+        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
+      }
+    }
+
+    // C. Boulder vs Boulder Collisions (Elastic Billiard Bouncing)
+    for (let i = 0; i < this.cryoBoulders.length; i++) {
+      for (let j = i + 1; j < this.cryoBoulders.length; j++) {
+        const b1 = this.cryoBoulders[i];
+        const b2 = this.cryoBoulders[j];
+        if (!b1.alive || !b1.grounded || !b2.alive || !b2.grounded) continue;
+
+        const dx = b2.x - b1.x;
+        const dz = b2.z - b1.z;
+        const dist = Math.hypot(dx, dz);
+        const minDist = b1.radius + b2.radius;
+
+        if (dist < minDist) {
+          const nx = dist > 0.001 ? (dx / dist) : 1;
+          const nz = dist > 0.001 ? (dz / dist) : 0;
+          const overlap = minDist - dist + 0.05;
+          b1.x -= nx * overlap * 0.5;
+          b1.z -= nz * overlap * 0.5;
+          b2.x += nx * overlap * 0.5;
+          b2.z += nz * overlap * 0.5;
+
+          const relVx = b2.vx - b1.vx;
+          const relVz = b2.vz - b1.vz;
+          const relNorm = relVx * nx + relVz * nz;
+          if (relNorm < 0) {
+            const imp = -(1 + 0.85) * relNorm / (1 / b1.mass + 1 / b2.mass);
+            b1.vx -= (imp / b1.mass) * nx;
+            b1.vz -= (imp / b1.mass) * nz;
+            b2.vx += (imp / b2.mass) * nx;
+            b2.vz += (imp / b2.mass) * nz;
+            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.8);
+          }
+        }
+      }
+    }
+
+    // D. Craft vs Boulder Collisions (Sumo Curling Mechanics)
+    if (craftsList && craftsList.length) {
+      for (const b of this.cryoBoulders) {
+        if (!b.alive || !b.grounded) continue;
+
+        for (const c of craftsList) {
+          if (!c || !c.alive || !c.grounded) continue;
+
+          const dx = c.x - b.x;
+          const dz = c.z - b.z;
+          const dist = Math.hypot(dx, dz);
+          const craftRadius = c.radius || 1.10;
+          const minDist = craftRadius + b.radius;
+
+          if (dist < minDist) {
+            const nx = dist > 0.001 ? (dx / dist) : 1;
+            const nz = dist > 0.001 ? (dz / dist) : 0;
+
+            // Push apart
+            const overlap = minDist - dist + 0.06;
+            c.x += nx * overlap * 0.65;
+            c.z += nz * overlap * 0.65;
+            b.x -= nx * overlap * 0.35;
+            b.z -= nz * overlap * 0.35;
+            if (c.group) c.group.position.set(c.x, c.y, c.z);
+            b.group.position.set(b.x, b.y, b.z);
+
+            // Relative velocity
+            const relVx = c.vx - b.vx;
+            const relVz = c.vz - b.vz;
+            const relNorm = relVx * nx + relVz * nz;
+
+            if (relNorm < 0) {
+              const cMass = c.mass || 1.0;
+              const impulse = -(1 + 0.88) * relNorm / (1 / cMass + 1 / b.mass);
+
+              c.vx += (impulse / cMass) * nx;
+              c.vz += (impulse / cMass) * nz;
+              b.vx -= (impulse / b.mass) * nx;
+              b.vz -= (impulse / b.mass) * nz;
+
+              const bSpeed = Math.hypot(b.vx, b.vz);
+              const cSpeed = Math.hypot(c.vx, c.vz);
+
+              if (b.coreMesh && b.coreMesh.material) {
+                b.coreMesh.material.emissiveIntensity = 4.8;
+              }
+
+              if (c.isDashing || cSpeed > 10.0) {
+                b.lastPushedBy = c;
+              }
+
+              // If boulder was moving fast and slammed into a craft:
+              if (bSpeed > 5.0 && b.lastPushedBy && b.lastPushedBy !== c) {
+                c.lastAttacker = b.lastPushedBy;
+                c.knockbackTimer = 0.28;
+                c.squashX = 1.60;
+                c.squashY = 0.55;
+                if (typeof c.setEmotion === 'function') {
+                  c.setEmotion('hit', 1.0, 'BOULDER SMASH! 💥', '❄️');
+                }
+              } else if (c.hazardHitCooldown <= 0) {
+                c.hazardHitCooldown = 0.25;
+                c.squashX = 1.35;
+                c.squashY = 0.70;
+              }
+
+              if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(Math.min(2.5, 1.4 + bSpeed * 0.08));
+            }
+          }
+        }
+      }
+    }
   }
 
   // ============================================================
@@ -1218,7 +1380,7 @@ class ArenaColosseum {
 
     // 1. Central Stationary Hydraulic / Glacial / Magma Pillar Core Collision (100% Impenetrable!)
     let centerRadius = 1.70;
-    if (this.theme === 'cryo') centerRadius = 2.40;     // Matches 2.35m Cryo glacial pedestal & spire base
+    if (this.theme === 'cryo') centerRadius = 2.85;     // Matches 2.8m Cryo glacial pedestal & spire base
     else if (this.theme === 'inferno') centerRadius = 2.15; // Matches 2.1m Inferno smelting crucible
     const pillarMinDist = centerRadius + craftRadius * 0.95;
 
@@ -1242,37 +1404,6 @@ class ArenaColosseum {
         }
       }
       return { hit: true, x: character.x, z: character.z, type: 'pillar' };
-    }
-
-    // 1c. Cryo Glacier Crystalline Monoliths Collision
-    if (this.theme === 'cryo' && this.cryoMonoliths && this.cryoMonoliths.length) {
-      for (const m of this.cryoMonoliths) {
-        const mdx = character.x - m.x;
-        const mdz = character.z - m.z;
-        const mdistSq = mdx * mdx + mdz * mdz;
-        const monolithMinDist = m.radius + craftRadius * 0.95;
-        if (mdistSq < monolithMinDist * monolithMinDist) {
-          const mdist = Math.sqrt(mdistSq) || 1;
-          const nx = mdx / mdist;
-          const nz = mdz / mdist;
-          character.x = m.x + nx * (monolithMinDist + 0.08);
-          character.z = m.z + nz * (monolithMinDist + 0.08);
-          if (character.group) character.group.position.set(character.x, character.y, character.z);
-          character.vx = nx * 12.0;
-          character.vz = nz * 12.0;
-          character.knockbackTimer = 0.24;
-          if (character.hazardHitCooldown <= 0) {
-            character.hazardHitCooldown = 0.32;
-            character.squashX = 1.50;
-            character.squashY = 0.65;
-            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.2);
-            if (typeof character.setEmotion === 'function') {
-              character.setEmotion('hit', 1.0, 'ICE CRAG! ❄️', '❄️');
-            }
-          }
-          return { hit: true, x: character.x, z: character.z, type: 'monolith' };
-        }
-      }
     }
 
     // 1b. Inferno Forge Bastion Smelting Towers Collision
@@ -1306,7 +1437,7 @@ class ArenaColosseum {
       }
     }
 
-    if (character.y > 1.85) return null; // Flying above bumper bar height
+    if (character.y > 2.60) return null; // Flying above bumper bar height
 
     const theta = this.hazardGroup.rotation.y;
     const omega = this.hazardAngularSpeed || 1.08;
@@ -1314,20 +1445,21 @@ class ArenaColosseum {
 
     // 2. Multi-Blade Hazard Collision
     if (this.hazardType === 'tri') {
-      // Cryo Tri-Blade: 3 radial blades at 120°
-      const armLength = this.hazardArmLength || 5.30;
-      const halfWidth = this.hazardHalfWidth || 0.34;
+      // Cryo Tri-Blade: 3 radial blades at 120° (100% physically solid, impenetrable!)
+      const armLength = this.hazardArmLength || 5.60;
+      const halfWidth = this.hazardHalfWidth || 0.40;
       const bladeAngles = this.hazardBladeAngles || [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
 
       for (const phi of bladeAngles) {
         const alpha = theta + phi;
-        const ux = Math.cos(alpha);
-        const uz = Math.sin(alpha);
-        const vx = -uz;
-        const vz = ux;
+        const cosA = Math.cos(alpha);
+        const sinA = Math.sin(alpha);
 
-        const u = character.x * ux + character.z * uz;
-        const v = character.x * vx + character.z * vz;
+        // Transform character pos into arm local coordinates:
+        // Local +X is along the arm (from 0 to armLength)
+        // Local +Z is perpendicular to the arm (-halfWidth to +halfWidth)
+        const u = character.x * cosA - character.z * sinA;
+        const v = character.x * sinA + character.z * cosA;
 
         const cu = Math.max(0, Math.min(armLength, u));
         const cv = Math.max(-halfWidth, Math.min(halfWidth, v));
@@ -1349,23 +1481,30 @@ class ArenaColosseum {
             overlap = effectiveRadius - dist;
           }
 
-          const exitBuffer = 0.08;
+          const exitBuffer = 0.12;
           const u_new = u + nu * (overlap + exitBuffer);
           const v_new = v + nv * (overlap + exitBuffer);
 
-          character.x = u_new * ux + v_new * vx;
-          character.z = u_new * uz + v_new * vz;
+          // Transform back to world coordinates:
+          character.x = u_new * cosA + v_new * sinA;
+          character.z = -u_new * sinA + v_new * cosA;
           if (character.group) character.group.position.set(character.x, character.y, character.z);
 
-          const nx_world = nu * ux + nv * vx;
-          const nz_world = nu * uz + nv * vz;
+          const nx_world = nu * cosA + nv * sinA;
+          const nz_world = -nu * sinA + nv * cosA;
 
-          // Sweeper rotational velocity at radius cu
+          // Rotational tangential velocity at cu
+          const vBarX = omega * character.z;
+          const vBarZ = -omega * character.x;
+          const vBarSpeed = Math.hypot(vBarX, vBarZ) || 1;
+          const tangentX = vBarX / vBarSpeed;
+          const tangentZ = vBarZ / vBarSpeed;
+
           const tipFactor = Math.min(1.0, cu / armLength);
-          const launchSpeed = 11.5 + (tipFactor * 4.5); // 11.5 to 16.0 m/s icy fling
+          const launchSpeed = 12.5 + (tipFactor * 5.0); // 12.5 to 17.5 m/s icy fling
 
-          let launchDirX = vx * 0.70 + nx_world * 0.45;
-          let launchDirZ = vz * 0.70 + nz_world * 0.45;
+          let launchDirX = tangentX * 0.65 + nx_world * 0.50;
+          let launchDirZ = tangentZ * 0.65 + nz_world * 0.50;
           const launchLen = Math.hypot(launchDirX, launchDirZ) || 1;
           launchDirX /= launchLen;
           launchDirZ /= launchLen;
@@ -1685,21 +1824,8 @@ class ArenaColosseum {
       if (this.cryoOrbitalRing1) this.cryoOrbitalRing1.rotation.z += dt * 0.75;
       if (this.cryoOrbitalRing2) this.cryoOrbitalRing2.rotation.z -= dt * 0.60;
 
-      // Animate Glacial Boost Vents
-      this._checkCryoBoostVents(activeCraftsList);
-      if (this.cryoBoostVents) {
-        this.cryoBoostVents.forEach(v => {
-          v.core.material.emissiveIntensity += (2.2 - v.core.material.emissiveIntensity) * Math.min(1, dt * 4.0);
-          if (v.beam) v.beam.rotation.y += dt * 2.0;
-        });
-      }
-
-      // Rotate Monolith energy rings
-      if (this.cryoMonoliths) {
-        this.cryoMonoliths.forEach(m => {
-          if (m.frostRing) m.frostRing.rotation.z += dt * 0.85;
-        });
-      }
+      // Update Cryo Glacial Boulders, Crevasses & Blizzard Overcharge
+      this._updateCryoMechanics(dt, activeCraftsList);
     } else if (this.theme === 'inferno') {
       // Animate Erupting Volcanic Geysers
       this._updateInfernoGeysers(dt, activeCraftsList);
@@ -1841,18 +1967,21 @@ class ArenaColosseum {
 
 
 
-    if (this.cryoBoostVents && this.cryoBoostVents.length) {
-      this.cryoBoostVents.forEach(v => {
-        if (v.group && v.group.parent) this.scene.remove(v.group);
+    if (this.cryoBoulders && this.cryoBoulders.length) {
+      this.cryoBoulders.forEach(b => {
+        if (b.group && b.group.parent) this.scene.remove(b.group);
       });
-      this.cryoBoostVents = [];
+      this.cryoBoulders = [];
     }
-    if (this.cryoMonoliths && this.cryoMonoliths.length) {
-      this.cryoMonoliths.forEach(m => {
-        if (m.group && m.group.parent) this.scene.remove(m.group);
+    if (this.cryoCrevasses && this.cryoCrevasses.length) {
+      this.cryoCrevasses.forEach(c => {
+        if (c && c.parent) this.scene.remove(c);
       });
-      this.cryoMonoliths = [];
+      this.cryoCrevasses = [];
     }
+    this.cryoBlizzardTimer = 0;
+    this.blizzardWarned = false;
+    this.blizzardShockwaveTriggered = false;
 
     if (this.infernoGeysers && this.infernoGeysers.length) {
       this.infernoGeysers.forEach(g => {
