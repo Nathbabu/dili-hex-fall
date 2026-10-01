@@ -78,7 +78,7 @@
   const goKills = document.getElementById('goKills');
   const goScore = document.getElementById('goScore');
   const goRank = document.getElementById('goRank');
-  const goTopSpeed = document.getElementById('goTopSpeed');
+  const goMatchRank = document.getElementById('goMatchRank');
   const goStreak = document.getElementById('goStreak');
   const btnFullscreenToggle = document.getElementById('btnFullscreenToggle');
   const newRecordBanner = document.getElementById('newRecordBanner');
@@ -371,8 +371,19 @@
         goTime.textContent = formatTime(data.time);
         goKills.textContent = data.kills;
         goScore.textContent = data.score;
+        if (goMatchRank) {
+          const mRank = data.matchRank || 1;
+          const mTotal = data.totalParticipants || 4;
+          goMatchRank.textContent = `#${mRank} of ${mTotal}`;
+          if (mRank === 1) {
+            goMatchRank.className = 'highlight-gold';
+          } else if (mRank === 2) {
+            goMatchRank.className = 'highlight-cyan';
+          } else {
+            goMatchRank.className = 'highlight-pink';
+          }
+        }
         goRank.textContent = 'Submitting...';
-        if (goTopSpeed) goTopSpeed.textContent = (data.topSpeed || 0) + ' KM/H';
         if (goStreak) goStreak.textContent = (data.bestStreak && data.bestStreak >= 2) ? ('x' + data.bestStreak + ' STREAK') : 'NONE';
 
         if (data.score > personalBest) {

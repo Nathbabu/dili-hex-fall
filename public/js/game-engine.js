@@ -2208,6 +2208,18 @@ class BumperGameEngine {
       HexAudio.sfxElimination();
     }
 
+    // Calculate Current Match Rank and Total Participants in this battle
+    const totalParticipants = (this.isMultiplayer
+      ? (1 + (this.aiManager ? this.aiManager.bots.length : 0) + (this.remotePlayers ? this.remotePlayers.size : 0))
+      : (this.totalPlayers || (1 + (this.aiManager ? this.aiManager.bots.length : 0))));
+
+    let matchRank = 1;
+    if (!isWin) {
+      const aliveOthers = (this.aiManager ? this.aiManager.getAliveCount() : 0) +
+        (this.remotePlayers ? Array.from(this.remotePlayers.values()).filter(rc => rc && rc.alive).length : 0);
+      matchRank = Math.min(totalParticipants, Math.max(2, aliveOthers + 1));
+    }
+
     if (this.onGameOver) {
       this.onGameOver({
         win: isWin,
@@ -2218,6 +2230,8 @@ class BumperGameEngine {
         suitColor: this.suitKey,
         winnerName: winnerName,
         canSpectate: this.hasRealHumansToSpectate(),
+        matchRank: matchRank,
+        totalParticipants: totalParticipants,
         topSpeed: Math.round(this.maxRecordedSpeed * 7.2),
         bestStreak: this.bestStreak || 0
       });
