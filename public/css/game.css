@@ -2368,29 +2368,9 @@ canvas#gameCanvas {
 
 /* Arcade Speed Lines on Screen Edges (Hyper Nitro & Dash) */
 .speed-lines {
+  display: none !important;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
   pointer-events: none;
-  z-index: 22;
-  opacity: 0;
-  transition: opacity 0.15s ease-out;
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse at center, transparent 46%, rgba(0, 229, 255, 0.12) 75%, rgba(0, 255, 198, 0.28) 100%),
-    repeating-conic-gradient(
-      from 0deg at 50% 50%,
-      rgba(0, 229, 255, 0.4) 0deg 1.2deg,
-      transparent 1.2deg 7deg,
-      rgba(255, 255, 255, 0.55) 7deg 8deg,
-      transparent 8deg 15deg,
-      rgba(0, 255, 198, 0.4) 15deg 16.5deg,
-      transparent 16.5deg 23deg
-    );
-  mask-image: radial-gradient(ellipse at center, transparent 42%, black 78%);
-  -webkit-mask-image: radial-gradient(ellipse at center, transparent 42%, black 78%);
 }
 
 .speed-lines.active {
@@ -2551,12 +2531,9 @@ canvas#gameCanvas {
    IMPACT SCREEN VIGNETTE FLASH (Heavy smacks & rotor hits)
    ============================================================ */
 .impact-vignette {
+  display: none !important;
   position: fixed;
-  inset: 0;
   pointer-events: none;
-  z-index: 80;
-  opacity: 0;
-  transition: opacity 0.35s ease-out;
 }
 .impact-vignette.flash-cryo {
   opacity: 1;

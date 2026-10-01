@@ -29,6 +29,8 @@ const ARENA_THEMES = {
     spotColor: 0x00E5FF,
     voidGridMain: 0x00E5FF,
     drag: 0.93,
+    baseSpeed: 13.0,
+    accel: 48.0,
     particleColor: 0x00FFC6
   },
   inferno: {
@@ -53,6 +55,8 @@ const ARENA_THEMES = {
     spotColor: 0xFF3300,
     voidGridMain: 0xFF3300,
     drag: 0.925,
+    baseSpeed: 13.0,
+    accel: 48.0,
     particleColor: 0xFF5500
   },
   cryo: {
@@ -76,9 +80,9 @@ const ARENA_THEMES = {
     ambientColor: 0x163450,
     spotColor: 0x00F0FF,
     voidGridMain: 0x00D0FF,
-    drag: 0.982,       // High-speed slick glacial drift!
-    baseSpeed: 15.6,   // FAST & EXHILARATING GLACIAL SPEED (+35%)
-    accel: 52.0,       // Instant responsive throttle
+    drag: 0.93,
+    baseSpeed: 13.5,
+    accel: 50.0,
     particleColor: 0x88EEFF
   }
 };
@@ -248,22 +252,22 @@ class ArenaColosseum {
       this._spawnPowerUp('shield', 11.5, 0);
       this._spawnPowerUp('crystal', 0, -11.5);
       this._spawnPowerUp('super_ram', 0, 8.5);
-      this._spawnPowerUp('hazard_slow', -11.5, 0);
-      this._spawnPowerUp('hazard_jam', 0, 0);
+      this._spawnPowerUp('shield', -11.5, 0);
+      this._spawnPowerUp('crystal', 4.5, -4.5);
     } else if (this.theme === 'cryo') {
       this._spawnPowerUp('rocket', 0, 6.2);
       this._spawnPowerUp('shield', 6.2, 0);
       this._spawnPowerUp('crystal', 0, -6.2);
       this._spawnPowerUp('super_ram', 0, 8.5);
-      this._spawnPowerUp('hazard_slow', -6.2, 0);
-      this._spawnPowerUp('hazard_jam', 4.5, 4.5);
+      this._spawnPowerUp('shield', -6.2, 0);
+      this._spawnPowerUp('crystal', 4.5, 4.5);
     } else {
       this._spawnPowerUp('rocket', 0, 6.2);
       this._spawnPowerUp('shield', 6.2, 0);
       this._spawnPowerUp('crystal', 0, -6.2);
       this._spawnPowerUp('super_ram', 0, 8.5);
-      this._spawnPowerUp('hazard_slow', -6.2, 0);
-      this._spawnPowerUp('hazard_jam', 5.0, 5.0);
+      this._spawnPowerUp('shield', -6.2, 0);
+      this._spawnPowerUp('crystal', 5.0, 5.0);
     }
   }
 
@@ -306,31 +310,9 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    // 2-Blade Sweeper Bar
-    this.sweeperBar = new THREE.Group();
-    this.sweeperBar.position.y = 0.55;
-
-    const armGeo = new THREE.BoxGeometry(10.6, 0.38, 0.68);
-    const armMat = new THREE.MeshStandardMaterial({ color: cfg.sweeperBarColor, metalness: 0.95, roughness: 0.15 });
-    const armMesh = new THREE.Mesh(armGeo, armMat);
-    this.sweeperBar.add(armMesh);
-
-    const beamGeo = new THREE.BoxGeometry(10.4, 0.14, 0.08);
-    const beamMat = new THREE.MeshBasicMaterial({ color: cfg.sweeperBladeColor, transparent: true, opacity: 0.95 });
-    const beam1 = new THREE.Mesh(beamGeo, beamMat); beam1.position.set(0, 0, 0.36); this.sweeperBar.add(beam1);
-    const beam2 = new THREE.Mesh(beamGeo, beamMat); beam2.position.set(0, 0, -0.36); this.sweeperBar.add(beam2);
-
-    [-5.3, 5.3].forEach(endX => {
-      const capGeo = new THREE.CylinderGeometry(0.50, 0.50, 0.42, 16);
-      const capMat = new THREE.MeshStandardMaterial({ color: cfg.sweeperTipColor, emissive: cfg.sweeperTipColor, emissiveIntensity: 1.2 });
-      const cap = new THREE.Mesh(capGeo, capMat);
-      cap.position.set(endX, 0, 0);
-      this.sweeperBar.add(cap);
-    });
-
-    this.hazardLaser = armMesh;
-    this.hazardGroup.add(this.sweeperBar);
-    this.scene.add(this.hazardGroup);
+    this.hazardGroup = null;
+    this.hazardLaser = null;
+    this.sweeperBar = null;
   }
 
   _buildNeonJumpPads() {
@@ -416,39 +398,9 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    // Quad-Crusher Bar (Cross of 4 Blades!)
-    this.sweeperBar = new THREE.Group();
-    this.sweeperBar.position.y = 0.55;
-
-    // Cross Arms 1 & 2
-    [0, Math.PI / 2].forEach(angle => {
-      const arm = new THREE.Group();
-      arm.rotation.y = angle;
-
-      const armGeo = new THREE.BoxGeometry(10.6, 0.42, 0.72);
-      const armMat = new THREE.MeshStandardMaterial({ color: 0x220904, metalness: 0.95, roughness: 0.2 });
-      const armMesh = new THREE.Mesh(armGeo, armMat);
-      arm.add(armMesh);
-
-      const bladeGeo = new THREE.BoxGeometry(10.4, 0.16, 0.08);
-      const bladeMat = new THREE.MeshBasicMaterial({ color: 0xFF5500, transparent: true, opacity: 0.95 });
-      const b1 = new THREE.Mesh(bladeGeo, bladeMat); b1.position.set(0, 0, 0.38); arm.add(b1);
-      const b2 = new THREE.Mesh(bladeGeo, bladeMat); b2.position.set(0, 0, -0.38); arm.add(b2);
-
-      [-5.3, 5.3].forEach(ex => {
-        const capGeo = new THREE.BoxGeometry(0.65, 0.55, 0.65);
-        const capMat = new THREE.MeshStandardMaterial({ color: 0xFFFF00, emissive: 0xFFAA00, emissiveIntensity: 1.4 });
-        const cap = new THREE.Mesh(capGeo, capMat);
-        cap.position.set(ex, 0, 0);
-        arm.add(cap);
-      });
-
-      this.sweeperBar.add(arm);
-    });
-
-    this.hazardLaser = this.sweeperBar;
-    this.hazardGroup.add(this.sweeperBar);
-    this.scene.add(this.hazardGroup);
+    this.hazardGroup = null;
+    this.hazardLaser = null;
+    this.sweeperBar = null;
   }
 
   _buildInfernoGeysers() {
@@ -532,15 +484,15 @@ class ArenaColosseum {
         if (character && character.alive && character.grounded) {
           const dx = character.x - g.x;
           const dz = character.z - g.z;
-          if (dx * dx + dz * dz < 7.5) {
+          if (dx * dx + dz * dz < 1.35) {
             character.grounded = false;
-            character.vy = 26.0;
+            character.vy = 20.0;
             const dirX = dx || (Math.random() - 0.5);
             const dirZ = dz || (Math.random() - 0.5);
             const len = Math.hypot(dirX, dirZ) || 1;
             character.vx = (dirX / len) * 14.0;
             character.vz = (dirZ / len) * 14.0;
-            character.knockbackTimer = 0.5;
+            character.knockbackTimer = 0.18;
             if (HexAudio && HexAudio.sfxHeavyCrash) HexAudio.sfxHeavyCrash(1.8);
           }
         }
@@ -595,52 +547,9 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    // 4. TRI-BLADE GLACIAL ICE SWEEPER ROTOR (3 Massive 3D Crystalline Ice Blades at 120°)
-    const bladeAngles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
-    const rotorBar = new THREE.Group();
-    rotorBar.position.y = 0.58;
-
-    bladeAngles.forEach(bAngle => {
-      const bladeSub = new THREE.Group();
-      bladeSub.rotation.y = bAngle;
-
-      // Heavy Crystalline Ice Bar
-      const armGeo = new THREE.BoxGeometry(10.6, 0.44, 0.72);
-      const armMat = new THREE.MeshStandardMaterial({
-        color: 0x88EEFF, emissive: 0x00D0FF, emissiveIntensity: 0.85, metalness: 0.15, roughness: 0.08, transparent: true, opacity: 0.90
-      });
-      const armMesh = new THREE.Mesh(armGeo, armMat);
-      armMesh.position.set(5.3, 0, 0);
-      bladeSub.add(armMesh);
-
-      // Leading Razor Frost Edge (Glowing Cyan / White)
-      const edgeGeo = new THREE.BoxGeometry(10.5, 0.14, 0.12);
-      const edgeMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.95 });
-      const edgeMesh = new THREE.Mesh(edgeGeo, edgeMat);
-      edgeMesh.position.set(5.3, 0, 0.38);
-      bladeSub.add(edgeMesh);
-
-      // Trailing Cyan Frost Edge
-      const backEdgeMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF, transparent: true, opacity: 0.85 });
-      const backEdgeMesh = new THREE.Mesh(edgeGeo, backEdgeMat);
-      backEdgeMesh.position.set(5.3, 0, -0.38);
-      bladeSub.add(backEdgeMesh);
-
-      // Faceted Glacial Diamond Spike Cap at the Tip
-      const capGeo = new THREE.OctahedronGeometry(0.68);
-      const capMat = new THREE.MeshStandardMaterial({
-        color: 0xDCF8FF, emissive: 0x00FFFF, emissiveIntensity: 2.2, metalness: 0.1, roughness: 0.05
-      });
-      const cap = new THREE.Mesh(capGeo, capMat);
-      cap.position.set(10.6, 0, 0);
-      bladeSub.add(cap);
-
-      rotorBar.add(bladeSub);
-    });
-
-    this.hazardLaser = rotorBar;
-    this.hazardGroup.add(rotorBar);
-    this.scene.add(this.hazardGroup);
+    this.hazardGroup = null;
+    this.hazardLaser = null;
+    this.rotorBar = null;
   }
 
   _buildCryoBoostVents() {
@@ -704,133 +613,26 @@ class ArenaColosseum {
   // ============================================================
   // HAZARD COLLISION DISPATCHER
   // ============================================================
-  checkHazardCollision(character) {
-    if (!character || !character.alive || !character.grounded || !this.hazardGroup) return null;
+    checkHazardCollision(character) {
+    if (!character || !character.alive || !character.grounded) return null;
 
-    const craftRadius = character.radius || 1.10;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
+    const pillarMinDist = 1.30;
 
-    // Central Pillar / Spire Solid Core Collision
-    const pillarMinDist = this.theme === 'cryo' ? 2.1 : 1.75;
-    if (distCenter < pillarMinDist) {
-      const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
-      const nz = distCenter > 0.001 ? (character.z / distCenter) : 0;
-      character.x = nx * (pillarMinDist + 0.08);
-      character.z = nz * (pillarMinDist + 0.08);
+    // Smooth cylindrical boundary push around the central pillar core
+    if (distCenter < pillarMinDist && distCenter > 0.001) {
+      const nx = character.x / distCenter;
+      const nz = character.z / distCenter;
+      character.x = nx * (pillarMinDist + 0.04);
+      character.z = nz * (pillarMinDist + 0.04);
       if (character.group) character.group.position.set(character.x, character.y, character.z);
-      character.vx = nx * 8.5;
-      character.vz = nz * 8.5;
-      character.knockbackTimer = 0.15;
-      if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.35;
-        character.squashX = 1.35; character.squashY = 0.70;
-        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
-      }
-      return { hit: true, x: character.x, z: character.z, type: 'pillar' };
-    }
-
-    // CRYO TRI-BLADE GLACIAL ROTOR: Massive Ice Bump Knockback!
-    if (this.theme === 'cryo') {
-      const bladeAngles = [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3];
-      const theta = this.hazardGroup.rotation.y;
-
-      for (const bAngle of bladeAngles) {
-        const rot = theta + bAngle;
-        const cosA = Math.cos(rot);
-        const sinA = Math.sin(rot);
-
-        const lx = character.x * cosA - character.z * sinA;
-        const lz = character.x * sinA + character.z * cosA;
-
-        const W_half = 0.44;
-
-        // Blade extends from x=1.6 to x=11.2 (centered at x=6.4), half-width 0.44
-        const cx = Math.max(1.6, Math.min(11.2, lx));
-        const cz = Math.max(-W_half, Math.min(W_half, lz));
-
-        const dx = lx - cx;
-        const dz = lz - cz;
-        const distSq = dx * dx + dz * dz;
-
-        if (distSq < (craftRadius * 0.95) * (craftRadius * 0.95) || (dx === 0 && dz === 0)) {
-          let nx_loc = distSq > 0.0001 ? dx / Math.sqrt(distSq) : (lz >= 0 ? 1 : -1);
-          let nz_loc = distSq > 0.0001 ? dz / Math.sqrt(distSq) : 0;
-
-          const nx_world = nx_loc * cosA + nz_loc * sinA;
-          const nz_world = -nx_loc * sinA + nz_loc * cosA;
-
-          // Tangential angular sweep velocity
-          const r_hit = Math.max(2.0, Math.min(11.2, lx));
-          const armSpeed = r_hit * this.hazardAngularSpeed;
-          const sweepVx = -sinA * armSpeed * 1.65;
-          const sweepVz = -cosA * armSpeed * 1.65;
-
-          // MASSIVE SATISFYING ICE BUMP KNOCKBACK!
-          character.vx = sweepVx + nx_world * 17.5;
-          character.vz = sweepVz + nz_world * 17.5;
-          character.knockbackTimer = 0.38;
-
-          if (character.hazardHitCooldown <= 0) {
-            character.hazardHitCooldown = 0.40;
-            character.squashX = 1.50; character.squashY = 0.60;
-            if (HexAudio && HexAudio.sfxHeavyCrash) HexAudio.sfxHeavyCrash(1.8);
-            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.0);
-            if (typeof character.setEmotion === 'function') {
-              character.setEmotion('hit', 1.8, 'GLACIAL SMACK! ❄️', '🥶');
-            }
-          }
-          return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
-        }
+      // Deflect velocity smoothly along tangent without violent knockback or locking controls
+      const dot = character.vx * nx + character.vz * nz;
+      if (dot < 0) {
+        character.vx -= dot * nx;
+        character.vz -= dot * nz;
       }
       return null;
-    }
-
-    // INFERNO QUAD-CRUSHER (4 blades) or NEON SWEEPER (2 blades)
-    const bladeAngles = (this.theme === 'inferno') ? [0, Math.PI / 2] : [0];
-    const theta = this.hazardGroup.rotation.y;
-
-    for (const bAngle of bladeAngles) {
-      const rot = theta + bAngle;
-      const cosA = Math.cos(rot);
-      const sinA = Math.sin(rot);
-
-      const lx = character.x * cosA - character.z * sinA;
-      const lz = character.x * sinA + character.z * cosA;
-
-      const L_half = 5.30;
-      const W_half = 0.36;
-
-      const cx = Math.max(-L_half, Math.min(L_half, lx));
-      const cz = Math.max(-W_half, Math.min(W_half, lz));
-
-      const dx = lx - cx;
-      const dz = lz - cz;
-      const distSq = dx * dx + dz * dz;
-
-      if (distSq < (craftRadius * 0.95) * (craftRadius * 0.95) || (dx === 0 && dz === 0)) {
-        let nx_loc = distSq > 0.0001 ? dx / Math.sqrt(distSq) : (lz >= 0 ? 1 : -1);
-        let nz_loc = distSq > 0.0001 ? dz / Math.sqrt(distSq) : 0;
-
-        const nx_world = nx_loc * cosA + nz_loc * sinA;
-        const nz_world = -nx_loc * sinA + nz_loc * cosA;
-
-        // Tangential angular sweep velocity
-        const r_hit = Math.max(1.8, Math.min(L_half, Math.abs(lx)));
-        const armSpeed = r_hit * this.hazardAngularSpeed;
-        const sweepVx = -sinA * (lx >= 0 ? 1 : -1) * armSpeed * 1.5;
-        const sweepVz = -cosA * (lx >= 0 ? 1 : -1) * armSpeed * 1.5;
-
-        character.vx = sweepVx + nx_world * (this.theme === 'inferno' ? 16.0 : 13.5);
-        character.vz = sweepVz + nz_world * (this.theme === 'inferno' ? 16.0 : 13.5);
-        character.knockbackTimer = 0.35;
-
-        if (character.hazardHitCooldown <= 0) {
-          character.hazardHitCooldown = 0.40;
-          character.squashX = 1.45; character.squashY = 0.65;
-          if (HexAudio && HexAudio.sfxHeavyCrash) HexAudio.sfxHeavyCrash(1.6);
-        }
-        return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
-      }
     }
 
     return null;

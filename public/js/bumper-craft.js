@@ -486,8 +486,8 @@ class BumperCraft {
     this.radius = 1.15;
     this.mass = 1.0;
     this.baseMass = 1.0;
-    this.baseSpeed = 10.8;
-    this.accel = 38.0;
+    this.baseSpeed = 13.0;
+    this.accel = 50.0;
     this.drag = 0.93;
     this.alive = true;
     this.grounded = true;
@@ -1175,17 +1175,12 @@ class BumperCraft {
     // Steering & Knockback Physics
     if (this.knockbackTimer > 0) {
       this.knockbackTimer -= dt;
-      // High-speed glide during knockback: Player has higher grip/friction to recover faster!
-      const friction = 0.905; // Equal drift friction & glide recovery
+      const friction = 0.86; // Snappy, clean recovery from bumps
       this.vx *= Math.pow(friction, dt * 60);
       this.vz *= Math.pow(friction, dt * 60);
+    }
 
-      // Jet exhaust flame active during knockback flight
-      this.leftFlame.scale.set(1.0, 1.0, 1.6);
-      this.rightFlame.scale.set(1.0, 1.0, 1.6);
-      this.leftFlame.visible = true;
-      this.rightFlame.visible = true;
-    } else if (this.grounded) {
+    if (this.grounded) {
       let topSpeed = this.isDashing ? Math.max(28.0, this.baseSpeed * 1.85) : (this.hasRocket ? Math.max(18.5, this.baseSpeed * 1.35) : this.baseSpeed);
       let accel = this.hasRocket ? this.accel * 1.5 : this.accel;
 
@@ -1194,8 +1189,24 @@ class BumperCraft {
         accel = this.accel * 0.45;
       }
 
-      this.vx += inputX * accel * dt;
-      this.vz += inputZ * accel * dt;
+      // Responsive steering input ALWAYS applies (even during knockback, at 75% authority)
+      const inputAuthority = this.knockbackTimer > 0 ? 0.75 : 1.0;
+      this.vx += inputX * accel * inputAuthority * dt;
+      this.vz += inputZ * accel * inputAuthority * dt;
+
+      // Tight lateral arcade grip: when steering, dampen perpendicular drift so craft turns sharply
+      const hasInput = (Math.abs(inputX) > 0.05 || Math.abs(inputZ) > 0.05);
+      if (hasInput) {
+        const inLen = Math.hypot(inputX, inputZ) || 1;
+        const ix = inputX / inLen;
+        const iz = inputZ / inLen;
+        const vParallel = this.vx * ix + this.vz * iz;
+        const vPerpX = this.vx - vParallel * ix;
+        const vPerpZ = this.vz - vParallel * iz;
+        const lateralGrip = Math.pow(0.84, dt * 60);
+        this.vx = vParallel * ix + vPerpX * lateralGrip;
+        this.vz = vParallel * iz + vPerpZ * lateralGrip;
+      }
 
       const curSpeed = Math.sqrt(this.vx * this.vx + this.vz * this.vz);
       if (curSpeed > topSpeed) {
@@ -1203,14 +1214,21 @@ class BumperCraft {
         this.vz = (this.vz / curSpeed) * topSpeed;
       }
 
-      this.vx *= Math.pow(this.drag, dt * 60);
-      this.vz *= Math.pow(this.drag, dt * 60);
+      const effectiveDrag = Math.min(0.93, this.drag || 0.93);
+      this.vx *= Math.pow(effectiveDrag, dt * 60);
+      this.vz *= Math.pow(effectiveDrag, dt * 60);
+
+      // Clean deadzone when stopped (no crawling or jitter)
+      if (!hasInput && curSpeed < 0.08) {
+        this.vx = 0;
+        this.vz = 0;
+      }
 
       // Jet Exhaust Flame Animation
       const spdRatio = curSpeed / (topSpeed || 1);
       let flameLen = this.isDashing ? 2.2 : (this.hasRocket ? 1.6 : spdRatio * 0.9);
       if (this.isGlitchSlow) {
-        flameLen = Math.min(flameLen, 0.35); // Flame sputters when contaminated!
+        flameLen = Math.min(flameLen, 0.35);
       }
       if (flameLen > 0.05) {
         this.leftFlame.scale.set(1.0, 1.0, flameLen);

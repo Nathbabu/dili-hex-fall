@@ -1570,8 +1570,7 @@ class BumperGameEngine {
 
     // 7.6. Screen Speed Lines on Nitro & Dash
     if (this.speedLinesEl) {
-      const isSuperFast = this.player && this.player.alive && (this.player.isDashing || this.player.hasRocket);
-      this.speedLinesEl.classList.toggle('active', !!isSuperFast);
+      this.speedLinesEl.classList.remove('active');
     }
 
     // Score Calculation
@@ -1664,8 +1663,10 @@ class BumperGameEngine {
       for (let j = i + 1; j < n; j++) {
         const A = crafts[i];
         const B = crafts[j];
-        if (!A.alive || !B.alive || !A.grounded || !B.grounded) continue;
-        if (Math.abs(A.y - B.y) > 3.0) continue;
+        if (!A || !B || !A.alive || !B.alive || !A.grounded || !B.grounded) continue;
+        if (Math.abs(A.y - B.y) > 1.5) continue;
+        if (Math.abs(A.x) < 0.001 && Math.abs(A.z) < 0.001 && !A.isPlayer) continue;
+        if (Math.abs(B.x) < 0.001 && Math.abs(B.z) < 0.001 && !B.isPlayer) continue;
 
         const dx = B.x - A.x;
         const dz = B.z - A.z;
@@ -2200,17 +2201,8 @@ class BumperGameEngine {
   }
 
   triggerImpactFlash(theme = 'neon') {
-    if (!this.impactVignetteEl) {
-      this.impactVignetteEl = document.getElementById('impactVignette');
-    }
-    if (!this.impactVignetteEl) return;
-    this.impactVignetteEl.className = 'impact-vignette active flash-' + theme;
-    if (this._vignetteTimeout) clearTimeout(this._vignetteTimeout);
-    this._vignetteTimeout = setTimeout(() => {
-      if (this.impactVignetteEl) {
-        this.impactVignetteEl.className = 'impact-vignette';
-      }
-    }, 420);
+    // Disabled full-screen glow as requested
+    return;
   }
 
   triggerComboBanner(title, sub) {
