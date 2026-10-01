@@ -1328,9 +1328,19 @@ class BumperGameEngine {
       }
     }
 
-    // 1. Update Arena colosseum (ring timers, laser hazard)
+    // 1. Update Arena colosseum (ring timers, laser hazard, geysers, towers)
     if (this.arena) {
-      this.arena.update(dt, this.player);
+      const allActiveCrafts = [];
+      if (this.player && this.player.alive) allActiveCrafts.push(this.player);
+      if (this.aiManager) {
+        allActiveCrafts.push(...this.aiManager.getCrafts().filter(c => c && c.alive));
+      }
+      if (this.remotePlayers) {
+        Object.values(this.remotePlayers).forEach(p => {
+          if (p.craft && p.craft.alive) allActiveCrafts.push(p.craft);
+        });
+      }
+      this.arena.update(dt, this.player, allActiveCrafts);
     }
 
     const arenaRadius = this.arena.currentRadius;

@@ -99,6 +99,11 @@ class ArenaColosseum {
     this.deckY = 0;           // Hex floor deck at Y = 0
     this.upperFloorY = 0.85;  // Craft standing height on deck
 
+    // Theme-specific hazard tracking
+    this.infernoGeysers = [];
+    this.forgeTowers = [];
+    this.lavaVeins = [];
+
     this._setupRingStages(totalPlayers);
     this.upperRadius = this.currentRadius;
 
@@ -537,39 +542,303 @@ class ArenaColosseum {
     this.hazardGroup.add(this.sweeperBar);
     this.scene.add(this.hazardGroup);
 
-    // 4 Volcanic Caldera Vents on outer ring bastions at (+-13.5, +-13.5)
-    this.lavaCalderas = [];
-    const calderaCoords = [
-      { x: -13.5, z: -13.5 },
-      { x: 13.5, z: -13.5 },
-      { x: -13.5, z: 13.5 },
-      { x: 13.5, z: 13.5 }
+    // Build Unique Inferno Forge Architecture:
+    this._buildInfernoLavaVeins();
+    this._buildInfernoGeysers();
+    this._buildInfernoForgeTowers();
+  }
+
+  // ------------------------------------------------------------
+  // INFERNO FORGE: MOLTEN MAGMA SURFACE VEINS
+  // ------------------------------------------------------------
+  _buildInfernoLavaVeins() {
+    this.lavaVeins = [];
+    // 4 radiating molten lava rivers along cardinal axes (+X, -X, +Z, -Z)
+    const veinConfigs = [
+      { x: 7.8, z: 0, rotY: 0, len: 11.0 },
+      { x: -7.8, z: 0, rotY: 0, len: 11.0 },
+      { x: 0, z: 7.8, rotY: Math.PI / 2, len: 11.0 },
+      { x: 0, z: -7.8, rotY: Math.PI / 2, len: 11.0 }
     ];
-    calderaCoords.forEach(c => {
-      const ventGroup = new THREE.Group();
-      ventGroup.position.set(c.x, 0, c.z);
 
-      // Basalt rock caldera rim
-      const rimGeo = new THREE.CylinderGeometry(1.6, 2.0, 0.35, 16);
-      const rimMat = new THREE.MeshStandardMaterial({ color: 0x140704, metalness: 0.8, roughness: 0.4 });
-      const rim = new THREE.Mesh(rimGeo, rimMat);
-      rim.position.y = 0.17;
-      ventGroup.add(rim);
+    veinConfigs.forEach(vc => {
+      const veinGroup = new THREE.Group();
+      veinGroup.position.set(vc.x, 0.04, vc.z);
+      veinGroup.rotation.y = vc.rotY;
 
-      // Glowing molten lava interior grate
-      const lavaGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.08, 16);
-      const lavaMat = new THREE.MeshStandardMaterial({
+      // Dark basalt trench border
+      const trenchGeo = new THREE.PlaneGeometry(vc.len, 1.25);
+      const trenchMat = new THREE.MeshStandardMaterial({ color: 0x120401, metalness: 0.9, roughness: 0.4, side: THREE.DoubleSide });
+      const trench = new THREE.Mesh(trenchGeo, trenchMat);
+      trench.rotation.x = Math.PI / 2;
+      veinGroup.add(trench);
+
+      // Glowing molten lava river stream
+      const lavaStreamGeo = new THREE.PlaneGeometry(vc.len, 0.72);
+      const lavaStreamMat = new THREE.MeshStandardMaterial({
         color: 0xFF4400,
         emissive: 0xFF2200,
-        emissiveIntensity: 2.2,
-        roughness: 0.2
+        emissiveIntensity: 2.4,
+        roughness: 0.15,
+        side: THREE.DoubleSide
+      });
+      const stream = new THREE.Mesh(lavaStreamGeo, lavaStreamMat);
+      stream.rotation.x = Math.PI / 2;
+      stream.position.y = 0.01;
+      veinGroup.add(stream);
+
+      this.scene.add(veinGroup);
+      this.lavaVeins.push({ group: veinGroup, material: lavaStreamMat });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // INFERNO FORGE: 4 ERUPTING VOLCANIC LAVA GEYSERS (CALDERAS)
+  // ------------------------------------------------------------
+  _buildInfernoGeysers() {
+    this.infernoGeysers = [];
+    // 4 cardinal calderas on the outer bastion boundary
+    const geyserCoords = [
+      { x: 0, z: 14.2 },   // North
+      { x: 14.2, z: 0 },   // East
+      { x: 0, z: -14.2 },  // South
+      { x: -14.2, z: 0 }   // West
+    ];
+
+    geyserCoords.forEach((p, idx) => {
+      const group = new THREE.Group();
+      group.position.set(p.x, 0.05, p.z);
+
+      // Heavy Volcanic Basalt Crater Rim
+      const rimGeo = new THREE.TorusGeometry(1.75, 0.38, 12, 24);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: 0x1a0502,
+        metalness: 0.92,
+        roughness: 0.35,
+        emissive: 0x550a00,
+        emissiveIntensity: 0.5
+      });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 0.15;
+      group.add(rim);
+
+      // Bubbling Molten Lava Core
+      const lavaGeo = new THREE.CircleGeometry(1.60, 24);
+      const lavaMat = new THREE.MeshStandardMaterial({
+        color: 0xFF3300,
+        emissive: 0xFFAA00,
+        emissiveIntensity: 2.0,
+        roughness: 0.15
       });
       const lava = new THREE.Mesh(lavaGeo, lavaMat);
-      lava.position.y = 0.25;
-      ventGroup.add(lava);
-      this.lavaCalderas.push(lava);
+      lava.rotation.x = -Math.PI / 2;
+      lava.position.y = 0.08;
+      group.add(lava);
 
-      this.scene.add(ventGroup);
+      // Warning Strobe Beacon Ring around caldera
+      const beaconRingGeo = new THREE.TorusGeometry(1.95, 0.06, 8, 24);
+      const beaconRingMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00, transparent: true, opacity: 0.9 });
+      const beaconRing = new THREE.Mesh(beaconRingGeo, beaconRingMat);
+      beaconRing.rotation.x = Math.PI / 2;
+      beaconRing.position.y = 0.18;
+      group.add(beaconRing);
+
+      // Towering Molten Fire Eruption Column (Outer Heat Flame)
+      const colGeo = new THREE.CylinderGeometry(1.3, 1.85, 9.2, 16, 1, true);
+      const colMat = new THREE.MeshBasicMaterial({
+        color: 0xFFAA00,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+      const column = new THREE.Mesh(colGeo, colMat);
+      column.position.y = 4.6;
+      column.scale.set(0, 0, 0); // Initially dormant
+      group.add(column);
+
+      // Inner Core Flame Vortex (intense red-orange heart)
+      const innerColGeo = new THREE.CylinderGeometry(0.75, 1.1, 9.5, 12, 1, true);
+      const innerColMat = new THREE.MeshBasicMaterial({
+        color: 0xFF2200,
+        transparent: true,
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+      const innerCol = new THREE.Mesh(innerColGeo, innerColMat);
+      innerCol.position.y = 4.75;
+      innerCol.scale.set(0, 0, 0);
+      group.add(innerCol);
+
+      this.scene.add(group);
+      this.infernoGeysers.push({
+        x: p.x,
+        z: p.z,
+        group,
+        lava,
+        column,
+        innerCol,
+        beaconRing,
+        state: 'idle',
+        timer: idx * 1.4 // Staggered clockwise volcanic rhythm (every 1.4s one erupts!)
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // INFERNO FORGE: 4 INDUSTRIAL MAGMA SIPHON TOWERS
+  // ------------------------------------------------------------
+  _buildInfernoForgeTowers() {
+    this.forgeTowers = [];
+    // 4 Bastion Towers at diagonal bastions (+-12.5, +-12.5)
+    const towerCoords = [
+      { x: -12.5, z: -12.5 },
+      { x: 12.5, z: -12.5 },
+      { x: -12.5, z: 12.5 },
+      { x: 12.5, z: 12.5 }
+    ];
+
+    towerCoords.forEach(p => {
+      const group = new THREE.Group();
+      group.position.set(p.x, 0, p.z);
+
+      // Heavy Scorched Iron Base Pedestal
+      const baseGeo = new THREE.CylinderGeometry(1.6, 1.9, 0.6, 8);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x160502, metalness: 0.95, roughness: 0.25 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.3;
+      group.add(base);
+
+      // Cast Iron Smelting Lattice Column (Height 3.6m)
+      const colGeo = new THREE.CylinderGeometry(0.9, 1.25, 3.6, 8);
+      const colMat = new THREE.MeshStandardMaterial({
+        color: 0x240904,
+        metalness: 0.92,
+        roughness: 0.3,
+        emissive: 0x440800,
+        emissiveIntensity: 0.4
+      });
+      const col = new THREE.Mesh(colGeo, colMat);
+      col.position.y = 2.1;
+      group.add(col);
+
+      // Molten Smelting Cauldron on Summit
+      const cauldronGeo = new THREE.CylinderGeometry(1.45, 1.05, 1.1, 8);
+      const cauldronMat = new THREE.MeshStandardMaterial({ color: 0x1a0502, metalness: 0.95, roughness: 0.2 });
+      const cauldron = new THREE.Mesh(cauldronGeo, cauldronMat);
+      cauldron.position.y = 4.2;
+      group.add(cauldron);
+
+      // Boiling Magma Slag Overflow in Cauldron
+      const slagGeo = new THREE.CylinderGeometry(1.35, 1.35, 0.15, 16);
+      const slagMat = new THREE.MeshStandardMaterial({
+        color: 0xFFAA00,
+        emissive: 0xFF4400,
+        emissiveIntensity: 2.8,
+        roughness: 0.1
+      });
+      const slag = new THREE.Mesh(slagGeo, slagMat);
+      slag.position.y = 4.75;
+      group.add(slag);
+
+      // Strobe Warning Beacon on Top
+      const beaconGeo = new THREE.SphereGeometry(0.24, 14, 10);
+      const beaconMat = new THREE.MeshStandardMaterial({
+        color: 0xFFFF00,
+        emissive: 0xFF5500,
+        emissiveIntensity: 3.5
+      });
+      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+      beacon.position.y = 5.1;
+      group.add(beacon);
+
+      this.scene.add(group);
+      this.forgeTowers.push({
+        x: p.x,
+        z: p.z,
+        radius: 1.45, // Solid physical collision radius
+        group,
+        slag,
+        beacon
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // INFERNO FORGE: GEYSER LOGIC & EXPLOSIVE VOLCANIC BLAST
+  // ------------------------------------------------------------
+  _updateInfernoGeysers(dt, allCrafts = []) {
+    if (!this.infernoGeysers || !this.infernoGeysers.length) return;
+
+    const crafts = Array.isArray(allCrafts) ? allCrafts : (allCrafts ? [allCrafts] : []);
+
+    this.infernoGeysers.forEach(g => {
+      g.timer += dt;
+      const cycle = g.timer % 5.6;
+
+      if (cycle < 3.0) {
+        // 1. Idle Phase: Boiling magma pool
+        g.state = 'idle';
+        g.column.scale.set(0, 0, 0);
+        g.innerCol.scale.set(0, 0, 0);
+        g.lava.material.emissiveIntensity = 1.6 + Math.sin(g.timer * 3.0) * 0.4;
+        if (g.beaconRing.material) g.beaconRing.material.opacity = 0.4;
+      } else if (cycle < 4.2) {
+        // 2. Warning Phase: Violent boiling & flashing alert
+        g.state = 'warning';
+        const warnProg = (cycle - 3.0) / 1.2;
+        g.lava.material.emissiveIntensity = 3.2 + Math.sin(cycle * 32) * 1.8;
+        if (g.beaconRing.material) g.beaconRing.material.opacity = 0.5 + Math.sin(cycle * 24) * 0.5;
+
+        // Flame column begins spitting embers
+        const sputter = 0.15 + warnProg * 0.15;
+        g.column.scale.set(sputter, sputter * 0.4, sputter);
+        g.innerCol.scale.set(sputter * 0.8, sputter * 0.35, sputter * 0.8);
+      } else {
+        // 3. Cataclysmic Fire Eruption Phase (1.4s of soaring flame!)
+        g.state = 'erupting';
+        const blastProg = (cycle - 4.2) / 1.4;
+        const scaleY = Math.sin(blastProg * Math.PI);
+
+        g.column.scale.set(1.0, scaleY, 1.0);
+        g.column.rotation.y += dt * 4.8;
+        g.innerCol.scale.set(1.0, scaleY * 1.05, 1.0);
+        g.innerCol.rotation.y -= dt * 6.2;
+        g.lava.material.emissiveIntensity = 4.8;
+
+        // Interactive Volcanic Launch Physics on ANY craft within 2.8m!
+        crafts.forEach(character => {
+          if (!character || !character.alive || !character.grounded) return;
+          const dx = character.x - g.x;
+          const dz = character.z - g.z;
+          const distSq = dx * dx + dz * dz;
+
+          if (distSq < 7.8) {
+            // Erupt craft high into the sky!
+            character.grounded = false;
+            character.vy = 24.0;
+            const dist = Math.sqrt(distSq) || 1;
+            const dirX = (distSq > 0.01) ? (dx / dist) : (Math.random() - 0.5);
+            const dirZ = (distSq > 0.01) ? (dz / dist) : (Math.random() - 0.5);
+            const len = Math.hypot(dirX, dirZ) || 1;
+            character.vx = (dirX / len) * 15.0;
+            character.vz = (dirZ / len) * 15.0;
+            character.knockbackTimer = 0.45;
+            character.squashX = 1.60;
+            character.squashY = 0.55;
+            character.wobbleAngle = (Math.random() - 0.5) * 0.70;
+
+            if (character.onImpact) character.onImpact(2.5);
+            if (typeof character.setEmotion === 'function') {
+              character.setEmotion('shock', 1.2, 'VOLCANO BLAST! 🔥', '🔥');
+            }
+            if (HexAudio && HexAudio.sfxJumpPad) HexAudio.sfxJumpPad();
+            else if (HexAudio && HexAudio.sfxHeavyCrash) HexAudio.sfxHeavyCrash(2.0);
+          }
+        });
+      }
     });
   }
 
@@ -751,6 +1020,37 @@ class ArenaColosseum {
         if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
       }
       return { hit: true, x: character.x, z: character.z, type: 'pillar' };
+    }
+
+    // 1b. Inferno Forge Bastion Smelting Towers Collision
+    if (this.theme === 'inferno' && this.forgeTowers && this.forgeTowers.length) {
+      for (const t of this.forgeTowers) {
+        const tdx = character.x - t.x;
+        const tdz = character.z - t.z;
+        const tdistSq = tdx * tdx + tdz * tdz;
+        const towerMinDist = t.radius + craftRadius * 0.95;
+        if (tdistSq < towerMinDist * towerMinDist) {
+          const tdist = Math.sqrt(tdistSq) || 1;
+          const nx = tdx / tdist;
+          const nz = tdz / tdist;
+          character.x = t.x + nx * (towerMinDist + 0.08);
+          character.z = t.z + nz * (towerMinDist + 0.08);
+          if (character.group) character.group.position.set(character.x, character.y, character.z);
+          character.vx = nx * 12.0;
+          character.vz = nz * 12.0;
+          character.knockbackTimer = 0.24;
+          if (character.hazardHitCooldown <= 0) {
+            character.hazardHitCooldown = 0.32;
+            character.squashX = 1.50;
+            character.squashY = 0.65;
+            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.2);
+            if (typeof character.setEmotion === 'function') {
+              character.setEmotion('hit', 1.0, 'FORGE CLANG! 💥', '💥');
+            }
+          }
+          return { hit: true, x: character.x, z: character.z, type: 'tower' };
+        }
+      }
     }
 
     if (character.y > 1.85) return null; // Flying above bumper bar height
@@ -1114,29 +1414,41 @@ class ArenaColosseum {
   // ============================================================
   // UPDATE LOOP (Ring collapse, hazards, particles)
   // ============================================================
-  update(dt, playerCraft = null) {
+  update(dt, playerCraft = null, allCrafts = null) {
     this.elapsedTime += dt;
 
     if (this.hazardGroup) {
       this.hazardGroup.rotation.y += dt * this.hazardAngularSpeed;
     }
 
-    if (playerCraft) {
-      this.checkHazardCollision(playerCraft);
-    }
+    // Check hazard collisions on all active crafts (both player & AI bots)
+    const activeCraftsList = Array.isArray(allCrafts) ? allCrafts : (playerCraft ? [playerCraft] : []);
+    activeCraftsList.forEach(c => {
+      if (c && c.alive) this.checkHazardCollision(c);
+    });
 
     if (this.theme === 'cryo') {
       if (this.cryoSpireMesh) this.cryoSpireMesh.rotation.y -= dt * 0.45;
       if (this.cryoOrbitalRing1) this.cryoOrbitalRing1.rotation.z += dt * 0.75;
       if (this.cryoOrbitalRing2) this.cryoOrbitalRing2.rotation.z -= dt * 0.60;
     } else if (this.theme === 'inferno') {
+      // Animate Erupting Volcanic Geysers
+      this._updateInfernoGeysers(dt, activeCraftsList);
+
+      // Pulse reactor core & molten lava veins
       if (this.reactorCore && this.reactorCore.material) {
         this.reactorCore.material.emissiveIntensity = 2.4 + Math.sin(this.elapsedTime * 4.5) * 0.8;
       }
-      if (this.lavaCalderas) {
-        const pulse = 2.0 + Math.sin(this.elapsedTime * 3.8) * 0.6;
-        this.lavaCalderas.forEach(c => {
-          if (c.material) c.material.emissiveIntensity = pulse;
+      if (this.lavaVeins) {
+        const veinPulse = 2.2 + Math.sin(this.elapsedTime * 4.0) * 0.6;
+        this.lavaVeins.forEach(v => {
+          if (v.material) v.material.emissiveIntensity = veinPulse;
+        });
+      }
+      if (this.forgeTowers) {
+        const towerPulse = 2.4 + Math.sin(this.elapsedTime * 3.5) * 0.7;
+        this.forgeTowers.forEach(t => {
+          if (t.slag && t.slag.material) t.slag.material.emissiveIntensity = towerPulse;
         });
       }
     }
@@ -1259,6 +1571,25 @@ class ArenaColosseum {
     });
 
 
+
+    if (this.infernoGeysers && this.infernoGeysers.length) {
+      this.infernoGeysers.forEach(g => {
+        if (g.group && g.group.parent) this.scene.remove(g.group);
+      });
+      this.infernoGeysers = [];
+    }
+    if (this.forgeTowers && this.forgeTowers.length) {
+      this.forgeTowers.forEach(t => {
+        if (t.group && t.group.parent) this.scene.remove(t.group);
+      });
+      this.forgeTowers = [];
+    }
+    if (this.lavaVeins && this.lavaVeins.length) {
+      this.lavaVeins.forEach(v => {
+        if (v.group && v.group.parent) this.scene.remove(v.group);
+      });
+      this.lavaVeins = [];
+    }
 
     if (this.hazardGroup && this.hazardGroup.parent) {
       this.scene.remove(this.hazardGroup);
