@@ -1339,7 +1339,7 @@ class BumperCraft {
       this.bumperRing.material.emissive.setHex(0xFFD700);
       this.bumperRing.material.emissiveIntensity = 3.2;
     } else {
-      this.bumperRing.material.emissive.setHex(this.suitTheme.ring);
+      this.bumperRing.material.emissive.setHex(this.suitColor || 0x00FFC6);
       this.bumperRing.material.emissiveIntensity = this.isDashing ? 2.8 : (this.hasShield ? 2.2 : (this.isGlitchSlow ? 0.4 : 0.95));
     }
       }
