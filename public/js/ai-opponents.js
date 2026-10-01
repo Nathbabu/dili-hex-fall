@@ -9,12 +9,12 @@ class AIBumperBot {
     this.craft.isPlayer = false;
 
     this.thinkTimer = 0;
-    this.thinkInterval = 0.12 + Math.random() * 0.04; // Snappy ~7-9 Hz decision rate
+    this.thinkInterval = 0.10 + Math.random() * 0.03; // Fast 10 Hz reflexes
     this.personality = {
-      aggression: 0.70 + Math.random() * 0.18, // Fair combat drive
-      survival: 0.82 + Math.random() * 0.12,   // Safe ring & drop awareness
-      dashSkill: 0.55 + Math.random() * 0.15,  // Measured, tactical dash timing
-      dodgeSkill: 0.60 + Math.random() * 0.15  // Evasive lateral jukes
+      aggression: 0.86 + Math.random() * 0.12, // +15% Boosted fierce aggression & relentless pursuit
+      survival: 0.80 + Math.random() * 0.10,   // Balanced ring awareness
+      dashSkill: 0.72 + Math.random() * 0.14,  // Sharp tactical ram reflexes
+      dodgeSkill: 0.62 + Math.random() * 0.14  // Evasive lateral jukes
     };
 
     this.steerX = 0;
@@ -314,8 +314,8 @@ class AIBumperBot {
       // Human Player Detection & Prime Target Assignment
       const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
       if (isHumanRival) {
-        // Human is the prime target! Bots aggressively hunt and challenge the human player!
-        score += 32.0 * this.personality.aggression;
+        // Human is the prime target! (+15% boosted relentless hunt on human)
+        score += 46.0 * this.personality.aggression;
       }
 
       // Target persistence bonus: stick to current duel rather than whipping around every tick
@@ -400,14 +400,14 @@ class AIBumperBot {
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    // Tactical Dash Ram:
-    // Only dash when aligned with target, at a clean engagement distance, and safe from ring drop
-    if (directDist >= 2.2 && directDist <= 5.2 && this.craft.dashCooldown <= 0 && isDashSafe) {
-      if (Math.abs(angleDiff) < 0.38 && Math.random() < this.personality.dashSkill) {
+    // Tactical Dash Ram (+15% more frequent and lethal):
+    // Dash when aligned with target at an aggressive engagement window
+    if (directDist >= 1.8 && directDist <= 5.8 && this.craft.dashCooldown <= 0 && isDashSafe) {
+      if (Math.abs(angleDiff) < 0.44 && Math.random() < this.personality.dashSkill) {
         this.craft.triggerDash();
-        // Fair, measured cooldown (4.5s - 6.5s) instead of constant spam
-        this.craft.dashCooldown = 4.5 + Math.random() * 2.0;
-        if (Math.random() < 0.35 && this.craft.setEmotion) {
+        // Snappy, aggressive cooldown (3.2s - 4.6s) for thrilling combat pressure
+        this.craft.dashCooldown = 3.2 + Math.random() * 1.4;
+        if (Math.random() < 0.45 && this.craft.setEmotion) {
           const taunts = ['OUT OF MY WAY!', 'RAMMING SPEED!', 'FEEL THE IMPACT!', 'NO ESCAPE!', 'EAT BUMPER!'];
           this.craft.setEmotion('dash', 1.0, taunts[Math.floor(Math.random() * taunts.length)], '💥');
         }
@@ -488,27 +488,27 @@ class AIBumperManager {
         bot.thinkInterval = 0.15 + Math.random() * 0.04;
         bot.craft.baseSpeed = 10.8;
       } else if (difficulty === 'medium') {
-        bot.personality.aggression = 0.70 + Math.random() * 0.14;
-        bot.personality.survival = 0.80 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.52 + Math.random() * 0.14;
-        bot.personality.dodgeSkill = 0.58 + Math.random() * 0.14;
-        bot.thinkInterval = 0.13 + Math.random() * 0.03;
-        bot.craft.baseSpeed = 11.2;
-      } else if (difficulty === 'hard') {
-        bot.personality.aggression = 0.78 + Math.random() * 0.12;
-        bot.personality.survival = 0.85 + Math.random() * 0.08;
-        bot.personality.dashSkill = 0.62 + Math.random() * 0.12;
-        bot.personality.dodgeSkill = 0.65 + Math.random() * 0.12;
+        bot.personality.aggression = 0.82 + Math.random() * 0.12;
+        bot.personality.survival = 0.78 + Math.random() * 0.10;
+        bot.personality.dashSkill = 0.65 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
         bot.thinkInterval = 0.11 + Math.random() * 0.03;
-        bot.craft.baseSpeed = 11.5;
+        bot.craft.baseSpeed = 12.0;
+      } else if (difficulty === 'hard') {
+        bot.personality.aggression = 0.90 + Math.random() * 0.10;
+        bot.personality.survival = 0.82 + Math.random() * 0.08;
+        bot.personality.dashSkill = 0.76 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.68 + Math.random() * 0.12;
+        bot.thinkInterval = 0.09 + Math.random() * 0.03;
+        bot.craft.baseSpeed = 12.6;
       } else {
         // 'public' (Battle Royale)
-        bot.personality.aggression = 0.72 + Math.random() * 0.14;
-        bot.personality.survival = 0.82 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.55 + Math.random() * 0.14;
-        bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
-        bot.thinkInterval = 0.12 + Math.random() * 0.03;
-        bot.craft.baseSpeed = 11.4;
+        bot.personality.aggression = 0.85 + Math.random() * 0.12;
+        bot.personality.survival = 0.80 + Math.random() * 0.10;
+        bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
+        bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
+        bot.thinkInterval = 0.10 + Math.random() * 0.03;
+        bot.craft.baseSpeed = 12.2;
       }
 
       bot.spawn(x, z);
@@ -536,14 +536,14 @@ class AIBumperManager {
       bot.id = b.id;
       bot.craft.id = b.id;
       bot.craft.pilotName = b.pilotName;
-      // Balanced arcade brawler personality
-      bot.personality.aggression = 0.72 + Math.random() * 0.14;
-      bot.personality.survival = 0.82 + Math.random() * 0.10;
-      bot.personality.dashSkill = 0.55 + Math.random() * 0.14;
-      bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
-      bot.thinkInterval = 0.12 + Math.random() * 0.03;
-      // Fair physical mass matching human player
-      bot.craft.baseSpeed = 11.4;
+      // Balanced arcade brawler personality (+15% boosted aggression)
+      bot.personality.aggression = 0.85 + Math.random() * 0.12;
+      bot.personality.survival = 0.80 + Math.random() * 0.10;
+      bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
+      bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
+      bot.thinkInterval = 0.10 + Math.random() * 0.03;
+      // Faster, responsive base speed
+      bot.craft.baseSpeed = 12.2;
       bot.craft.mass = 1.0;
       bot.craft.baseMass = 1.0;
       bot.spawn(b.spawnX, b.spawnZ);

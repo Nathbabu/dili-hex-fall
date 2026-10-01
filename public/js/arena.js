@@ -64,7 +64,7 @@ const ARENA_THEMES = {
     name: 'CRYO GLACIER',
     icon: '❄️',
     badgeText: 'CRYO GLACIER',
-    subtitle: 'Frozen Ice Floe Archipelago & Tri-Blade Frost Rotor',
+    subtitle: 'Sub-Zero Glacial Ice Drifts, Crystal Spire & Tri-Blade Rotor',
     outerColor: 0x0088FF,
     midColor: 0x00E5FF,
     coreColor: 0xDCF8FF,
@@ -80,9 +80,9 @@ const ARENA_THEMES = {
     ambientColor: 0x163450,
     spotColor: 0x00F0FF,
     voidGridMain: 0x00D0FF,
-    drag: 0.93,
-    baseSpeed: 13.5,
-    accel: 50.0,
+    drag: 0.978, // High-speed glacial ice drift physics!
+    baseSpeed: 15.0,
+    accel: 54.0,
     particleColor: 0x88EEFF
   }
 };
@@ -364,6 +364,10 @@ class ArenaColosseum {
     const cfg = ARENA_THEMES.neon;
     this.hazardGroup = new THREE.Group();
     this.hazardAngularSpeed = 1.08;
+    this.hazardType = 'bar';
+    this.hazardBladeAngles = [0];
+    this.hazardHalfLength = 5.30;
+    this.hazardHalfWidth = 0.34;
 
     const pylonGroup = new THREE.Group();
     const baseGeo = new THREE.CylinderGeometry(1.6, 2.0, 0.45, 20);
@@ -405,26 +409,32 @@ class ArenaColosseum {
   }
 
   // ============================================================
-  // 2. INFERNO FORGE: QUAD-CRUSHER & VOLCANIC LAVA GEYSERS
+  // 2. INFERNO FORGE: QUAD-CRUSHER MAGMA CROSS & VOLCANIC CALDERAS
   // ============================================================
   _buildInfernoForgeHazard() {
     const cfg = ARENA_THEMES.inferno;
     this.hazardGroup = new THREE.Group();
     this.hazardAngularSpeed = 0.95; // Heavy industrial rotation
+    this.hazardType = 'cross';
+    this.hazardBladeAngles = [0, Math.PI / 2];
+    this.hazardHalfLength = 5.30;
+    this.hazardHalfWidth = 0.38;
 
+    // Central Heavy Forged Crucible Pylon
     const pylonGroup = new THREE.Group();
-    const baseGeo = new THREE.CylinderGeometry(1.8, 2.3, 0.55, 20);
-    const baseMat = new THREE.MeshStandardMaterial({ color: 0x1f0602, metalness: 0.9, roughness: 0.3, emissive: 0xFF2200, emissiveIntensity: 0.4 });
+    const baseGeo = new THREE.CylinderGeometry(1.9, 2.4, 0.55, 20);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x1f0602, metalness: 0.9, roughness: 0.3, emissive: 0xFF2200, emissiveIntensity: 0.45 });
     const baseMesh = new THREE.Mesh(baseGeo, baseMat);
     baseMesh.position.y = 0.27;
     pylonGroup.add(baseMesh);
 
-    const colGeo = new THREE.CylinderGeometry(1.3, 1.5, 1.2, 16);
+    const colGeo = new THREE.CylinderGeometry(1.35, 1.55, 1.2, 16);
     const colMat = new THREE.MeshStandardMaterial({ color: 0x2e0c05, metalness: 0.95, roughness: 0.2 });
     const colMesh = new THREE.Mesh(colGeo, colMat);
     colMesh.position.y = 1.0;
     pylonGroup.add(colMesh);
 
+    // Molten Lava Reactor Core
     const coreGeo = new THREE.SphereGeometry(0.85, 24, 16);
     const coreMat = new THREE.MeshStandardMaterial({ color: 0xFFAA00, emissive: 0xFF4400, emissiveIntensity: 2.8, roughness: 0.1 });
     this.reactorCore = new THREE.Mesh(coreGeo, coreMat);
@@ -434,12 +444,133 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    // Rotating Dual Heavy Bumper Bar (Inferno Molten Forge Styling)
-    const { sweeper, beamMesh } = this._createSweeperBar(cfg, 0xFF4400, 0xFFFF00);
-    this.sweeperBar = sweeper;
-    this.hazardLaser = beamMesh;
+    // Build Quad-Crusher Magma Cross (2 Crossed 10.6m Industrial Beams at 90°)
+    const crossSweeper = new THREE.Group();
+
+    // Central Heavy Iron Hub Collar
+    const hubGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.76, 20);
+    const hubMat = new THREE.MeshStandardMaterial({ color: 0x150502, metalness: 0.95, roughness: 0.2 });
+    const hubMesh = new THREE.Mesh(hubGeo, hubMat);
+    hubMesh.position.y = 0.88;
+    crossSweeper.add(hubMesh);
+
+    // Build the 2 crossed beams (angle = 0 and angle = Math.PI / 2)
+    for (const angle of [0, Math.PI / 2]) {
+      const beamGroup = new THREE.Group();
+      beamGroup.rotation.y = angle;
+
+      // Dark Scorched Cast Iron Girder
+      const beamGeo = new THREE.BoxGeometry(10.6, 0.62, 0.72);
+      const beamMat = new THREE.MeshStandardMaterial({
+        color: 0x1a0603,
+        metalness: 0.92,
+        roughness: 0.28
+      });
+      const beamMesh = new THREE.Mesh(beamGeo, beamMat);
+      beamMesh.position.y = 0.88;
+      beamGroup.add(beamMesh);
+
+      // Molten Orange Magma Channels on Front & Back faces
+      for (const face of [-0.38, 0.38]) {
+        const magmaPadGeo = new THREE.BoxGeometry(10.2, 0.36, 0.12);
+        const magmaPadMat = new THREE.MeshStandardMaterial({
+          color: 0xFF5500,
+          emissive: 0xFF3300,
+          emissiveIntensity: 2.6,
+          roughness: 0.15
+        });
+        const pad = new THREE.Mesh(magmaPadGeo, magmaPadMat);
+        pad.position.set(0, 0.88, face);
+        beamGroup.add(pad);
+      }
+
+      // Heavy Industrial Crusher Hammer Head Caps at extremities
+      for (const side of [-5.3, 5.3]) {
+        const hammerGeo = new THREE.BoxGeometry(0.85, 0.78, 1.05);
+        const hammerMat = new THREE.MeshStandardMaterial({
+          color: 0x2b0d06,
+          metalness: 0.95,
+          roughness: 0.25
+        });
+        const hammer = new THREE.Mesh(hammerGeo, hammerMat);
+        hammer.position.set(side, 0.88, 0);
+        beamGroup.add(hammer);
+
+        // Intense Molten Warning Beacons on tip
+        const beaconGeo = new THREE.SphereGeometry(0.22, 14, 10);
+        const beaconMat = new THREE.MeshStandardMaterial({
+          color: 0xFFFF00,
+          emissive: 0xFF5500,
+          emissiveIntensity: 3.2
+        });
+        const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+        beacon.position.set(side, 1.32, 0);
+        beamGroup.add(beacon);
+      }
+
+      // Yellow/Black Hazard Stripes on top
+      for (const xPos of [-3.8, -2.4, -1.0, 1.0, 2.4, 3.8]) {
+        const stripeGeo = new THREE.BoxGeometry(0.65, 0.03, 0.48);
+        const stripeMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00 });
+        const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+        stripe.position.set(xPos, 1.20, 0);
+        beamGroup.add(stripe);
+      }
+
+      // Ground Heat Projection Line
+      const heatLineGeo = new THREE.PlaneGeometry(10.6, 0.22);
+      const heatLineMat = new THREE.MeshBasicMaterial({
+        color: 0xFF4400,
+        transparent: true,
+        opacity: 0.75,
+        side: THREE.DoubleSide
+      });
+      const heatLine = new THREE.Mesh(heatLineGeo, heatLineMat);
+      heatLine.rotation.x = Math.PI / 2;
+      heatLine.position.set(0, 0.06, 0.95);
+      beamGroup.add(heatLine);
+
+      crossSweeper.add(beamGroup);
+    }
+
+    this.sweeperBar = crossSweeper;
     this.hazardGroup.add(this.sweeperBar);
     this.scene.add(this.hazardGroup);
+
+    // 4 Volcanic Caldera Vents on outer ring bastions at (+-13.5, +-13.5)
+    this.lavaCalderas = [];
+    const calderaCoords = [
+      { x: -13.5, z: -13.5 },
+      { x: 13.5, z: -13.5 },
+      { x: -13.5, z: 13.5 },
+      { x: 13.5, z: 13.5 }
+    ];
+    calderaCoords.forEach(c => {
+      const ventGroup = new THREE.Group();
+      ventGroup.position.set(c.x, 0, c.z);
+
+      // Basalt rock caldera rim
+      const rimGeo = new THREE.CylinderGeometry(1.6, 2.0, 0.35, 16);
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0x140704, metalness: 0.8, roughness: 0.4 });
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.position.y = 0.17;
+      ventGroup.add(rim);
+
+      // Glowing molten lava interior grate
+      const lavaGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.08, 16);
+      const lavaMat = new THREE.MeshStandardMaterial({
+        color: 0xFF4400,
+        emissive: 0xFF2200,
+        emissiveIntensity: 2.2,
+        roughness: 0.2
+      });
+      const lava = new THREE.Mesh(lavaGeo, lavaMat);
+      lava.position.y = 0.25;
+      ventGroup.add(lava);
+      this.lavaCalderas.push(lava);
+
+      this.scene.add(ventGroup);
+    });
   }
 
   // ============================================================
@@ -448,6 +579,10 @@ class ArenaColosseum {
   _buildCryoSpireHazard() {
     this.hazardGroup = new THREE.Group();
     this.hazardAngularSpeed = 1.25; // Dynamic, dangerous sweep velocity!
+    this.hazardType = 'tri';
+    this.hazardBladeAngles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
+    this.hazardArmLength = 5.30;
+    this.hazardHalfWidth = 0.34;
 
     const pylonGroup = new THREE.Group();
 
@@ -489,17 +624,108 @@ class ArenaColosseum {
     this.hazardPylonGroup = pylonGroup;
     this.scene.add(pylonGroup);
 
-    // Rotating Dual Heavy Bumper Bar (Cryo Glacial Styling)
-    const cfg = ARENA_THEMES.cryo;
-    const { sweeper, beamMesh } = this._createSweeperBar(cfg, 0x00F0FF, 0xFFFFFF);
-    this.sweeperBar = sweeper;
-    this.hazardLaser = beamMesh;
+    // 4. Tri-Blade Glacial Ice Sweeper (3 Radial Crystalline Blades at 120°)
+    const triSweeper = new THREE.Group();
+
+    // Central Frosted Ice Turret Hub
+    const hubGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.72, 12);
+    const hubMat = new THREE.MeshStandardMaterial({
+      color: 0x071b30,
+      metalness: 0.4,
+      roughness: 0.1,
+      emissive: 0x00D0FF,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.92
+    });
+    const hubMesh = new THREE.Mesh(hubGeo, hubMat);
+    hubMesh.position.y = 0.88;
+    triSweeper.add(hubMesh);
+
+    // 3 Frosted Crystal Arms radiating outward at 120°
+    this.hazardBladeAngles.forEach(phi => {
+      const armGroup = new THREE.Group();
+      armGroup.rotation.y = phi;
+
+      // Crystalline Ice Beam body (extends from x = 0 to x = 5.3m)
+      const armGeo = new THREE.BoxGeometry(5.30, 0.58, 0.64);
+      const armMat = new THREE.MeshStandardMaterial({
+        color: 0x88EEFF,
+        emissive: 0x00D0FF,
+        emissiveIntensity: 1.6,
+        metalness: 0.1,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.90
+      });
+      const armMesh = new THREE.Mesh(armGeo, armMat);
+      armMesh.position.set(2.65, 0.88, 0);
+      armGroup.add(armMesh);
+
+      // Cyan Cryogenic Freeze Rail on both sides
+      for (const face of [-0.34, 0.34]) {
+        const railGeo = new THREE.BoxGeometry(5.1, 0.32, 0.08);
+        const railMat = new THREE.MeshStandardMaterial({
+          color: 0x00F0FF,
+          emissive: 0x00F0FF,
+          emissiveIntensity: 2.4,
+          roughness: 0.1
+        });
+        const rail = new THREE.Mesh(railGeo, railMat);
+        rail.position.set(2.65, 0.88, face);
+        armGroup.add(rail);
+      }
+
+      // Diamond-Faceted Crystalline Spike Tip at outer extremity (x = 5.3m)
+      const spikeGeo = new THREE.ConeGeometry(0.55, 1.2, 6);
+      const spikeMat = new THREE.MeshStandardMaterial({
+        color: 0xDCF8FF,
+        emissive: 0x00E5FF,
+        emissiveIntensity: 2.6,
+        metalness: 0.2,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.95
+      });
+      const spike = new THREE.Mesh(spikeGeo, spikeMat);
+      spike.rotation.z = -Math.PI / 2; // Pointing outward along arm X
+      spike.position.set(5.30, 0.88, 0);
+      armGroup.add(spike);
+
+      // Brilliant White Frost Warning Flare Beacon on tip
+      const flareGeo = new THREE.SphereGeometry(0.22, 14, 10);
+      const flareMat = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        emissive: 0xFFFFFF,
+        emissiveIntensity: 3.5
+      });
+      const flare = new THREE.Mesh(flareGeo, flareMat);
+      flare.position.set(5.30, 1.25, 0);
+      armGroup.add(flare);
+
+      // Radial Ground Frost Guide Line
+      const frostLineGeo = new THREE.PlaneGeometry(5.30, 0.18);
+      const frostLineMat = new THREE.MeshBasicMaterial({
+        color: 0x00F0FF,
+        transparent: true,
+        opacity: 0.70,
+        side: THREE.DoubleSide
+      });
+      const frostLine = new THREE.Mesh(frostLineGeo, frostLineMat);
+      frostLine.rotation.x = Math.PI / 2;
+      frostLine.position.set(2.65, 0.06, 0.65);
+      armGroup.add(frostLine);
+
+      triSweeper.add(armGroup);
+    });
+
+    this.sweeperBar = triSweeper;
     this.hazardGroup.add(this.sweeperBar);
     this.scene.add(this.hazardGroup);
   }
 
   // ============================================================
-  // HAZARD COLLISION DISPATCHER (Stationary Pylon & Rotating Sweeper Bumper)
+  // HAZARD COLLISION DISPATCHER (Stationary Pylon & Multi-Blade Sweepers)
   // ============================================================
   checkHazardCollision(character) {
     if (!character || !character.alive || !character.grounded || !this.hazardGroup) return null;
@@ -507,7 +733,7 @@ class ArenaColosseum {
     const craftRadius = character.radius || 1.10;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
 
-    // 1. Central Stationary Hydraulic Pillar Core Collision
+    // 1. Central Stationary Hydraulic / Glacial / Magma Pillar Core Collision
     const pillarMinDist = 1.75;
     if (distCenter < pillarMinDist) {
       const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
@@ -517,7 +743,7 @@ class ArenaColosseum {
       if (character.group) character.group.position.set(character.x, character.y, character.z);
       character.vx = nx * 8.5;
       character.vz = nz * 8.5;
-      character.knockbackTimer = 0.15;
+      character.knockbackTimer = 0.20;
       if (character.hazardHitCooldown <= 0) {
         character.hazardHitCooldown = 0.35;
         character.squashX = 1.35;
@@ -527,96 +753,172 @@ class ArenaColosseum {
       return { hit: true, x: character.x, z: character.z, type: 'pillar' };
     }
 
-    // 2. Rotating Heavy Cyber Sweeper Bumper Bar Collision (Exact Three.js Synchronized)
+    if (character.y > 1.85) return null; // Flying above bumper bar height
+
     const theta = this.hazardGroup.rotation.y;
-    const cosA = Math.cos(theta);
-    const sinA = Math.sin(theta);
-
-    // World to Bar-local coordinate transform:
-    const lx = character.x * cosA - character.z * sinA;
-    const lz = character.x * sinA + character.z * cosA;
-
-    // Bar dimensions: length 10.6m (half 5.3m), thickness 0.68m (half 0.34m)
-    const L_half = 5.30;
-    const W_half = 0.34;
-
-    const cx = Math.max(-L_half, Math.min(L_half, lx));
-    const cz = Math.max(-W_half, Math.min(W_half, lz));
-
-    const dx = lx - cx;
-    const dz = lz - cz;
-    const distSq = dx * dx + dz * dz;
-
+    const omega = this.hazardAngularSpeed || 1.08;
     const effectiveRadius = craftRadius * 0.95;
-    if (character.y <= 1.8 && (distSq < effectiveRadius * effectiveRadius || (dx === 0 && dz === 0))) {
-      let nx_loc = 0;
-      let nz_loc = 0;
-      let overlap = 0;
 
-      if (dx === 0 && dz === 0) {
-        nz_loc = lz >= 0 ? 1 : -1;
-        nx_loc = 0;
-        overlap = W_half + effectiveRadius - Math.abs(lz);
-      } else {
-        const dist = Math.sqrt(distSq);
-        nx_loc = dx / dist;
-        nz_loc = dz / dist;
-        overlap = effectiveRadius - dist;
-      }
+    // 2. Multi-Blade Hazard Collision
+    if (this.hazardType === 'tri') {
+      // Cryo Tri-Blade: 3 radial blades at 120°
+      const armLength = this.hazardArmLength || 5.30;
+      const halfWidth = this.hazardHalfWidth || 0.34;
+      const bladeAngles = this.hazardBladeAngles || [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
 
-      // Hard immediate separation so craft does not clip or stick inside
-      const exitBuffer = 0.08;
-      const lx_new = lx + nx_loc * (overlap + exitBuffer);
-      const lz_new = lz + nz_loc * (overlap + exitBuffer);
+      for (const phi of bladeAngles) {
+        const alpha = theta + phi;
+        const ux = Math.cos(alpha);
+        const uz = Math.sin(alpha);
+        const vx = -uz;
+        const vz = ux;
 
-      character.x = lx_new * cosA + lz_new * sinA;
-      character.z = -lx_new * sinA + lz_new * cosA;
-      if (character.group) character.group.position.set(character.x, character.y, character.z);
+        const u = character.x * ux + character.z * uz;
+        const v = character.x * vx + character.z * vz;
 
-      const nx_world = nx_loc * cosA + nz_loc * sinA;
-      const nz_world = -nx_loc * sinA + nz_loc * cosA;
+        const cu = Math.max(0, Math.min(armLength, u));
+        const cv = Math.max(-halfWidth, Math.min(halfWidth, v));
 
-      const omega = this.hazardAngularSpeed || 1.08;
-      const vBarX = omega * character.z;
-      const vBarZ = -omega * character.x;
+        const du = u - cu;
+        const dv = v - cv;
+        const distSq = du * du + dv * dv;
 
-      const rCenter = Math.sqrt(character.x * character.x + character.z * character.z);
-      const tipFactor = Math.min(1.0, rCenter / L_half);
+        if (distSq < effectiveRadius * effectiveRadius || (du === 0 && dv === 0)) {
+          let nu = 0, nv = 0, overlap = 0;
+          if (du === 0 && dv === 0) {
+            nv = v >= 0 ? 1 : -1;
+            nu = 0;
+            overlap = halfWidth + effectiveRadius - Math.abs(v);
+          } else {
+            const dist = Math.sqrt(distSq);
+            nu = du / dist;
+            nv = dv / dist;
+            overlap = effectiveRadius - dist;
+          }
 
-      const tangentX = (rCenter > 0.001) ? (vBarX / (omega * rCenter)) : 0;
-      const tangentZ = (rCenter > 0.001) ? (vBarZ / (omega * rCenter)) : -1;
+          const exitBuffer = 0.08;
+          const u_new = u + nu * (overlap + exitBuffer);
+          const v_new = v + nv * (overlap + exitBuffer);
 
-      // Balanced launch velocity: 10.5 m/s near hub to 14.5 m/s at outer tips (clean ~3m knockback)
-      const launchSpeed = 10.5 + (tipFactor * 4.0);
+          character.x = u_new * ux + v_new * vx;
+          character.z = u_new * uz + v_new * vz;
+          if (character.group) character.group.position.set(character.x, character.y, character.z);
 
-      let launchDirX = tangentX * 0.65 + nx_world * 0.45;
-      let launchDirZ = tangentZ * 0.65 + nz_world * 0.45;
-      const launchLen = Math.sqrt(launchDirX * launchDirX + launchDirZ * launchDirZ) || 1;
-      launchDirX /= launchLen;
-      launchDirZ /= launchLen;
+          const nx_world = nu * ux + nv * vx;
+          const nz_world = nu * uz + nv * vz;
 
-      character.vx = launchDirX * launchSpeed;
-      character.vz = launchDirZ * launchSpeed;
-      character.knockbackTimer = 0.22;
+          // Sweeper rotational velocity at radius cu
+          const tipFactor = Math.min(1.0, cu / armLength);
+          const launchSpeed = 11.5 + (tipFactor * 4.5); // 11.5 to 16.0 m/s icy fling
 
-      if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.30;
-        character.squashX = 1.55;
-        character.squashY = 0.60;
+          let launchDirX = vx * 0.70 + nx_world * 0.45;
+          let launchDirZ = vz * 0.70 + nz_world * 0.45;
+          const launchLen = Math.hypot(launchDirX, launchDirZ) || 1;
+          launchDirX /= launchLen;
+          launchDirZ /= launchLen;
 
-        const smackLines = ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
-        const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
-        if (typeof character.setEmotion === 'function') {
-          character.setEmotion('hit', 1.0, txt, '💥');
+          character.vx = launchDirX * launchSpeed;
+          character.vz = launchDirZ * launchSpeed;
+          character.knockbackTimer = 0.28;
+
+          if (character.hazardHitCooldown <= 0) {
+            character.hazardHitCooldown = 0.30;
+            character.squashX = 1.55;
+            character.squashY = 0.60;
+            const smackLines = ['❄️ FROST SMACK!', '⚡ CHILL SLAM!', 'SHIVER!'];
+            const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
+            if (typeof character.setEmotion === 'function') {
+              character.setEmotion('hit', 1.0, txt, '❄️');
+            }
+            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.2);
+          }
+          return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
         }
+      }
+    } else {
+      // Neon 1 bar ([0]) or Inferno 2 crossed bars ([0, Math.PI / 2])
+      const L_half = this.hazardHalfLength || 5.30;
+      const W_half = this.hazardHalfWidth || 0.34;
+      const bladeAngles = this.hazardBladeAngles || [0];
 
-        if (HexAudio && HexAudio.sfxSweeperSmack) {
-          HexAudio.sfxSweeperSmack();
-        } else if (HexAudio && HexAudio.sfxBump) {
-          HexAudio.sfxBump(2.0);
+      for (const phi of bladeAngles) {
+        const alpha = theta + phi;
+        const cosA = Math.cos(alpha);
+        const sinA = Math.sin(alpha);
+
+        // Transform character pos into bar coordinates
+        const lx = character.x * cosA - character.z * sinA;
+        const lz = character.x * sinA + character.z * cosA;
+
+        const cx = Math.max(-L_half, Math.min(L_half, lx));
+        const cz = Math.max(-W_half, Math.min(W_half, lz));
+
+        const dx = lx - cx;
+        const dz = lz - cz;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < effectiveRadius * effectiveRadius || (dx === 0 && dz === 0)) {
+          let nx_loc = 0, nz_loc = 0, overlap = 0;
+          if (dx === 0 && dz === 0) {
+            nz_loc = lz >= 0 ? 1 : -1;
+            nx_loc = 0;
+            overlap = W_half + effectiveRadius - Math.abs(lz);
+          } else {
+            const dist = Math.sqrt(distSq);
+            nx_loc = dx / dist;
+            nz_loc = dz / dist;
+            overlap = effectiveRadius - dist;
+          }
+
+          const exitBuffer = 0.08;
+          const lx_new = lx + nx_loc * (overlap + exitBuffer);
+          const lz_new = lz + nz_loc * (overlap + exitBuffer);
+
+          character.x = lx_new * cosA + lz_new * sinA;
+          character.z = -lx_new * sinA + lz_new * cosA;
+          if (character.group) character.group.position.set(character.x, character.y, character.z);
+
+          const nx_world = nx_loc * cosA + nz_loc * sinA;
+          const nz_world = -nx_loc * sinA + nz_loc * cosA;
+
+          const vBarX = omega * character.z;
+          const vBarZ = -omega * character.x;
+          const rCenter = Math.hypot(character.x, character.z);
+          const tipFactor = Math.min(1.0, rCenter / L_half);
+
+          const tangentX = (rCenter > 0.001) ? (vBarX / (omega * rCenter)) : 0;
+          const tangentZ = (rCenter > 0.001) ? (vBarZ / (omega * rCenter)) : -1;
+
+          const isInferno = this.theme === 'inferno';
+          const launchSpeed = (isInferno ? 11.5 : 10.5) + (tipFactor * (isInferno ? 4.8 : 4.0));
+
+          let launchDirX = tangentX * 0.65 + nx_world * 0.45;
+          let launchDirZ = tangentZ * 0.65 + nz_world * 0.45;
+          const launchLen = Math.hypot(launchDirX, launchDirZ) || 1;
+          launchDirX /= launchLen;
+          launchDirZ /= launchLen;
+
+          character.vx = launchDirX * launchSpeed;
+          character.vz = launchDirZ * launchSpeed;
+          character.knockbackTimer = 0.24;
+
+          if (character.hazardHitCooldown <= 0) {
+            character.hazardHitCooldown = 0.30;
+            character.squashX = 1.55;
+            character.squashY = 0.60;
+
+            const smackLines = isInferno 
+              ? ['🔥 CRUSHED!', '💥 MAGMA SLAM!', 'HEAVY IMPACT!', 'FORGED!']
+              : ['💥 SMACK!', '⚡ SLAMMED!', 'CLANG!', 'WHOAAA!'];
+            const txt = smackLines[Math.floor(Math.random() * smackLines.length)];
+            if (typeof character.setEmotion === 'function') {
+              character.setEmotion('hit', 1.0, txt, isInferno ? '🔥' : '💥');
+            }
+            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(isInferno ? 2.4 : 2.0);
+          }
+          return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
         }
       }
-      return { hit: true, x: character.x, z: character.z, type: 'sweeper' };
     }
 
     return null;
@@ -827,6 +1129,16 @@ class ArenaColosseum {
       if (this.cryoSpireMesh) this.cryoSpireMesh.rotation.y -= dt * 0.45;
       if (this.cryoOrbitalRing1) this.cryoOrbitalRing1.rotation.z += dt * 0.75;
       if (this.cryoOrbitalRing2) this.cryoOrbitalRing2.rotation.z -= dt * 0.60;
+    } else if (this.theme === 'inferno') {
+      if (this.reactorCore && this.reactorCore.material) {
+        this.reactorCore.material.emissiveIntensity = 2.4 + Math.sin(this.elapsedTime * 4.5) * 0.8;
+      }
+      if (this.lavaCalderas) {
+        const pulse = 2.0 + Math.sin(this.elapsedTime * 3.8) * 0.6;
+        this.lavaCalderas.forEach(c => {
+          if (c.material) c.material.emissiveIntensity = pulse;
+        });
+      }
     }
 
     this._updateAmbientParticles(dt);
@@ -860,21 +1172,7 @@ class ArenaColosseum {
         }
         stage.mesh.instanceColor.needsUpdate = true;
 
-        // Visual Earthquake Tremor on hex tiles
-        if (warnProgress > 0.4) {
-          const tremorY = Math.sin(this.elapsedTime * 35) * 0.05 * warnProgress;
-          for (let i = 0; i < stage.count; i++) {
-            stage.mesh.getMatrixAt(i, matrix);
-            pos.setFromMatrixPosition(matrix);
-            pos.y = tremorY;
-            this._dummy.position.copy(pos);
-            this._dummy.scale.set(1, 1, 1);
-            this._dummy.rotation.set(0, 0, 0);
-            this._dummy.updateMatrix();
-            stage.mesh.setMatrixAt(i, this._dummy.matrix);
-          }
-          stage.mesh.instanceMatrix.needsUpdate = true;
-        }
+        // Stable arena deck (no annoying high-frequency tremor)
       }
 
       // 2. Collapse Trigger Phase

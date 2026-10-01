@@ -909,8 +909,8 @@ class BumperCraft {
     this.empCooldown = this.empMaxCooldown;
     if (HexAudio && HexAudio.sfxEmp) HexAudio.sfxEmp();
 
-    const empRadius = 10.5; // Wide arena blast field (was 6.8m)
-    const empForce = 22.5;  // Explosive repulsive force (cancels charges & blasts opponents backwards!)
+    const empRadius = 11.5; // Expansive arena EMP field
+    const empForce = 28.0;  // High-momentum shockwave impulse
 
     let hitAny = false;
 
@@ -922,27 +922,31 @@ class BumperCraft {
 
       if (dist < empRadius && dist > 0.01) {
         hitAny = true;
-        const falloff = 1 - (dist / empRadius) * 0.45;
-        const force = empForce * Math.max(0.55, falloff);
+        const falloff = 1 - (dist / empRadius) * 0.40;
+        const force = empForce * Math.max(0.60, falloff);
 
-        // HARD MOMENTUM REVERSAL:
-        // Do NOT simply add to existing charging velocity (which swallowed the impulse).
+        // HARD MOMENTUM REVERSAL & CHARGE CANCEL:
+        // Cancel opponent's forward dash engine so it cannot counter the blast
+        c.isDashing = false;
+        c.dashTime = 0;
+        c.dashCooldown = Math.max(c.dashCooldown || 0, 0.85);
+
         // Completely override incoming velocity and blast the rival outward!
         c.vx = (dx / dist) * force;
         c.vz = (dz / dist) * force;
-        c.knockbackTimer = 0.45; // Substantial 0.45s high-speed slide (~4-5m push!)
+        c.knockbackTimer = 0.52; // Extended 0.52s high-speed glide (~5-7m launch!)
         c.lastAttacker = this;
 
         // Visual electric overload & physical squash
-        c.squashX = 1.55;
-        c.squashY = 0.55;
-        c.wobbleAngle = (Math.random() - 0.5) * 0.55;
+        c.squashX = 1.65;
+        c.squashY = 0.50;
+        c.wobbleAngle = (Math.random() - 0.5) * 0.65;
         if (c.bumperRing && c.bumperRing.material) {
-          c.bumperRing.material.emissiveIntensity = 3.6;
+          c.bumperRing.material.emissiveIntensity = 3.8;
         }
 
-        if (c.onImpact) c.onImpact(2.4);
-        if (c.setEmotion) c.setEmotion('shock', 1.4, 'BLASTED!', '⚡');
+        if (c.onImpact) c.onImpact(2.6);
+        if (c.setEmotion) c.setEmotion('shock', 1.4, 'BLASTED! ⚡', '⚡');
       }
     });
 
@@ -1173,9 +1177,10 @@ class BumperCraft {
     this.squashY += (1.0 - this.squashY) * Math.min(1, 16 * dt);
 
     // Steering & Knockback Physics
-    if (this.knockbackTimer > 0) {
+    const inKnockback = this.knockbackTimer > 0;
+    if (inKnockback) {
       this.knockbackTimer -= dt;
-      const friction = 0.86; // Snappy, clean recovery from bumps
+      const friction = 0.94; // Smooth, extended glide from shockwaves and heavy impacts
       this.vx *= Math.pow(friction, dt * 60);
       this.vz *= Math.pow(friction, dt * 60);
     }
@@ -1189,14 +1194,14 @@ class BumperCraft {
         accel = this.accel * 0.45;
       }
 
-      // Responsive steering input ALWAYS applies (even during knockback, at 75% authority)
-      const inputAuthority = this.knockbackTimer > 0 ? 0.75 : 1.0;
+      // Responsive steering input (reduced during knockback so player/bot feels the blast momentum)
+      const inputAuthority = inKnockback ? 0.15 : 1.0;
       this.vx += inputX * accel * inputAuthority * dt;
       this.vz += inputZ * accel * inputAuthority * dt;
 
-      // Tight lateral arcade grip: when steering, dampen perpendicular drift so craft turns sharply
+      // Tight lateral arcade grip: only apply when steering actively and NOT in knockback
       const hasInput = (Math.abs(inputX) > 0.05 || Math.abs(inputZ) > 0.05);
-      if (hasInput) {
+      if (hasInput && !inKnockback) {
         const inLen = Math.hypot(inputX, inputZ) || 1;
         const ix = inputX / inLen;
         const iz = inputZ / inLen;
@@ -1209,12 +1214,15 @@ class BumperCraft {
       }
 
       const curSpeed = Math.sqrt(this.vx * this.vx + this.vz * this.vz);
-      if (curSpeed > topSpeed) {
-        this.vx = (this.vx / curSpeed) * topSpeed;
-        this.vz = (this.vz / curSpeed) * topSpeed;
+      // During knockback, allow high shockwave velocities (up to 34 m/s) without crushing on frame 1
+      const maxAllowedSpeed = inKnockback ? Math.max(topSpeed, 34.0) : topSpeed;
+      if (curSpeed > maxAllowedSpeed) {
+        this.vx = (this.vx / curSpeed) * maxAllowedSpeed;
+        this.vz = (this.vz / curSpeed) * maxAllowedSpeed;
       }
 
-      const effectiveDrag = Math.min(0.93, this.drag || 0.93);
+      // Effective drag: honors arena surface physics (up to 0.985 for ice drift)
+      const effectiveDrag = inKnockback ? 0.96 : Math.min(0.985, this.drag || 0.93);
       this.vx *= Math.pow(effectiveDrag, dt * 60);
       this.vz *= Math.pow(effectiveDrag, dt * 60);
 

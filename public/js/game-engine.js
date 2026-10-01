@@ -2161,10 +2161,10 @@ class BumperGameEngine {
     this.camera.position.lerp(this._reusableCamPos, Math.min(1, 5.0 * dt));
 
     if (this.cameraShake > 0) {
-      this.cameraShake -= dt;
-      const sh = this.cameraShake * 3.5;
+      this.cameraShake -= dt * 3.5;
+      const sh = Math.min(0.20, this.cameraShake * 0.40); // Subtle, stable arcade impact (no annoying jitter)
       this.camera.position.x += (Math.random() - 0.5) * sh;
-      this.camera.position.y += (Math.random() - 0.5) * sh * 0.5;
+      this.camera.position.y += (Math.random() - 0.5) * sh * 0.35;
     }
 
     this.camera.lookAt(this.cameraTarget);
