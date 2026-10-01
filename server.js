@@ -158,8 +158,7 @@ app.post('/api/score/submit', async (req, res) => {
 
 const PERMANENT_BOTS = [
   { id: 'bot_cyber01', pilotName: '[BOT] Cyber-01', suitColor: 'crimson', spawnX: -6.0, spawnZ: -6.0, isBot: true },
-  { id: 'bot_droid02', pilotName: '[BOT] Droid-02', suitColor: 'gold', spawnX: 6.0, spawnZ: -6.0, isBot: true },
-  { id: 'bot_phantom03', pilotName: '[BOT] Phantom-03', suitColor: 'blue', spawnX: 0.0, spawnZ: -8.0, isBot: true }
+  { id: 'bot_droid02', pilotName: '[BOT] Droid-02', suitColor: 'gold', spawnX: 6.0, spawnZ: -6.0, isBot: true }
 ];
 
 const ARENA_THEMES_LIST = ['neon', 'inferno', 'cryo'];

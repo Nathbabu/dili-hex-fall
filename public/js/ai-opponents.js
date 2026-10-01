@@ -1,5 +1,6 @@
 // ============================================================
 // DILI: CYBER BUMPERS — Balanced Tactical Combat & Survival Bot AI
+// Natural Free-For-All Arcade Sumo Brawlers
 // ============================================================
 class AIBumperBot {
   constructor(scene, name, suitColor) {
@@ -8,26 +9,33 @@ class AIBumperBot {
     this.craft.isPlayer = false;
 
     this.thinkTimer = 0;
-    this.thinkInterval = 0.11 + Math.random() * 0.05; // Snappy tactical reflexes (~8-10 Hz)
+    this.thinkInterval = 0.12 + Math.random() * 0.04; // Snappy ~7-9 Hz decision rate
     this.personality = {
-      aggression: 0.78 + Math.random() * 0.18, // Ruthless brawler drive
-      survival: 0.80 + Math.random() * 0.14,   // Sharp perimeter & collapse awareness
-      dashSkill: 0.60 + Math.random() * 0.20,  // Active tactical dash timing
-      dodgeSkill: 0.65 + Math.random() * 0.22  // Evasive lateral juke when charged
+      aggression: 0.70 + Math.random() * 0.18, // Fair combat drive
+      survival: 0.82 + Math.random() * 0.12,   // Safe ring & drop awareness
+      dashSkill: 0.55 + Math.random() * 0.15,  // Measured, tactical dash timing
+      dodgeSkill: 0.60 + Math.random() * 0.15  // Evasive lateral jukes
     };
 
     this.steerX = 0;
     this.steerZ = 0;
-    this.steerNoise = 0.08; // Tight, competitive steering control
+    this.targetSteerX = 0;
+    this.targetSteerZ = 0;
+    this.targetCraft = null;
+    this.targetLockTimer = 0;
     this.isRetreating = false;
   }
 
   spawn(x, z) {
     this.craft.reset(x, z);
     this.isRetreating = false;
+    this.targetSteerX = 0;
+    this.targetSteerZ = 0;
+    this.steerX = 0;
+    this.steerZ = 0;
+    this.targetCraft = null;
+    this.targetLockTimer = 0;
   }
-
-
 
   update(dt, allCrafts, arenaRadius, arena = null) {
     if (!this.craft.alive) return;
@@ -54,7 +62,12 @@ class AIBumperBot {
       this._think(allCrafts, arenaRadius, arena);
     }
 
-    // 3. Apply Steer & Physics
+    // 3. Smooth Steering Interpolation (eliminates jitter and erratic twitching)
+    const steerLerpRate = Math.min(1.0, dt * 8.5);
+    this.steerX += (this.targetSteerX - this.steerX) * steerLerpRate;
+    this.steerZ += (this.targetSteerZ - this.steerZ) * steerLerpRate;
+
+    // 4. Apply Steer & Physics
     this.craft.update(dt, this.steerX, this.steerZ, arena || arenaRadius);
   }
 
@@ -63,7 +76,6 @@ class AIBumperBot {
 
     // -------------------------------------------------------------
     // STEP 1: MULTI-TIER ARENA COLLAPSE & SAFE ZONE DETECTION
-    // Bots know whether they are fighting on Tier 1 (Sky Deck) or Tier 2 (Sub-Level Deck)
     // -------------------------------------------------------------
     const myTier = this.craft.currentTier || 1;
     let safeZoneRadius = 18.5;
@@ -119,26 +131,26 @@ class AIBumperBot {
 
     // -------------------------------------------------------------
     // STEP 2: EMERGENCY ZONE RETREAT
-    // When the ground drops, navigate safely inward
+    // When the ground drops, navigate safely inward towards origin (0, 0)
     // -------------------------------------------------------------
-    const playerCraftRef = allCrafts.find(c => c.isPlayer && c.alive);
-    const isHumanBelow = myTier === 1 && playerCraftRef && (playerCraftRef.currentTier === 2 || playerCraftRef.y < -1.5);
     const isOutsideSafe = myDist > safeZoneRadius;
 
-    // Do NOT force retreat to center if intentionally diving to hunt human below!
-    if (!isHumanBelow && (isOutsideSafe || isImminentDrop)) {
+    if (isOutsideSafe || isImminentDrop) {
       this.isRetreating = true;
 
-      // Disengage and steer steadily towards origin (0, 0)
       const toCenterX = -this.craft.x / (myDist || 1);
       const toCenterZ = -this.craft.z / (myDist || 1);
 
-      this.steerX = toCenterX * 1.05;
-      this.steerZ = toCenterZ * 1.05;
+      this.targetSteerX = toCenterX;
+      this.targetSteerZ = toCenterZ;
 
-      // Dash inward only if clearly stranded outside and dash is available
+      // Safe fallback dash if stranded far out AND facing towards center
       if (this.craft.dashCooldown <= 0 && this.craft.grounded && myDist > safeZoneRadius + 1.8) {
-        if (Math.random() < this.personality.survival * 0.5) {
+        const forwardX = Math.sin(this.craft.facing);
+        const forwardZ = Math.cos(this.craft.facing);
+        const facingCenterDot = forwardX * toCenterX + forwardZ * toCenterZ;
+
+        if (facingCenterDot > 0.65 && Math.random() < this.personality.survival * 0.5) {
           this.craft.triggerDash();
           this.craft.dashCooldown = 5.0 + Math.random() * 2.0;
           if (this.craft.setEmotion && Math.random() < 0.3) {
@@ -146,16 +158,13 @@ class AIBumperBot {
           }
         }
       }
-
-
-
       return;
     }
 
     this.isRetreating = false;
 
     // -------------------------------------------------------------
-    // STEP 2.5: ACTIVE THREAT EVASION & DASH JUKE (HARDCORE AI JUKE!)
+    // STEP 2.5: ACTIVE THREAT EVASION & DASH JUKE
     // If an opponent is in active dash charging directly at this bot, juke laterally!
     // -------------------------------------------------------------
     let incomingCharger = null;
@@ -169,13 +178,13 @@ class AIBumperBot {
       const cdz = this.craft.z - other.z;
       const d = Math.hypot(cdx, cdz);
 
-      if (d < 5.5 && d > 0.1) {
+      if (d < 5.2 && d > 0.1) {
         const chargerHeadingX = Math.sin(other.facing);
         const chargerHeadingZ = Math.cos(other.facing);
         const dot = (cdx / d) * chargerHeadingX + (cdz / d) * chargerHeadingZ;
 
-        // dot > 0.62 means charger is aimed directly at this bot!
-        if (dot > 0.62 && d < chargerDist) {
+        // dot > 0.68 means charger is aimed directly at this bot!
+        if (dot > 0.68 && d < chargerDist) {
           chargerDist = d;
           incomingCharger = { craft: other, cdx, cdz, dist: d };
         }
@@ -195,18 +204,15 @@ class AIBumperBot {
       const bestPerpX = dCenter1 < dCenter2 ? perpX1 : perpX2;
       const bestPerpZ = dCenter1 < dCenter2 ? perpZ1 : perpZ2;
 
-      this.steerX = bestPerpX * 1.35;
-      this.steerZ = bestPerpZ * 1.35;
-
-
-
+      this.targetSteerX = bestPerpX * 1.1;
+      this.targetSteerZ = bestPerpZ * 1.1;
       return;
     }
 
     // -------------------------------------------------------------
     // STEP 3: CYBER SWEEPER HAZARD AVOIDANCE (CENTER BUMPER)
     // -------------------------------------------------------------
-    if (arena && arena.hazardGroup && myDist < 5.8) {
+    if (arena && arena.hazardGroup && myDist < 5.2) {
       const theta = arena.hazardGroup.rotation.y;
       const cosA = Math.cos(theta);
       const sinA = Math.sin(theta);
@@ -214,14 +220,14 @@ class AIBumperBot {
       const lz = this.craft.x * sinA + this.craft.z * cosA;
 
       // If within swept danger sector
-      if (Math.abs(lx) < 5.2 && lz > -0.6 && lz < 2.0) {
+      if (Math.abs(lx) < 4.8 && lz > -0.6 && lz < 1.8) {
         const escapeX = -sinA * Math.sign(lz + 0.1);
         const escapeZ = cosA * Math.sign(lz + 0.1);
 
-        this.steerX = escapeX * 1.2 - (this.craft.x / myDist) * 0.3;
-        this.steerZ = escapeZ * 1.2 - (this.craft.z / myDist) * 0.3;
+        this.targetSteerX = escapeX * 1.1 - (this.craft.x / myDist) * 0.25;
+        this.targetSteerZ = escapeZ * 1.1 - (this.craft.z / myDist) * 0.25;
 
-        if (Math.random() < 0.25 && this.craft.dashCooldown <= 0) {
+        if (Math.random() < 0.22 && this.craft.dashCooldown <= 0) {
           this.craft.triggerDash();
           this.craft.dashCooldown = 4.5 + Math.random() * 2.0;
         }
@@ -230,23 +236,20 @@ class AIBumperBot {
     }
 
     // -------------------------------------------------------------
-    // STEP 4: HAZARD AVOIDANCE & BENEFICIAL POWER-UP HUNTING
-    // Smart bots actively steer clear of cursed hazard traps, but hunt beneficial power-ups
+    // STEP 4: HAZARD TRAP AVOIDANCE & BENEFICIAL POWER-UP HUNTING
     // -------------------------------------------------------------
     if (arena && arena.powerUps) {
       // 4A: Check for nearby hazardous traps (Toxic Sludge or EMP Jammer)
       if (this.personality.survival > 0.52) {
         for (const pu of arena.powerUps) {
           if (pu.collected) continue;
-          // single deck power-up
           if (pu.type === 'hazard_slow' || pu.type === 'hazard_jam') {
             const hDist = Math.hypot(pu.x - this.craft.x, pu.z - this.craft.z);
-            if (hDist < 3.2) {
-              // Steer away from this hazard trap!
+            if (hDist < 3.0) {
               const hDx = (this.craft.x - pu.x) / (hDist || 1);
               const hDz = (this.craft.z - pu.z) / (hDist || 1);
-              this.steerX = hDx * 1.15;
-              this.steerZ = hDz * 1.15;
+              this.targetSteerX = hDx * 1.05;
+              this.targetSteerZ = hDz * 1.05;
               return;
             }
           }
@@ -260,68 +263,69 @@ class AIBumperBot {
 
         for (const pu of arena.powerUps) {
           if (pu.collected) continue;
-          // Ignore hazard traps or other tiers
-          // single deck power-up
           if (pu.type === 'hazard_slow' || pu.type === 'hazard_jam') continue;
 
           const puDistCenter = Math.hypot(pu.x, pu.z);
           if (puDistCenter > safeZoneRadius - 1.2) continue;
 
           const distToMe = Math.hypot(pu.x - this.craft.x, pu.z - this.craft.z);
-          if (distToMe < 6.5 && distToMe < minPUDist) {
+          if (distToMe < 6.0 && distToMe < minPUDist) {
             minPUDist = distToMe;
             bestPU = pu;
           }
         }
 
-        if (bestPU && minPUDist < 6.8 && Math.random() < 0.65) {
+        if (bestPU && minPUDist < 6.0 && Math.random() < 0.60) {
           const puDx = bestPU.x - this.craft.x;
           const puDz = bestPU.z - this.craft.z;
-          this.steerX = puDx / minPUDist;
-          this.steerZ = puDz / minPUDist;
+          this.targetSteerX = puDx / minPUDist;
+          this.targetSteerZ = puDz / minPUDist;
           return;
         }
       }
     }
 
     // -------------------------------------------------------------
-    // STEP 5: PREDATOR TARGET SELECTION & VULNERABILITY EXPLOITATION
-    // Bots aggressively prioritize vulnerable, trapped, or edge-stranded targets!
-    // ANTI-SUICIDE: Never eliminate each other if the human is active!
+    // STEP 5: FAIR COMBAT TARGET SELECTION (Natural Free-For-All)
+    // Bots engage whoever is closest and most vulnerable, dueling each other
+    // naturally instead of ganging up on the human player!
     // -------------------------------------------------------------
+    this.targetLockTimer -= this.thinkInterval;
+
     let bestTarget = null;
     let bestScore = -Infinity;
 
+    // Check if previous target is still alive, grounded, and within reasonable range
+    const isCurrentTargetValid = this.targetCraft &&
+      this.targetCraft.alive &&
+      this.targetCraft.grounded &&
+      (Math.hypot(this.targetCraft.x - this.craft.x, this.targetCraft.z - this.craft.z) < 14.0) &&
+      this.targetLockTimer > 0;
+
     allCrafts.forEach(c => {
       if (c === this.craft || !c.alive || !c.grounded) return;
-      
-
-      // If human is on Tier 2, bots on Tier 1 do not attack each other!
-      
 
       const dx = c.x - this.craft.x;
       const dz = c.z - this.craft.z;
       const dist = Math.hypot(dx, dz);
       const rivalDistFromCenter = Math.hypot(c.x, c.z);
 
-      // Human Player Detection
-      const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
+      // Distance-based priority (closer targets are primary focus)
+      let score = 40.0 - dist * 1.6;
 
-      let score = 50.0 - dist;
-
-      // Heavy priority on Human Player
-      if (isHumanRival) {
-        score += 45.0 * this.personality.aggression;
+      // Target persistence bonus: stick to current duel rather than whipping around every tick
+      if (c === this.targetCraft && isCurrentTargetValid) {
+        score += 8.0;
       }
 
-      // Predator opportunism
-      if (c.isGlitchSlow) score += 18.0;
-      if (c.isJammed) score += 15.0;
-      if (c.knockbackTimer > 0) score += 12.0;
-      if (rivalDistFromCenter > safeZoneRadius - 3.2) {
-        score += 25.0 * this.personality.aggression;
+      // Tactical opportunism
+      if (c.isGlitchSlow) score += 6.0;
+      if (c.isJammed) score += 5.0;
+      if (c.knockbackTimer > 0) score += 4.0;
+      if (rivalDistFromCenter > safeZoneRadius - 2.8) {
+        score += 8.0 * this.personality.aggression;
       }
-      if (c.hasShield) score -= 25.0;
+      if (c.hasShield) score -= 12.0;
 
       if (score > bestScore) {
         bestScore = score;
@@ -329,82 +333,81 @@ class AIBumperBot {
       }
     });
 
+    if (bestTarget !== this.targetCraft) {
+      this.targetCraft = bestTarget;
+      this.targetLockTimer = 1.2 + Math.random() * 0.8; // Lock onto target for 1.2s - 2.0s
+    }
+
     if (!bestTarget) {
       const toCenterX = -this.craft.x / (myDist || 1);
       const toCenterZ = -this.craft.z / (myDist || 1);
-      this.steerX = toCenterX * 0.35;
-      this.steerZ = toCenterZ * 0.35;
+      this.targetSteerX = toCenterX * 0.35;
+      this.targetSteerZ = toCenterZ * 0.35;
       return;
     }
 
     // -------------------------------------------------------------
-    // STEP 6: TACTICAL FLANKING & FULL-THROTTLE DRIVE
+    // STEP 6: TACTICAL APPROACH & STEERING
+    // Smooth target aiming without jarring threshold oscillations
     // -------------------------------------------------------------
-    const targetDistCenter = Math.hypot(bestTarget.x, bestTarget.z);
-    const edgeDirX = bestTarget.x / (targetDistCenter || 1);
-    const edgeDirZ = bestTarget.z / (targetDistCenter || 1);
-
-    // Flank behind the opponent relative to arena center to push them outwards!
-    const flankOffset = 1.0 * this.personality.aggression;
-    const flankPosX = bestTarget.x - edgeDirX * flankOffset;
-    const flankPosZ = bestTarget.z - edgeDirZ * flankOffset;
-
     const toTargetDx = bestTarget.x - this.craft.x;
     const toTargetDz = bestTarget.z - this.craft.z;
     const directDist = Math.hypot(toTargetDx, toTargetDz);
 
-    let steerDx, steerDz;
-    if (directDist < 1.8) {
-      steerDx = toTargetDx;
-      steerDz = toTargetDz;
-    } else {
-      steerDx = flankPosX - this.craft.x;
-      steerDz = flankPosZ - this.craft.z;
-    }
+    // Aim slightly behind target relative to arena center to push them outwards
+    const targetDistCenter = Math.hypot(bestTarget.x, bestTarget.z);
+    const edgeDirX = bestTarget.x / (targetDistCenter || 1);
+    const edgeDirZ = bestTarget.z / (targetDistCenter || 1);
 
+    // Smoothly scale flank offset with distance (continuous, no abrupt 1.8m jump!)
+    const flankWeight = Math.min(0.75, directDist * 0.12) * this.personality.aggression;
+    const aimX = bestTarget.x - edgeDirX * flankWeight;
+    const aimZ = bestTarget.z - edgeDirZ * flankWeight;
+
+    const steerDx = aimX - this.craft.x;
+    const steerDz = aimZ - this.craft.z;
     const steerDist = Math.hypot(steerDx, steerDz);
+
     if (steerDist > 0.05) {
-      let nx = steerDx / steerDist;
-      let nz = steerDz / steerDist;
-
-      // Slight natural steering wobble
-      if (this.steerNoise > 0.02) {
-        const noiseAngle = (Math.random() - 0.5) * this.steerNoise;
-        const cosN = Math.cos(noiseAngle);
-        const sinN = Math.sin(noiseAngle);
-        nx = nx * cosN - nz * sinN;
-        nz = nx * sinN + nz * cosN;
-      }
-
-      this.steerX = nx * 1.20; // Full throttle hardcore drive!
-      this.steerZ = nz * 1.20;
+      this.targetSteerX = steerDx / steerDist;
+      this.targetSteerZ = steerDz / steerDist;
+    } else {
+      this.targetSteerX = 0;
+      this.targetSteerZ = 0;
     }
 
     // -------------------------------------------------------------
-    // STEP 7: HARDCORE DASH RAM & DEFENSIVE EMP EXECUTION
+    // STEP 7: TACTICAL DASH RAM
+    // Three.js forward vector: facing = atan2(dx, dz) -> fx = sin(facing), fz = cos(facing)
     // -------------------------------------------------------------
-    const predX = this.craft.x + Math.cos(this.craft.facing) * 6.5;
-    const predZ = this.craft.z + Math.sin(this.craft.facing) * 6.5;
+    const forwardX = Math.sin(this.craft.facing);
+    const forwardZ = Math.cos(this.craft.facing);
+
+    // Predict landing spot after ~5m dash
+    const predX = this.craft.x + forwardX * 5.0;
+    const predZ = this.craft.z + forwardZ * 5.0;
     const predDist = Math.hypot(predX, predZ);
-    const isDashSafe = predDist < (safeZoneRadius - 1.0);
+    const isDashSafe = predDist < (safeZoneRadius - 1.2);
 
+    // Angle to target
     const angleToTarget = Math.atan2(toTargetDx, toTargetDz);
-    let angleDiff = Math.abs(angleToTarget - this.craft.facing);
+    let angleDiff = angleToTarget - this.craft.facing;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    // A) Tactical Dash Ram (Snappy, punchy, equal dash chance)
-    if (directDist >= 1.8 && directDist <= 5.8 && this.craft.dashCooldown <= 0 && isDashSafe) {
-      if (Math.abs(angleDiff) < 0.42 && Math.random() < this.personality.dashSkill) {
+    // Tactical Dash Ram:
+    // Only dash when aligned with target, at a clean engagement distance, and safe from ring drop
+    if (directDist >= 2.2 && directDist <= 5.2 && this.craft.dashCooldown <= 0 && isDashSafe) {
+      if (Math.abs(angleDiff) < 0.38 && Math.random() < this.personality.dashSkill) {
         this.craft.triggerDash();
-        this.craft.dashCooldown = 2.4 + Math.random() * 1.4; // Responsive ~2.4 - 3.8s cooldown
+        // Fair, measured cooldown (4.5s - 6.5s) instead of constant spam
+        this.craft.dashCooldown = 4.5 + Math.random() * 2.0;
         if (Math.random() < 0.35 && this.craft.setEmotion) {
           const taunts = ['OUT OF MY WAY!', 'RAMMING SPEED!', 'FEEL THE IMPACT!', 'NO ESCAPE!', 'EAT BUMPER!'];
           this.craft.setEmotion('dash', 1.0, taunts[Math.floor(Math.random() * taunts.length)], '💥');
         }
       }
     }
-
-
   }
 
   remove() {
@@ -468,77 +471,39 @@ class AIBumperManager {
 
       const bot = new AIBumperBot(this.scene, cfg.name, cfg.color);
 
-      // Apply difficulty scaling to personality & physics
+      // Fair, fun arcade tuning (mass = 1.0 same as player!)
+      bot.craft.mass = 1.0;
+      bot.craft.baseMass = 1.0;
+
       if (difficulty === 'easy') {
-        // Active Brawlers (2 bots): Energetic clashing, accessible yet fun!
-        bot.personality.aggression = 0.65 + Math.random() * 0.15;
-        bot.personality.survival = 0.68 + Math.random() * 0.12;
-        bot.personality.dashSkill = 0.42 + Math.random() * 0.15;
-        bot.personality.dodgeSkill = 0.48 + Math.random() * 0.18;
-        bot.thinkInterval = 0.15 + Math.random() * 0.05;
-        bot.steerNoise = 0.12;
+        bot.personality.aggression = 0.60 + Math.random() * 0.12;
+        bot.personality.survival = 0.75 + Math.random() * 0.10;
+        bot.personality.dashSkill = 0.40 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.45 + Math.random() * 0.15;
+        bot.thinkInterval = 0.15 + Math.random() * 0.04;
         bot.craft.baseSpeed = 10.8;
-        bot.craft.mass = 1.0;
-        bot.craft.baseMass = 1.0;
       } else if (difficulty === 'medium') {
-        // Hardcore Brawlers (3 bots): Sharp reflexes, proactive dash attacks, jukes!
-        bot.personality.aggression = 0.82 + Math.random() * 0.14;
-        bot.personality.survival = 0.78 + Math.random() * 0.12;
-        bot.personality.dashSkill = 0.62 + Math.random() * 0.16;
-        bot.personality.dodgeSkill = 0.68 + Math.random() * 0.18;
-        bot.thinkInterval = 0.11 + Math.random() * 0.04;
-        bot.steerNoise = 0.08;
+        bot.personality.aggression = 0.70 + Math.random() * 0.14;
+        bot.personality.survival = 0.80 + Math.random() * 0.10;
+        bot.personality.dashSkill = 0.52 + Math.random() * 0.14;
+        bot.personality.dodgeSkill = 0.58 + Math.random() * 0.14;
+        bot.thinkInterval = 0.13 + Math.random() * 0.03;
         bot.craft.baseSpeed = 11.2;
-        bot.craft.mass = 1.0;
-        bot.craft.baseMass = 1.0;
       } else if (difficulty === 'hard') {
-        // Arena Champions (4 bots): Ruthless, lightning jukes, flawless edge punish!
-        bot.personality.aggression = 0.94 + Math.random() * 0.06;
-        bot.personality.survival = 0.86 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.78 + Math.random() * 0.14;
-        bot.personality.dodgeSkill = 0.82 + Math.random() * 0.14;
-        bot.thinkInterval = 0.09 + Math.random() * 0.03;
-        bot.steerNoise = 0.04;
+        bot.personality.aggression = 0.78 + Math.random() * 0.12;
+        bot.personality.survival = 0.85 + Math.random() * 0.08;
+        bot.personality.dashSkill = 0.62 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.65 + Math.random() * 0.12;
+        bot.thinkInterval = 0.11 + Math.random() * 0.03;
         bot.craft.baseSpeed = 11.5;
-        bot.craft.mass = 1.02;
-        bot.craft.baseMass = 1.02;
       } else {
-        // 'public' (Battle Royale): High-octane arena sumo!
-        const roll = Math.random();
-        if (roll < 0.25) {
-          // Brawler bot
-          bot.personality.aggression = 0.72 + Math.random() * 0.15;
-          bot.personality.survival = 0.72 + Math.random() * 0.12;
-          bot.personality.dashSkill = 0.48 + Math.random() * 0.14;
-          bot.personality.dodgeSkill = 0.52 + Math.random() * 0.16;
-          bot.thinkInterval = 0.13 + Math.random() * 0.04;
-          bot.steerNoise = 0.10;
-          bot.craft.baseSpeed = 11.0;
-          bot.craft.mass = 1.0;
-          bot.craft.baseMass = 1.0;
-        } else if (roll < 0.70) {
-          // Gladiator bot
-          bot.personality.aggression = 0.84 + Math.random() * 0.12;
-          bot.personality.survival = 0.80 + Math.random() * 0.10;
-          bot.personality.dashSkill = 0.65 + Math.random() * 0.14;
-          bot.personality.dodgeSkill = 0.70 + Math.random() * 0.15;
-          bot.thinkInterval = 0.10 + Math.random() * 0.03;
-          bot.steerNoise = 0.06;
-          bot.craft.baseSpeed = 11.4;
-          bot.craft.mass = 1.0;
-          bot.craft.baseMass = 1.0;
-        } else {
-          // Veteran bot
-          bot.personality.aggression = 0.95 + Math.random() * 0.05;
-          bot.personality.survival = 0.86 + Math.random() * 0.10;
-          bot.personality.dashSkill = 0.80 + Math.random() * 0.12;
-          bot.personality.dodgeSkill = 0.84 + Math.random() * 0.12;
-          bot.thinkInterval = 0.09 + Math.random() * 0.03;
-          bot.steerNoise = 0.04;
-          bot.craft.baseSpeed = 11.6;
-          bot.craft.mass = 1.02;
-          bot.craft.baseMass = 1.02;
-        }
+        // 'public' (Battle Royale)
+        bot.personality.aggression = 0.72 + Math.random() * 0.14;
+        bot.personality.survival = 0.82 + Math.random() * 0.10;
+        bot.personality.dashSkill = 0.55 + Math.random() * 0.14;
+        bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
+        bot.thinkInterval = 0.12 + Math.random() * 0.03;
+        bot.craft.baseSpeed = 11.4;
       }
 
       bot.spawn(x, z);
@@ -566,13 +531,16 @@ class AIBumperManager {
       bot.id = b.id;
       bot.craft.id = b.id;
       bot.craft.pilotName = b.pilotName;
-      bot.personality.aggression = 0.85;
-      bot.personality.survival = 0.80;
-      bot.personality.dashSkill = 0.65;
-      bot.personality.dodgeSkill = 0.60;
-      bot.craft.baseSpeed = 11.5;
-      bot.craft.mass = 1.35;
-      bot.craft.baseMass = 1.35;
+      // Balanced arcade brawler personality
+      bot.personality.aggression = 0.72 + Math.random() * 0.14;
+      bot.personality.survival = 0.82 + Math.random() * 0.10;
+      bot.personality.dashSkill = 0.55 + Math.random() * 0.14;
+      bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
+      bot.thinkInterval = 0.12 + Math.random() * 0.03;
+      // Fair physical mass matching human player
+      bot.craft.baseSpeed = 11.4;
+      bot.craft.mass = 1.0;
+      bot.craft.baseMass = 1.0;
       bot.spawn(b.spawnX, b.spawnZ);
       this.bots.push(bot);
     });
@@ -584,11 +552,9 @@ class AIBumperManager {
   }
 }
 
-
 if (typeof window !== 'undefined') {
   window.AIBumperManager = AIBumperManager;
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.AIBumperManager = AIBumperManager;
 }
-
