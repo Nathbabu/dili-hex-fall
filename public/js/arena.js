@@ -103,6 +103,8 @@ class ArenaColosseum {
     this.infernoGeysers = [];
     this.forgeTowers = [];
     this.lavaVeins = [];
+    this.cryoBoostVents = [];
+    this.cryoMonoliths = [];
 
     this._setupRingStages(totalPlayers);
     this.upperRadius = this.currentRadius;
@@ -991,6 +993,218 @@ class ArenaColosseum {
     this.sweeperBar = triSweeper;
     this.hazardGroup.add(this.sweeperBar);
     this.scene.add(this.hazardGroup);
+
+    // Build Unique Cryo Glacier Architecture:
+    this._buildCryoBoostVents();
+    this._buildCryoMonoliths();
+  }
+
+  // ------------------------------------------------------------
+  // CRYO GLACIER: 4 SUB-ZERO GLACIAL NITROGEN BOOST VENTS
+  // ------------------------------------------------------------
+  _buildCryoBoostVents() {
+    this.cryoBoostVents = [];
+    // 4 diagonal drift boost pads in the mid-ring zone
+    const ventCoords = [
+      { x: 9.2, z: 9.2 },
+      { x: -9.2, z: 9.2 },
+      { x: 9.2, z: -9.2 },
+      { x: -9.2, z: -9.2 }
+    ];
+
+    ventCoords.forEach(p => {
+      const group = new THREE.Group();
+      group.position.set(p.x, 0.06, p.z);
+
+      // Arctic frost base plate
+      const baseGeo = new THREE.CylinderGeometry(1.35, 1.55, 0.16, 16);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x082138,
+        metalness: 0.85,
+        roughness: 0.2,
+        emissive: 0x005577,
+        emissiveIntensity: 0.3
+      });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      group.add(base);
+
+      // Glowing cryogenic turbine ring
+      const ringGeo = new THREE.TorusGeometry(1.22, 0.08, 8, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x00F0FF });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.09;
+      group.add(ring);
+
+      // Pulsing cryogenic nitrogen core
+      const coreGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.20, 16);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0xDCF8FF,
+        emissive: 0x00E5FF,
+        emissiveIntensity: 2.2,
+        roughness: 0.1
+      });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      core.position.y = 0.12;
+      group.add(core);
+
+      // Subtle vertical frost particle beam
+      const beamGeo = new THREE.CylinderGeometry(0.45, 0.75, 1.8, 12, 1, true);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: 0x88EEFF,
+        transparent: true,
+        opacity: 0.35,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.y = 1.0;
+      group.add(beam);
+
+      this.scene.add(group);
+      this.cryoBoostVents.push({
+        x: p.x,
+        z: p.z,
+        group,
+        core,
+        ring,
+        beam
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // CRYO GLACIER: 4 TOWERING CRYSTALLINE ICE MONOLITHS
+  // ------------------------------------------------------------
+  _buildCryoMonoliths() {
+    this.cryoMonoliths = [];
+    // 4 cardinal ice crags on the outer glacier rim
+    const monolithCoords = [
+      { x: 0, z: 14.5 },
+      { x: 14.5, z: 0 },
+      { x: 0, z: -14.5 },
+      { x: -14.5, z: 0 }
+    ];
+
+    monolithCoords.forEach(p => {
+      const group = new THREE.Group();
+      group.position.set(p.x, 0, p.z);
+
+      // Glacial ice pedestal base
+      const baseGeo = new THREE.CylinderGeometry(1.5, 1.8, 0.55, 6);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x071b30,
+        metalness: 0.4,
+        roughness: 0.1,
+        emissive: 0x00D0FF,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.95
+      });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.28;
+      group.add(base);
+
+      // Towering Hexagonal Crystalline Ice Obelisk (Height 4.2m)
+      const colGeo = new THREE.CylinderGeometry(0.9, 1.35, 4.2, 6);
+      const colMat = new THREE.MeshStandardMaterial({
+        color: 0x88EEFF,
+        emissive: 0x00A0E0,
+        emissiveIntensity: 1.8,
+        metalness: 0.15,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.92
+      });
+      const col = new THREE.Mesh(colGeo, colMat);
+      col.position.y = 2.4;
+      group.add(col);
+
+      // Crystalline Faceted Spire Peak
+      const peakGeo = new THREE.ConeGeometry(0.88, 1.4, 6);
+      const peakMat = new THREE.MeshStandardMaterial({
+        color: 0xDCF8FF,
+        emissive: 0x00F0FF,
+        emissiveIntensity: 2.4,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.95
+      });
+      const peak = new THREE.Mesh(peakGeo, peakMat);
+      peak.position.y = 5.0;
+      group.add(peak);
+
+      // Floating Mid-Level Frost Energy Ring
+      const frostRingGeo = new THREE.TorusGeometry(1.4, 0.06, 8, 24);
+      const frostRingMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF, transparent: true, opacity: 0.85 });
+      const frostRing = new THREE.Mesh(frostRingGeo, frostRingMat);
+      frostRing.rotation.x = Math.PI / 2;
+      frostRing.position.y = 2.6;
+      group.add(frostRing);
+
+      // Summit Frost Beacon
+      const beaconGeo = new THREE.SphereGeometry(0.22, 14, 10);
+      const beaconMat = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        emissive: 0xFFFFFF,
+        emissiveIntensity: 3.5
+      });
+      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+      beacon.position.y = 5.8;
+      group.add(beacon);
+
+      this.scene.add(group);
+      this.cryoMonoliths.push({
+        x: p.x,
+        z: p.z,
+        radius: 1.45, // Solid physical collision radius
+        group,
+        col,
+        frostRing
+      });
+    });
+  }
+
+  // ------------------------------------------------------------
+  // CRYO GLACIER: BOOST VENT INTERACTION & BOOST PHYSICS
+  // ------------------------------------------------------------
+  _checkCryoBoostVents(crafts) {
+    if (!this.cryoBoostVents || !this.cryoBoostVents.length) return;
+    const list = Array.isArray(crafts) ? crafts : (crafts ? [crafts] : []);
+
+    list.forEach(character => {
+      if (!character || !character.alive || !character.grounded) return;
+      if (character.boostCooldown > 0) {
+        character.boostCooldown -= 0.016;
+        return;
+      }
+
+      for (const vent of this.cryoBoostVents) {
+        const dx = character.x - vent.x;
+        const dz = character.z - vent.z;
+        if (dx * dx + dz * dz < 3.2) {
+          character.boostCooldown = 0.85;
+
+          // Rocket forward in drive heading at 24.0 m/s!
+          const curSpd = Math.hypot(character.vx, character.vz);
+          const boostSpd = Math.min(27.0, Math.max(20.0, curSpd * 1.65));
+          const heading = (curSpd > 0.5) ? Math.atan2(character.vx, character.vz) : character.facing;
+
+          character.vx = Math.sin(heading) * boostSpd;
+          character.vz = Math.cos(heading) * boostSpd;
+          character.squashX = 0.82;
+          character.squashY = 1.38;
+
+          // Vent reaction
+          vent.core.material.emissiveIntensity = 4.5;
+          if (HexAudio && HexAudio.sfxEmp) HexAudio.sfxEmp();
+          if (typeof character.setEmotion === 'function') {
+            character.setEmotion('celebrate', 1.0, 'GLACIAL SURGE! ⚡', '🚀');
+          }
+          break;
+        }
+      }
+    });
   }
 
   // ============================================================
@@ -1002,24 +1216,63 @@ class ArenaColosseum {
     const craftRadius = character.radius || 1.10;
     const distCenter = Math.sqrt(character.x * character.x + character.z * character.z);
 
-    // 1. Central Stationary Hydraulic / Glacial / Magma Pillar Core Collision
-    const pillarMinDist = 1.75;
+    // 1. Central Stationary Hydraulic / Glacial / Magma Pillar Core Collision (100% Impenetrable!)
+    let centerRadius = 1.70;
+    if (this.theme === 'cryo') centerRadius = 2.40;     // Matches 2.35m Cryo glacial pedestal & spire base
+    else if (this.theme === 'inferno') centerRadius = 2.15; // Matches 2.1m Inferno smelting crucible
+    const pillarMinDist = centerRadius + craftRadius * 0.95;
+
     if (distCenter < pillarMinDist) {
       const nx = distCenter > 0.001 ? (character.x / distCenter) : 1;
       const nz = distCenter > 0.001 ? (character.z / distCenter) : 0;
-      character.x = nx * (pillarMinDist + 0.08);
-      character.z = nz * (pillarMinDist + 0.08);
+      character.x = nx * (pillarMinDist + 0.10);
+      character.z = nz * (pillarMinDist + 0.10);
       if (character.group) character.group.position.set(character.x, character.y, character.z);
-      character.vx = nx * 8.5;
-      character.vz = nz * 8.5;
-      character.knockbackTimer = 0.20;
+      character.vx = nx * 12.5;
+      character.vz = nz * 12.5;
+      character.knockbackTimer = 0.22;
       if (character.hazardHitCooldown <= 0) {
-        character.hazardHitCooldown = 0.35;
-        character.squashX = 1.35;
-        character.squashY = 0.70;
-        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(1.6);
+        character.hazardHitCooldown = 0.32;
+        character.squashX = 1.45;
+        character.squashY = 0.65;
+        if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.2);
+        if (typeof character.setEmotion === 'function') {
+          const callout = this.theme === 'cryo' ? 'GLACIAL CLANG! ❄️' : (this.theme === 'inferno' ? 'FORGE CLANG! 🔥' : 'CLANG! 💥');
+          character.setEmotion('hit', 1.0, callout, this.theme === 'cryo' ? '❄️' : '💥');
+        }
       }
       return { hit: true, x: character.x, z: character.z, type: 'pillar' };
+    }
+
+    // 1c. Cryo Glacier Crystalline Monoliths Collision
+    if (this.theme === 'cryo' && this.cryoMonoliths && this.cryoMonoliths.length) {
+      for (const m of this.cryoMonoliths) {
+        const mdx = character.x - m.x;
+        const mdz = character.z - m.z;
+        const mdistSq = mdx * mdx + mdz * mdz;
+        const monolithMinDist = m.radius + craftRadius * 0.95;
+        if (mdistSq < monolithMinDist * monolithMinDist) {
+          const mdist = Math.sqrt(mdistSq) || 1;
+          const nx = mdx / mdist;
+          const nz = mdz / mdist;
+          character.x = m.x + nx * (monolithMinDist + 0.08);
+          character.z = m.z + nz * (monolithMinDist + 0.08);
+          if (character.group) character.group.position.set(character.x, character.y, character.z);
+          character.vx = nx * 12.0;
+          character.vz = nz * 12.0;
+          character.knockbackTimer = 0.24;
+          if (character.hazardHitCooldown <= 0) {
+            character.hazardHitCooldown = 0.32;
+            character.squashX = 1.50;
+            character.squashY = 0.65;
+            if (HexAudio && HexAudio.sfxBump) HexAudio.sfxBump(2.2);
+            if (typeof character.setEmotion === 'function') {
+              character.setEmotion('hit', 1.0, 'ICE CRAG! ❄️', '❄️');
+            }
+          }
+          return { hit: true, x: character.x, z: character.z, type: 'monolith' };
+        }
+      }
     }
 
     // 1b. Inferno Forge Bastion Smelting Towers Collision
@@ -1431,6 +1684,22 @@ class ArenaColosseum {
       if (this.cryoSpireMesh) this.cryoSpireMesh.rotation.y -= dt * 0.45;
       if (this.cryoOrbitalRing1) this.cryoOrbitalRing1.rotation.z += dt * 0.75;
       if (this.cryoOrbitalRing2) this.cryoOrbitalRing2.rotation.z -= dt * 0.60;
+
+      // Animate Glacial Boost Vents
+      this._checkCryoBoostVents(activeCraftsList);
+      if (this.cryoBoostVents) {
+        this.cryoBoostVents.forEach(v => {
+          v.core.material.emissiveIntensity += (2.2 - v.core.material.emissiveIntensity) * Math.min(1, dt * 4.0);
+          if (v.beam) v.beam.rotation.y += dt * 2.0;
+        });
+      }
+
+      // Rotate Monolith energy rings
+      if (this.cryoMonoliths) {
+        this.cryoMonoliths.forEach(m => {
+          if (m.frostRing) m.frostRing.rotation.z += dt * 0.85;
+        });
+      }
     } else if (this.theme === 'inferno') {
       // Animate Erupting Volcanic Geysers
       this._updateInfernoGeysers(dt, activeCraftsList);
@@ -1571,6 +1840,19 @@ class ArenaColosseum {
     });
 
 
+
+    if (this.cryoBoostVents && this.cryoBoostVents.length) {
+      this.cryoBoostVents.forEach(v => {
+        if (v.group && v.group.parent) this.scene.remove(v.group);
+      });
+      this.cryoBoostVents = [];
+    }
+    if (this.cryoMonoliths && this.cryoMonoliths.length) {
+      this.cryoMonoliths.forEach(m => {
+        if (m.group && m.group.parent) this.scene.remove(m.group);
+      });
+      this.cryoMonoliths = [];
+    }
 
     if (this.infernoGeysers && this.infernoGeysers.length) {
       this.infernoGeysers.forEach(g => {
