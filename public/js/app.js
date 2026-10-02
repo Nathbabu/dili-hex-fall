@@ -903,23 +903,50 @@
     fetchLeaderboard();
   });
 
-  btnLbClose.addEventListener('click', () => {
-    showScreen('titleScreen');
-  });
+  function safePlayUiClick() {
+    try {
+      if (typeof HexAudio !== 'undefined') {
+        HexAudio.init();
+        HexAudio.resumeCtx();
+        if (typeof HexAudio.sfxClick === 'function') {
+          HexAudio.sfxClick();
+        } else if (typeof HexAudio.playTone === 'function') {
+          HexAudio.playTone(600, 0.05, 'triangle');
+        }
+      }
+    } catch (_) {}
+  }
 
-    // Known Bot Names Filter
+  const handleCloseLb = (e) => {
+    if (e) {
+      try { e.preventDefault(); } catch (_) {}
+      try { e.stopPropagation(); } catch (_) {}
+    }
+    safePlayUiClick();
+    showScreen('titleScreen');
+  };
+  btnLbClose.addEventListener('click', handleCloseLb);
+  btnLbClose.addEventListener('touchend', handleCloseLb);
+
+  // Known Bot Names & Test Filter
   const KNOWN_BOT_NAMES = [
     'vortex_hunter', 'decoded_titan', 'cyber_phantom', 'neon_striker',
     'dili_supreme', 'cyberghost_99', 'astrodecoded', 'vortex_rider',
-    'novacadet', 'astro_bot', 'ai_pilot', 'cyber_bot'
+    'novacadet', 'nova_cadet', 'astro_bot', 'ai_pilot', 'cyber_bot',
+    'astro_smasher', 'hex_fury', 'void_stalker', 'pulse_breaker',
+    'grid_reaper', 'flux_racer', 'photon_hammer', 'plasma_viper',
+    'ion_crusher', 'data_wraith', 'core_blaster', 'byte_bomber',
+    'arc_sentinel', 'cyber01', 'droid02', 'cyber-01', 'droid-02',
+    'auditpilot', 'tiepilot', 'testpilot', 'sim_ace', 'sim_blaze'
   ];
 
   function isBotAccount(name) {
     if (!name || typeof name !== 'string') return true;
-    const n = name.trim().toLowerCase().replace(/[\s\-_]+/g, '');
+    const n = name.trim().toLowerCase().replace(/[\[\]\s\-_]+/g, '');
     if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
+    if (n.includes('audit') || n.includes('tiepilot') || n.includes('testpilot')) return true;
     return KNOWN_BOT_NAMES.some(b => {
-      const cleanB = b.replace(/[\s\-_]+/g, '');
+      const cleanB = b.replace(/[\[\]\s\-_]+/g, '');
       return n === cleanB || n.includes(cleanB);
     });
   }
@@ -936,30 +963,40 @@
     const btnSolo = document.getElementById('lbModeSolo');
     const btnPublic = document.getElementById('lbModePublic');
 
+    const selectSolo = (e) => {
+      if (e) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+      safePlayUiClick();
+      if (btnSolo) btnSolo.classList.add('active');
+      if (btnPublic) btnPublic.classList.remove('active');
+      currentLbMode = 'solo';
+      currentLbFilter = 'all';
+      renderSubFilterTabs();
+      renderLeaderboardTable();
+    };
+
+    const selectPublic = (e) => {
+      if (e) {
+        try { e.preventDefault(); } catch (_) {}
+      }
+      safePlayUiClick();
+      if (btnPublic) btnPublic.classList.add('active');
+      if (btnSolo) btnSolo.classList.remove('active');
+      currentLbMode = 'public';
+      currentLbFilter = 'all';
+      renderSubFilterTabs();
+      renderLeaderboardTable();
+    };
+
     if (btnSolo) {
-      btnSolo.addEventListener('click', () => {
-        HexAudio.init(); HexAudio.resumeCtx();
-        HexAudio.playTone(600, 'triangle', 0.05);
-        btnSolo.classList.add('active');
-        if (btnPublic) btnPublic.classList.remove('active');
-        currentLbMode = 'solo';
-        currentLbFilter = 'all';
-        renderSubFilterTabs();
-        renderLeaderboardTable();
-      });
+      btnSolo.addEventListener('click', selectSolo);
+      btnSolo.addEventListener('touchend', selectSolo);
     }
 
     if (btnPublic) {
-      btnPublic.addEventListener('click', () => {
-        HexAudio.init(); HexAudio.resumeCtx();
-        HexAudio.playTone(700, 'triangle', 0.05);
-        btnPublic.classList.add('active');
-        if (btnSolo) btnSolo.classList.remove('active');
-        currentLbMode = 'public';
-        currentLbFilter = 'all';
-        renderSubFilterTabs();
-        renderLeaderboardTable();
-      });
+      btnPublic.addEventListener('click', selectPublic);
+      btnPublic.addEventListener('touchend', selectPublic);
     }
   }
 
@@ -970,7 +1007,7 @@
     if (currentLbMode === 'solo') {
       subContainer.innerHTML = `
         <button class="lb-filter-btn ${currentLbFilter === 'all' ? 'active' : ''}" data-filter="all">ALL</button>
-        <button class="lb-filter-btn ${currentLbFilter === 'normal' ? 'active' : ''}" data-filter="normal">NORMAL</button>
+        <button class="lb-filter-btn ${currentLbFilter === 'easy' ? 'active' : ''}" data-filter="easy">EASY</button>
         <button class="lb-filter-btn ${currentLbFilter === 'medium' ? 'active' : ''}" data-filter="medium">MEDIUM</button>
         <button class="lb-filter-btn ${currentLbFilter === 'hard' ? 'active' : ''}" data-filter="hard">HARD</button>
       `;
@@ -982,14 +1019,18 @@
     }
 
     subContainer.querySelectorAll('.lb-filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        HexAudio.init(); HexAudio.resumeCtx();
-        HexAudio.playTone(550, 'sine', 0.04);
+      const applyFilter = (e) => {
+        if (e) {
+          try { e.preventDefault(); } catch (_) {}
+        }
+        safePlayUiClick();
         subContainer.querySelectorAll('.lb-filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentLbFilter = btn.dataset.filter || 'all';
         renderLeaderboardTable();
-      });
+      };
+      btn.addEventListener('click', applyFilter);
+      btn.addEventListener('touchend', applyFilter);
     });
   }
 
@@ -1027,7 +1068,11 @@
       if (currentLbFilter === 'all') {
         filtered = sortLeaderboardEntries([...list]);
       } else {
-        filtered = sortLeaderboardEntries(list.filter(e => (e.difficulty || 'normal').toLowerCase() === currentLbFilter));
+        filtered = sortLeaderboardEntries(list.filter(e => {
+          const diff = (e.difficulty || 'easy').toLowerCase();
+          if (currentLbFilter === 'easy') return diff === 'easy' || diff === 'normal';
+          return diff === currentLbFilter;
+        }));
       }
     } else {
       // Public Arena
@@ -1056,8 +1101,9 @@
 
       let modeBadgeHtml = '';
       if (isSolo) {
-        const diffKey = (entry.difficulty || 'normal').toLowerCase();
-        const diffClass = diffKey === 'hard' ? 'diff-hard' : (diffKey === 'medium' ? 'diff-medium' : 'diff-normal');
+        const rawDiff = (entry.difficulty || 'easy').toLowerCase();
+        const diffKey = rawDiff === 'normal' ? 'easy' : rawDiff;
+        const diffClass = diffKey === 'hard' ? 'diff-hard' : (diffKey === 'medium' ? 'diff-medium' : 'diff-easy');
         const diffLabel = diffKey.toUpperCase();
         modeBadgeHtml = `<span class="pilot-diff-pill ${diffClass}">${diffLabel}</span>`;
       } else {

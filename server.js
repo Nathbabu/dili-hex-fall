@@ -25,17 +25,23 @@ app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Known Bot Names and Identification
+// Comprehensive Known Bot Names and Identification
 const KNOWN_BOT_NAMES = [
-  'cyber-01', 'droid-02', 'vortex_hunter', 'decoded_titan',
-  'cyber_phantom', 'neon_striker', 'dili_supreme', 'cyberghost_99',
-  'astrodecoded', 'vortex_rider', 'novacadet', 'astro_bot', 'ai_pilot', 'cyber_bot'
+  'cyber-01', 'droid-02', 'cyber01', 'droid02',
+  'vortex_hunter', 'decoded_titan', 'cyber_phantom', 'neon_striker',
+  'dili_supreme', 'cyberghost_99', 'astrodecoded', 'vortex_rider',
+  'novacadet', 'nova_cadet', 'astro_bot', 'ai_pilot', 'cyber_bot',
+  'astro_smasher', 'hex_fury', 'void_stalker', 'pulse_breaker',
+  'grid_reaper', 'flux_racer', 'photon_hammer', 'plasma_viper',
+  'ion_crusher', 'data_wraith', 'core_blaster', 'byte_bomber',
+  'arc_sentinel', 'auditpilot', 'tiepilot', 'testpilot', 'sim_ace', 'sim_blaze'
 ];
 
 function isBotAccount(name) {
   if (!name || typeof name !== 'string') return true;
   const n = name.trim().toLowerCase().replace(/[\[\]\s\-_]+/g, '');
   if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
+  if (n.includes('audit') || n.includes('tiepilot') || n.includes('testpilot')) return true;
   return KNOWN_BOT_NAMES.some(b => {
     const cleanB = b.replace(/[\[\]\s\-_]+/g, '');
     return n === cleanB || n.includes(cleanB);

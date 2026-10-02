@@ -52,21 +52,30 @@ const HexAudio = (() => {
     return isMuted;
   }
 
-  // Tactile Tone Generator
+  // Tactile Tone Generator (Safe against parameter swapping)
   function playTone(freq, duration, type = 'sine', gainNode = sfxGain, vol = 0.3) {
     if (!ctx || isMuted) return;
     try {
+      let d = typeof duration === 'number' ? duration : (typeof type === 'number' ? type : 0.08);
+      let t = typeof type === 'string' ? type : (typeof duration === 'string' ? duration : 'sine');
+      const validTypes = ['sine', 'square', 'sawtooth', 'triangle'];
+      if (!validTypes.includes(t)) t = 'sine';
+
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
-      osc.type = type;
+      osc.type = t;
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
       g.gain.setValueAtTime(vol, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + d);
       osc.connect(g);
       g.connect(gainNode || sfxGain);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + duration);
+      osc.stop(ctx.currentTime + d);
     } catch (_) {}
+  }
+
+  function sfxClick() {
+    playTone(600, 0.05, 'triangle', sfxGain, 0.25);
   }
 
   // Heavy Impact Noise with Low-Pass Punch
@@ -521,7 +530,7 @@ const HexAudio = (() => {
   }
 
   return {
-    init, resumeCtx, toggleMute, getIsMuted, haptic,
+    init, resumeCtx, toggleMute, getIsMuted, haptic, playTone, sfxClick,
     sfxBump, sfxHeavyCrash, sfxDash,
     sfxJumpPad, sfxEmp, sfxKill, sfxCheer, sfxAlarm, sfxCollapse,
     sfxPowerUp, sfxCrystal, sfxElimination, sfxVictory,

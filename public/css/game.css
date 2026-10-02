@@ -804,7 +804,30 @@ canvas#gameCanvas {
 }
 
 /* Leaderboard */
-.leaderboard-card { max-width: 580px; }
+#leaderboardScreen {
+  z-index: 500 !important;
+  pointer-events: auto !important;
+}
+#leaderboardScreen.active {
+  display: flex !important;
+  pointer-events: auto !important;
+}
+.leaderboard-card {
+  max-width: 580px;
+  width: 95%;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 501 !important;
+}
+.lb-mode-btn,
+.lb-filter-btn,
+#btnLbClose {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
 .lb-table-wrap {
   max-height: 52vh; overflow-y: auto;
   margin-bottom: 20px;
