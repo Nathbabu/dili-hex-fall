@@ -157,12 +157,13 @@ class EmoteBubble {
       map: this.texture,
       transparent: true,
       opacity: 0,
-      depthTest: false
+      depthTest: true,
+      depthWrite: false
     });
 
     this.sprite = new THREE.Sprite(this.material);
-    this.sprite.scale.set(2.4, 1.0, 1);
-    this.sprite.position.set(0, 3.2, 0); // Float directly above Dili's ears
+    this.sprite.scale.set(1.85, 0.78, 1);
+    this.sprite.position.set(0, 2.65, 0); // Float cleanly above Dili's ears
     this.parentGroup.add(this.sprite);
 
     this.active = false;

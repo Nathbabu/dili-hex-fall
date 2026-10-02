@@ -878,16 +878,16 @@ class ArenaColosseum {
   // ============================================================
   _buildCryoSpireHazard() {
     this.hazardGroup = new THREE.Group();
-    this.hazardAngularSpeed = 1.25; // Dynamic, dangerous sweep velocity!
+    this.hazardAngularSpeed = 1.15; // Dynamic, dangerous sweep velocity!
     this.hazardType = 'tri';
     this.hazardBladeAngles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
-    this.hazardArmLength = 5.30;
-    this.hazardHalfWidth = 0.34;
+    this.hazardArmLength = 4.60;
+    this.hazardHalfWidth = 0.32;
 
     const pylonGroup = new THREE.Group();
 
     // 1. Glacial Ice Base Pedestal
-    const baseGeo = new THREE.CylinderGeometry(2.2, 2.8, 0.7, 8);
+    const baseGeo = new THREE.CylinderGeometry(2.0, 2.6, 0.7, 8);
     const baseMat = new THREE.MeshStandardMaterial({
       color: 0x071b30, metalness: 0.4, roughness: 0.1, emissive: 0x00D0FF, emissiveIntensity: 0.6, transparent: true, opacity: 0.95
     });
@@ -928,7 +928,7 @@ class ArenaColosseum {
     const triSweeper = new THREE.Group();
 
     // Central Frosted Ice Turret Hub
-    const hubGeo = new THREE.CylinderGeometry(1.4, 1.4, 0.72, 12);
+    const hubGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.65, 12);
     const hubMat = new THREE.MeshStandardMaterial({
       color: 0x071b30,
       metalness: 0.4,
@@ -947,8 +947,8 @@ class ArenaColosseum {
       const armGroup = new THREE.Group();
       armGroup.rotation.y = phi;
 
-      // Crystalline Ice Beam body (extends from x = 0 to x = 5.3m)
-      const armGeo = new THREE.BoxGeometry(5.30, 0.58, 0.64);
+      // Crystalline Ice Beam body (extends from x = 0 to x = 4.60m)
+      const armGeo = new THREE.BoxGeometry(4.60, 0.48, 0.52);
       const armMat = new THREE.MeshStandardMaterial({
         color: 0x88EEFF,
         emissive: 0x00D0FF,
@@ -956,64 +956,64 @@ class ArenaColosseum {
         metalness: 0.1,
         roughness: 0.05,
         transparent: true,
-        opacity: 0.90
+        opacity: 0.88
       });
       const armMesh = new THREE.Mesh(armGeo, armMat);
-      armMesh.position.set(2.65, 0.88, 0);
+      armMesh.position.set(2.30, 0.88, 0);
       armGroup.add(armMesh);
 
       // Cyan Cryogenic Freeze Rail on both sides
-      for (const face of [-0.34, 0.34]) {
-        const railGeo = new THREE.BoxGeometry(5.1, 0.32, 0.08);
+      for (const face of [-0.28, 0.28]) {
+        const railGeo = new THREE.BoxGeometry(4.4, 0.24, 0.06);
         const railMat = new THREE.MeshStandardMaterial({
           color: 0x00F0FF,
           emissive: 0x00F0FF,
-          emissiveIntensity: 2.4,
+          emissiveIntensity: 2.2,
           roughness: 0.1
         });
         const rail = new THREE.Mesh(railGeo, railMat);
-        rail.position.set(2.65, 0.88, face);
+        rail.position.set(2.30, 0.88, face);
         armGroup.add(rail);
       }
 
-      // Diamond-Faceted Crystalline Spike Tip at outer extremity (x = 5.3m)
-      const spikeGeo = new THREE.ConeGeometry(0.55, 1.2, 6);
+      // Sleek Diamond Crystalline Fin Cap at outer extremity (x = 4.60m)
+      const spikeGeo = new THREE.ConeGeometry(0.35, 0.70, 6);
       const spikeMat = new THREE.MeshStandardMaterial({
         color: 0xDCF8FF,
         emissive: 0x00E5FF,
-        emissiveIntensity: 2.6,
+        emissiveIntensity: 2.4,
         metalness: 0.2,
         roughness: 0.05,
         transparent: true,
-        opacity: 0.95
+        opacity: 0.90
       });
       const spike = new THREE.Mesh(spikeGeo, spikeMat);
       spike.rotation.z = -Math.PI / 2; // Pointing outward along arm X
-      spike.position.set(5.30, 0.88, 0);
+      spike.position.set(4.60, 0.88, 0);
       armGroup.add(spike);
 
       // Brilliant White Frost Warning Flare Beacon on tip
-      const flareGeo = new THREE.SphereGeometry(0.22, 14, 10);
+      const flareGeo = new THREE.SphereGeometry(0.18, 14, 10);
       const flareMat = new THREE.MeshStandardMaterial({
         color: 0xFFFFFF,
         emissive: 0xFFFFFF,
-        emissiveIntensity: 3.5
+        emissiveIntensity: 3.0
       });
       const flare = new THREE.Mesh(flareGeo, flareMat);
-      flare.position.set(5.30, 1.25, 0);
+      flare.position.set(4.60, 1.15, 0);
       armGroup.add(flare);
 
       // Radial Ground Frost Guide Line
-      const frostLineGeo = new THREE.PlaneGeometry(5.30, 0.18);
+      const frostLineGeo = new THREE.PlaneGeometry(4.60, 0.14);
       const frostLineMat = new THREE.MeshBasicMaterial({
         color: 0x00F0FF,
         transparent: true,
-        opacity: 0.70,
+        opacity: 0.60,
         side: THREE.DoubleSide
       });
       const frostLine = new THREE.Mesh(frostLineGeo, frostLineMat);
       frostLine.rotation.x = Math.PI / 2;
-      frostLine.position.set(2.65, 0.06, 0.65);
+      frostLine.position.set(2.30, 0.06, 0.55);
       armGroup.add(frostLine);
 
       triSweeper.add(armGroup);
@@ -1033,10 +1033,11 @@ class ArenaColosseum {
   // ------------------------------------------------------------
   _buildCryoBoulders() {
     this.cryoBoulders = [];
+    // Safely positioned away from player/bot spawns (radius ~7.5m, angles 45°, 135°, 270°)
     const boulderSpawns = [
-      { x: 0, z: 10.2 },
-      { x: 8.8, z: -5.1 },
-      { x: -8.8, z: -5.1 }
+      { x: -5.5, z: 5.5 },
+      { x: 5.5, z: 5.5 },
+      { x: 0, z: -7.2 }
     ];
 
     boulderSpawns.forEach((p, idx) => {
@@ -1472,8 +1473,8 @@ class ArenaColosseum {
     // 2. Multi-Blade Hazard Collision
     if (this.hazardType === 'tri') {
       // Cryo Tri-Blade: 3 radial blades at 120° (100% physically solid, impenetrable!)
-      const armLength = this.hazardArmLength || 5.60;
-      const halfWidth = this.hazardHalfWidth || 0.40;
+      const armLength = this.hazardArmLength || 4.60;
+      const halfWidth = this.hazardHalfWidth || 0.32;
       const bladeAngles = this.hazardBladeAngles || [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
 
       for (const phi of bladeAngles) {
