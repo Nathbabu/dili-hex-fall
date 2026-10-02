@@ -42,13 +42,21 @@ function isBotAccount(name) {
   });
 }
 
-// In-memory cache of strictly human player scores
-let leaderboardCache = [];
+// In-memory caches: strictly human player scores separated into Solo vs Public Arena
+let soloLeaderboardCache = [];
+let publicLeaderboardCache = [];
 
-async function getLeaderboardFromRedis() {
-  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return leaderboardCache;
+async function getLeaderboardFromRedis(mode = 'solo') {
+  const isPublic = mode === 'public' || mode === 'multiplayer';
+  const redisKey = isPublic ? 'dlicom_hexfall_public_lb' : 'dlicom_hexfall_solo_lb';
+  let targetCache = isPublic ? publicLeaderboardCache : soloLeaderboardCache;
+
+  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
+    return targetCache.filter(e => !isBotAccount(e.pilot));
+  }
+
   try {
-    const res = await fetch(`${UPSTASH_REDIS_REST_URL}/get/dlicom_hexfall_leaderboard`, {
+    const res = await fetch(`${UPSTASH_REDIS_REST_URL}/get/${redisKey}`, {
       headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` },
       signal: AbortSignal.timeout(2500)
     });
@@ -57,42 +65,61 @@ async function getLeaderboardFromRedis() {
       if (data.result) {
         const arr = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
         if (Array.isArray(arr)) {
-          leaderboardCache = arr
+          const sorted = arr
             .filter(e => e && e.pilot && !isBotAccount(e.pilot))
             .sort((a, b) => b.score - a.score);
-          return leaderboardCache;
+          if (isPublic) {
+            publicLeaderboardCache = sorted;
+          } else {
+            soloLeaderboardCache = sorted;
+          }
+          return sorted;
         }
       }
     }
   } catch (e) {
-    console.warn('[HexFall] Fallback to cache:', e.message);
+    console.warn(`[HexFall] Fallback to ${mode} cache:`, e.message);
   }
-  return leaderboardCache.filter(e => !isBotAccount(e.pilot));
+  return (isPublic ? publicLeaderboardCache : soloLeaderboardCache).filter(e => !isBotAccount(e.pilot));
 }
 
-async function saveScoreToRedis(newEntry) {
+async function saveScoreToRedis(mode, newEntry) {
   if (isBotAccount(newEntry.pilot)) {
     throw new Error('Bot accounts are prohibited from the leaderboard.');
   }
 
-  let current = await getLeaderboardFromRedis();
+  const isPublic = mode === 'public' || mode === 'multiplayer';
+  const redisKey = isPublic ? 'dlicom_hexfall_public_lb' : 'dlicom_hexfall_solo_lb';
+
+  let current = await getLeaderboardFromRedis(isPublic ? 'public' : 'solo');
   current = current.filter(e => !isBotAccount(e.pilot));
 
   const existingIdx = current.findIndex(e => e.pilot.toLowerCase() === newEntry.pilot.toLowerCase());
   if (existingIdx !== -1) {
     if (newEntry.score > current[existingIdx].score) {
       current[existingIdx] = Object.assign({}, current[existingIdx], newEntry);
+    } else {
+      if (newEntry.win && !current[existingIdx].win) {
+        current[existingIdx].win = true;
+      }
+      if (newEntry.kills && newEntry.kills > (current[existingIdx].kills || 0)) {
+        current[existingIdx].kills = newEntry.kills;
+      }
     }
   } else {
     current.push(newEntry);
   }
 
   current = current.sort((a, b) => b.score - a.score).slice(0, 100);
-  leaderboardCache = current;
+  if (isPublic) {
+    publicLeaderboardCache = current;
+  } else {
+    soloLeaderboardCache = current;
+  }
 
   if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
     try {
-      await fetch(`${UPSTASH_REDIS_REST_URL}/set/dlicom_hexfall_leaderboard`, {
+      await fetch(`${UPSTASH_REDIS_REST_URL}/set/${redisKey}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
@@ -102,21 +129,41 @@ async function saveScoreToRedis(newEntry) {
         signal: AbortSignal.timeout(2500)
       });
     } catch (e) {
-      console.warn('[HexFall] Error saving to Redis:', e.message);
+      console.warn(`[HexFall] Error saving ${mode} to Redis:`, e.message);
     }
   }
   return current;
 }
 
+// Global Leaderboards API: Separate Solo vs Public Arena
 app.get('/api/leaderboard', async (req, res) => {
-  const list = await getLeaderboardFromRedis();
-  const cleanList = list.filter(e => !isBotAccount(e.pilot));
-  res.json({ success: true, count: cleanList.length, leaderboard: cleanList });
+  const reqMode = String(req.query.mode || 'all').toLowerCase();
+  
+  if (reqMode === 'solo') {
+    const solo = await getLeaderboardFromRedis('solo');
+    return res.json({ success: true, mode: 'solo', leaderboard: solo });
+  } else if (reqMode === 'public' || reqMode === 'multiplayer') {
+    const pub = await getLeaderboardFromRedis('public');
+    return res.json({ success: true, mode: 'public', leaderboard: pub });
+  }
+
+  const [solo, pub] = await Promise.all([
+    getLeaderboardFromRedis('solo'),
+    getLeaderboardFromRedis('public')
+  ]);
+
+  res.json({
+    success: true,
+    mode: 'all',
+    solo,
+    public: pub
+  });
 });
 
+// High Score Submission with Mode Segregation
 app.post('/api/score/submit', async (req, res) => {
   try {
-    const { pilot, score, survivalTime, tier, crystals, suitColor, win } = req.body || {};
+    const { mode, pilot, score, survivalTime, difficulty, kills, suitColor, win, matchRank } = req.body || {};
     if (!pilot || typeof score !== 'number' || score <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid score' });
     }
@@ -126,22 +173,28 @@ app.post('/api/score/submit', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Bot accounts cannot submit to leaderboard' });
     }
 
+    const isPublic = mode === 'public' || mode === 'multiplayer';
+    const entryMode = isPublic ? 'public' : 'solo';
+
     const entry = {
       pilot: cleanPilot,
+      mode: entryMode,
       score: Math.floor(score),
       survivalTime: Math.floor(survivalTime || 0),
-      tier: tier || 1,
-      crystals: crystals || 0,
+      kills: kills || 0,
+      difficulty: difficulty || (isPublic ? 'live' : 'normal'),
       suitColor: suitColor || 'mint',
       win: !!win,
+      matchRank: matchRank || 1,
       timestamp: new Date().toISOString()
     };
 
-    const updated = await saveScoreToRedis(entry);
+    const updated = await saveScoreToRedis(entryMode, entry);
     const rank = updated.findIndex(e => e.pilot.toLowerCase() === cleanPilot.toLowerCase()) + 1;
 
     res.json({
       success: true,
+      mode: entryMode,
       rank: rank > 0 ? rank : updated.length,
       entry,
       totalPilots: updated.length
@@ -149,6 +202,30 @@ app.post('/api/score/submit', async (req, res) => {
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
+});
+
+// Admin wipe endpoint for fresh tests
+app.post('/api/leaderboard/clear', async (req, res) => {
+  soloLeaderboardCache = [];
+  publicLeaderboardCache = [];
+  if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      await Promise.all([
+        fetch(`${UPSTASH_REDIS_REST_URL}/del/dlicom_hexfall_solo_lb`, {
+          headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
+        }),
+        fetch(`${UPSTASH_REDIS_REST_URL}/del/dlicom_hexfall_public_lb`, {
+          headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
+        }),
+        fetch(`${UPSTASH_REDIS_REST_URL}/del/dlicom_hexfall_leaderboard`, {
+          headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
+        })
+      ]);
+    } catch (e) {
+      console.warn('[Leaderboard] Clear Redis error:', e.message);
+    }
+  }
+  res.json({ success: true, message: 'All Hex Fall leaderboards wiped clean.' });
 });
 
 // ===================================================================
@@ -171,6 +248,7 @@ class PersistentPublicArena {
     this.bots = JSON.parse(JSON.stringify(PERMANENT_BOTS));
     this.aliveBotIds = new Set(this.bots.map(b => b.id));
     this.arenaSeed = Date.now();
+    this.roundStartTime = Date.now();
     this.spawnAngles = [
       0,                    // bottom
       Math.PI,              // top
@@ -182,47 +260,70 @@ class PersistentPublicArena {
     this.nextSpawnIdx = 0;
     this.currentThemeIndex = 0;
     this.currentTheme = ARENA_THEMES_LIST[0];
+    this.resetTimer = null;
   }
 
-  getNextSpawn() {
+  getNextSpawn(radius = 10.0) {
     const angle = this.spawnAngles[this.nextSpawnIdx % this.spawnAngles.length];
     this.nextSpawnIdx++;
     return {
-      spawnX: Number((Math.sin(angle) * 10.0).toFixed(2)),
-      spawnZ: Number((Math.cos(angle) * 10.0).toFixed(2)),
+      spawnX: Number((Math.sin(angle) * radius).toFixed(2)),
+      spawnZ: Number((Math.cos(angle) * radius).toFixed(2)),
       spawnAngle: angle
     };
   }
 
-  resetMatch() {
+  resetMatch(triggerPlayerId = null) {
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+      this.resetTimer = null;
+    }
     this.currentThemeIndex = (this.currentThemeIndex + 1) % ARENA_THEMES_LIST.length;
     this.currentTheme = ARENA_THEMES_LIST[this.currentThemeIndex];
-    console.log(`[PublicArena] Resetting arena for a fresh round! Rotating to theme: ${this.currentTheme.toUpperCase()}`);
+    console.log('[PublicArena] Resetting arena for a fresh round! Rotating to theme: ' + this.currentTheme.toUpperCase());
     this.arenaSeed = Date.now();
+    this.roundStartTime = Date.now();
     this.bots = JSON.parse(JSON.stringify(PERMANENT_BOTS));
     this.aliveBotIds = new Set(this.bots.map(b => b.id));
+    this.nextSpawnIdx = 0;
 
+    // Only activate the player who explicitly triggered rematch!
+    // Never auto-revive players who are on the Game Over screen!
     this.players.forEach(p => {
-      const s = this.getNextSpawn();
-      p.x = s.spawnX;
-      p.z = s.spawnZ;
-      p.vx = 0;
-      p.vz = 0;
-      p.isAlive = true;
-      p.spawnX = s.spawnX;
-      p.spawnZ = s.spawnZ;
+      if (triggerPlayerId && p.id === triggerPlayerId) {
+        p.isAlive = true;
+        p.lastActivity = Date.now();
+      } else {
+        p.isAlive = false;
+      }
+
+      if (p.isAlive) {
+        const s = this.getNextSpawn(10.0);
+        p.x = s.spawnX;
+        p.z = s.spawnZ;
+        p.vx = 0;
+        p.vz = 0;
+        p.spawnX = s.spawnX;
+        p.spawnZ = s.spawnZ;
+        p.spawnAngle = s.spawnAngle;
+      }
     });
+
+    const activePlayers = Array.from(this.players.values()).filter(p => p.isAlive);
 
     io.to(this.id).emit('arena_reset', {
       arenaTheme: this.currentTheme,
       arenaSeed: this.arenaSeed,
+      roundElapsed: 0,
       bots: this.bots,
-      players: Array.from(this.players.values()).map(p => ({
+      players: activePlayers.map(p => ({
         id: p.id,
         pilotName: p.pilotName,
         suitColor: p.suitColor,
         spawnX: p.spawnX,
-        spawnZ: p.spawnZ
+        spawnZ: p.spawnZ,
+        spawnAngle: p.spawnAngle,
+        isAlive: true
       }))
     });
   }
@@ -240,21 +341,141 @@ class PersistentPublicArena {
 
 const publicArena = new PersistentPublicArena();
 
+
+// Centralized Win/Loss Condition Check
+function checkWinConditions() {
+  const aliveHumans = Array.from(publicArena.players.values()).filter(p => p.isAlive);
+  const aliveBots = publicArena.aliveBotIds.size;
+  const roundDuration = (Date.now() - publicArena.roundStartTime) / 1000;
+
+  // Prevent instant wins upon join/round restart: require at least 4 seconds of match duration
+  if (roundDuration < 4.0) return;
+
+  if (aliveHumans.length === 1 && aliveBots === 0) {
+    const winner = aliveHumans[0];
+    console.log('[PublicArena] Real player won: ' + winner.pilotName + '! Match ended. Waiting for Rematch click.');
+    io.to(publicArena.id).emit('player_won', {
+      winnerId: winner.id,
+      winnerName: winner.pilotName,
+      winnerSuit: winner.suitColor
+    });
+
+    // Mark winner as inactive so match is complete and does NOT auto-restart
+    winner.isAlive = false;
+
+    if (publicArena.resetTimer) clearTimeout(publicArena.resetTimer);
+    publicArena.resetTimer = null;
+  } else if (aliveHumans.length === 0 && aliveBots > 0) {
+    console.log('[PublicArena] Bots won this round! Match ended. Waiting for Rematch click.');
+    io.to(publicArena.id).emit('bots_won', {
+      message: 'BOTS DOMINATED THE ARENA! CLICK REMATCH TO FIGHT BACK!'
+    });
+    if (publicArena.resetTimer) clearTimeout(publicArena.resetTimer);
+    publicArena.resetTimer = null;
+  } else if (aliveHumans.length === 0 && aliveBots === 0) {
+    console.log('[PublicArena] All players and bots eliminated! Match ended.');
+    io.to(publicArena.id).emit('round_ended', {
+      message: 'ALL COMBATANTS ELIMINATED! CLICK REMATCH FOR A NEW ROUND!'
+    });
+    if (publicArena.resetTimer) clearTimeout(publicArena.resetTimer);
+    publicArena.resetTimer = null;
+  }
+}
+
+// 4-Second Inactivity / Lock Screen Heartbeat Check
+setInterval(() => {
+  const now = Date.now();
+  let changed = false;
+  publicArena.players.forEach(p => {
+    if (p.isAlive && (now - p.lastActivity > 4000)) {
+      console.log('[PublicArena] ' + p.pilotName + ' (' + p.id + ') timed out / AFK.');
+      p.isAlive = false;
+      changed = true;
+      io.to(publicArena.id).emit('player_eliminated', {
+        victimId: p.id,
+        victimName: p.pilotName,
+        killerId: null,
+        killerName: 'Connection Timeout (AFK)'
+      });
+    }
+  });
+
+  if (changed) {
+    checkWinConditions();
+  }
+}, 1500);
+
 io.on('connection', (socket) => {
-  // Join Persistent Public Arena (Instant Drop-in)
+  // Join Persistent Public Arena (Instant Drop-in or Fresh Round)
   socket.on('join_public_room', ({ pilotName, suitColor }) => {
     if (publicArena.players.has(socket.id)) {
       publicArena.players.delete(socket.id);
     }
 
     const cleanPilot = String(pilotName || 'Commander_Dili').trim().slice(0, 20);
-    const spawn = publicArena.getNextSpawn();
+
+    // Check if other humans are actively alive in this round
+    const activeHumans = Array.from(publicArena.players.values()).filter(p => p.id !== socket.id && p.isAlive);
+
+    // If NO other humans are alive right now, reset the arena completely for a brand new, clean match!
+    if (activeHumans.length === 0) {
+      console.log(`[PublicArena] Fresh match start for ${cleanPilot} (no active humans currently in battle).`);
+      publicArena.resetMatch(socket.id);
+      let player = publicArena.players.get(socket.id);
+      if (!player) {
+        const spawn = publicArena.getNextSpawn(10.0);
+        player = {
+          id: socket.id,
+          pilotName: cleanPilot,
+          suitColor: suitColor || 'mint',
+          isAlive: true,
+          lastActivity: Date.now(),
+          kills: 0,
+          score: 0,
+          x: spawn.spawnX,
+          z: spawn.spawnZ,
+          vx: 0,
+          vz: 0,
+          rotY: spawn.spawnAngle,
+          flipX: 1,
+          pose: 'fight',
+          isDashing: false,
+          spawnX: spawn.spawnX,
+          spawnZ: spawn.spawnZ,
+          spawnAngle: spawn.spawnAngle
+        };
+        publicArena.players.set(socket.id, player);
+      } else {
+        player.pilotName = cleanPilot;
+        player.suitColor = suitColor || 'mint';
+        player.isAlive = true;
+        player.lastActivity = Date.now();
+      }
+      socket.join(publicArena.id);
+
+      socket.emit('arena_joined_live', {
+        yourId: socket.id,
+        mySpawn: { spawnX: player.spawnX, spawnZ: player.spawnZ, spawnAngle: player.spawnAngle },
+        existingPlayers: [],
+        bots: publicArena.bots,
+        arenaSeed: publicArena.arenaSeed,
+        arenaTheme: publicArena.currentTheme,
+        roundElapsed: 0
+      });
+      return;
+    }
+
+    // Other humans ARE actively alive: drop this player into the live battle safely!
+    const elapsed = Math.floor((Date.now() - publicArena.roundStartTime) / 1000);
+    const safeRadius = elapsed > 45 ? 4.5 : (elapsed > 20 ? 7.5 : 10.0);
+    const spawn = publicArena.getNextSpawn(safeRadius);
 
     const player = {
       id: socket.id,
       pilotName: cleanPilot,
       suitColor: suitColor || 'mint',
       isAlive: true,
+      lastActivity: Date.now(),
       kills: 0,
       score: 0,
       x: spawn.spawnX,
@@ -266,7 +487,8 @@ io.on('connection', (socket) => {
       pose: 'fight',
       isDashing: false,
       spawnX: spawn.spawnX,
-      spawnZ: spawn.spawnZ
+      spawnZ: spawn.spawnZ,
+      spawnAngle: spawn.spawnAngle
     };
 
     publicArena.players.set(socket.id, player);
@@ -275,33 +497,30 @@ io.on('connection', (socket) => {
     // Make sure bots are active if they were previously eliminated
     publicArena.resetBotsIfDead();
 
-    console.log(`[PublicArena] ${cleanPilot} (${socket.id}) dropped into live arena. Humans online: ${publicArena.players.size}`);
+    console.log('[PublicArena] ' + cleanPilot + ' (' + socket.id + ') dropped into live arena. Humans online: ' + publicArena.players.size);
 
-    // 1. Send live state immediately to newly joined player
     socket.emit('arena_joined_live', {
       yourId: socket.id,
       mySpawn: spawn,
-      existingPlayers: Array.from(publicArena.players.values())
-        .filter(p => p.id !== socket.id && p.isAlive)
-        .map(p => ({
-          id: p.id,
-          pilotName: p.pilotName,
-          suitColor: p.suitColor,
-          x: p.x,
-          z: p.z,
-          vx: p.vx,
-          vz: p.vz,
-          rotY: p.rotY,
-          flipX: p.flipX,
-          pose: p.pose,
-          isDashing: p.isDashing
-        })),
-      bots: publicArena.bots,
+      existingPlayers: activeHumans.map(p => ({
+        id: p.id,
+        pilotName: p.pilotName,
+        suitColor: p.suitColor,
+        x: p.x,
+        z: p.z,
+        vx: p.vx,
+        vz: p.vz,
+        rotY: p.rotY,
+        flipX: p.flipX,
+        pose: p.pose,
+        isDashing: p.isDashing
+      })),
+      bots: publicArena.bots.filter(b => publicArena.aliveBotIds.has(b.id)),
       arenaSeed: publicArena.arenaSeed,
-      arenaTheme: publicArena.currentTheme
+      arenaTheme: publicArena.currentTheme,
+      roundElapsed: elapsed
     });
 
-    // 2. Broadcast to all existing players in arena that a new player dropped in!
     socket.to(publicArena.id).emit('player_spawned', {
       id: socket.id,
       pilotName: player.pilotName,
@@ -312,16 +531,35 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Mobile screen lock / Tab hidden listener
+  socket.on('player_visibility', (data) => {
+    const p = publicArena.players.get(socket.id);
+    if (p && !data.visible) {
+      console.log('[PublicArena] ' + p.pilotName + ' (' + socket.id + ') screen locked / hidden.');
+      if (p.isAlive) {
+        p.isAlive = false;
+        io.to(publicArena.id).emit('player_eliminated', {
+          victimId: socket.id,
+          victimName: p.pilotName,
+          killerId: null,
+          killerName: 'Screen Locked (AFK)'
+        });
+        checkWinConditions();
+      }
+    }
+  });
+
   // Player Respawn Request after getting eliminated
   const handleRespawn = () => {
     let player = publicArena.players.get(socket.id);
     if (!player) {
-      const spawn = publicArena.getNextSpawn();
+      const spawn = publicArena.getNextSpawn(10.0);
       player = {
         id: socket.id,
         pilotName: 'Commander_Dili',
         suitColor: 'mint',
-        isAlive: true,
+        isAlive: false,
+        lastActivity: Date.now(),
         kills: 0,
         score: 0,
         x: spawn.spawnX,
@@ -333,23 +571,29 @@ io.on('connection', (socket) => {
         pose: 'fight',
         isDashing: false,
         spawnX: spawn.spawnX,
-        spawnZ: spawn.spawnZ
+        spawnZ: spawn.spawnZ,
+        spawnAngle: spawn.spawnAngle
       };
       publicArena.players.set(socket.id, player);
     }
 
-    console.log(`[PublicArena] Respawn request from ${player.pilotName} (${socket.id})`);
+    player.lastActivity = Date.now();
+    console.log('[PublicArena] Respawn request from ' + player.pilotName + ' (' + socket.id + ')');
 
-    // If bots or round completed, reset entire arena for a clean fresh match!
     const otherAliveHumans = Array.from(publicArena.players.values()).filter(p => p.isAlive && p.id !== socket.id);
+    
+    // If NO other humans are alive or bots dead: reset match ONLY for this player!
     if (otherAliveHumans.length === 0 || publicArena.aliveBotIds.size === 0) {
-      publicArena.resetMatch();
+      publicArena.resetMatch(socket.id);
       return;
     }
 
+    // Other humans are alive and playing: drop this player into live match safely!
     publicArena.resetBotsIfDead();
 
-    const spawn = publicArena.getNextSpawn();
+    const elapsed = Math.floor((Date.now() - publicArena.roundStartTime) / 1000);
+    const safeRadius = elapsed > 45 ? 4.5 : (elapsed > 20 ? 7.5 : 10.0);
+    const spawn = publicArena.getNextSpawn(safeRadius);
     player.isAlive = true;
     player.x = spawn.spawnX;
     player.z = spawn.spawnZ;
@@ -357,10 +601,12 @@ io.on('connection', (socket) => {
     player.vz = 0;
     player.spawnX = spawn.spawnX;
     player.spawnZ = spawn.spawnZ;
+    player.spawnAngle = spawn.spawnAngle;
 
     socket.emit('respawn_success', {
       mySpawn: spawn,
-      arenaTheme: publicArena.currentTheme
+      arenaTheme: publicArena.currentTheme,
+      roundElapsed: elapsed
     });
 
     socket.to(publicArena.id).emit('player_spawned', {
@@ -379,6 +625,7 @@ io.on('connection', (socket) => {
   socket.on('player_update', (data) => {
     const p = publicArena.players.get(socket.id);
     if (p && p.isAlive) {
+      p.lastActivity = Date.now();
       p.x = data.x;
       if (data.y !== undefined) p.y = data.y;
       if (data.currentTier !== undefined) p.currentTier = data.currentTier;
@@ -454,32 +701,10 @@ io.on('connection', (socket) => {
         killerName: killerName
       });
 
-      const aliveHumans = Array.from(publicArena.players.values()).filter(p => p.isAlive);
-      const aliveBots = publicArena.aliveBotIds.size;
-
-      // RULE 1: If 0 humans alive and bots are alive -> Bots win! Room remains active!
-      if (aliveHumans.length === 0 && aliveBots > 0) {
-        console.log('[PublicArena] Bots won this round! Room stays active.');
-        io.to(publicArena.id).emit('bots_won', {
-          message: 'BOTS DOMINATED THE ARENA! Respawn to fight back!'
-        });
-      }
-      // RULE 2: If 1 human is alive and all bots are dead (and all other humans dead) -> Real Player Wins!
-      else if (aliveHumans.length === 1 && aliveBots === 0) {
-        const winner = aliveHumans[0];
-        console.log(`[PublicArena] Real player won: ${winner.pilotName}! Resetting arena for next match.`);
-        io.to(publicArena.id).emit('player_won', {
-          winnerId: winner.id,
-          winnerName: winner.pilotName,
-          winnerSuit: winner.suitColor
-        });
-
-        setTimeout(() => {
-          publicArena.resetMatch();
-        }, 8000);
-      }
+      checkWinConditions();
     }
   });
+
 
   // Bot Fell off arena
   socket.on('bot_fell', (data) => {
@@ -504,20 +729,7 @@ io.on('connection', (socket) => {
       const aliveHumans = Array.from(publicArena.players.values()).filter(p => p.isAlive);
       const aliveBots = publicArena.aliveBotIds.size;
 
-      // Real player victory check
-      if (aliveHumans.length === 1 && aliveBots === 0) {
-        const winner = aliveHumans[0];
-        console.log(`[PublicArena] Real player won: ${winner.pilotName}! Resetting arena for next match.`);
-        io.to(publicArena.id).emit('player_won', {
-          winnerId: winner.id,
-          winnerName: winner.pilotName,
-          winnerSuit: winner.suitColor
-        });
-
-        setTimeout(() => {
-          publicArena.resetMatch();
-        }, 8000);
-      }
+      checkWinConditions();
     }
   });
 
@@ -532,6 +744,10 @@ io.on('connection', (socket) => {
       });
       if (publicArena.players.size === 0) {
         publicArena.resetBotsIfDead();
+        if (publicArena.resetTimer) {
+          clearTimeout(publicArena.resetTimer);
+          publicArena.resetTimer = null;
+        }
       }
     }
   });

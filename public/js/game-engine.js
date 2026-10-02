@@ -98,7 +98,11 @@ class BumperGameEngine {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0x040711, 0.016);
 
-    this.camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 250);
+    const initW = window.innerWidth;
+    const initH = window.innerHeight;
+    const isInitPortrait = initW < initH;
+    const initFov = isInitPortrait ? 66 : ((initW <= 768) ? 58 : 54);
+    this.camera = new THREE.PerspectiveCamera(initFov, initW / initH, 0.1, 250);
     this.camera.position.set(0, 16, 18);
     this.camera.lookAt(0, 0, 0);
 
@@ -658,7 +662,7 @@ class BumperGameEngine {
     // Reset AI Manager
     if (this.aiManager) this.aiManager.clear();
     this.aiManager = new AIBumperManager(this.scene);
-    this.aiManager.spawn(this.arena.currentRadius, botCount, difficulty);
+    this.aiManager.spawn(this.arena.currentRadius, botCount, difficulty, this.arena ? this.arena.theme : "neon");
 
     this.state = 'countdown';
     this._doCountdown();
@@ -686,7 +690,8 @@ class BumperGameEngine {
     this.cameraYaw = 0;
     this.totalPlayers = 3 + (arenaData.existingPlayers ? arenaData.existingPlayers.length : 0);
     this.gameMode = 'multiplayer';
-
+    const elapsed = arenaData.roundElapsed || 0;
+    this.matchTime = elapsed;
     const theme = arenaData.arenaTheme || 'neon';
     this.applyArenaTheme(theme);
 
@@ -695,6 +700,9 @@ class BumperGameEngine {
       this.arena.reset(this.totalPlayers, theme);
     } else {
       this.arena = new ArenaColosseum(this.scene, this.totalPlayers, theme);
+    }
+    if (elapsed > 0 && typeof this.arena.syncElapsed === 'function') {
+      this.arena.syncElapsed(elapsed);
     }
     this.arena.onAlert = (msg) => {
       if (this.onAlert) this.onAlert(msg);
@@ -739,9 +747,9 @@ class BumperGameEngine {
       if (this.aiManager) this.aiManager.clear();
       this.aiManager = new AIBumperManager(this.scene);
       if (arenaData.bots && arenaData.bots.length > 0 && typeof this.aiManager.spawnBotList === 'function') {
-        this.aiManager.spawnBotList(arenaData.bots, 'hard');
+        this.aiManager.spawnBotList(arenaData.bots, 'hard', this.arena ? this.arena.theme : "neon");
       } else {
-        this.aiManager.spawn(this.arena.currentRadius || 14.5, 2, 'hard');
+        this.aiManager.spawn(this.arena.currentRadius || 14.5, 2, 'hard', this.arena ? this.arena.theme : "neon");
       }
     } catch(err) {
       console.warn('Bot spawn fallback:', err);
@@ -818,16 +826,16 @@ class BumperGameEngine {
       if (!rc) return;
       if (data.action === 'dash') {
         rc.triggerDash();
-        HexAudio.sfxDash();
+        if (this.state === 'playing' || this.state === 'spectating') HexAudio.sfxDash();
       } else if (data.action === 'emp') {
         this._spawnEmpRingVFX(rc.x, rc.z, rc.y);
-        HexAudio.sfxEmp();
+        if (this.state === 'playing' || this.state === 'spectating') HexAudio.sfxEmp();
       }
     });
 
     // Kinetic collision impulse received
     this.socket.on('remote_collision', (data) => {
-      if (this.player && this.player.alive) {
+      if (this.player && this.player.alive && this.state === 'playing') {
         this.player.vx += (data.impulseX || 0);
         this.player.vz += (data.impulseZ || 0);
         this.player.knockbackTimer = 0.28;
@@ -914,33 +922,88 @@ class BumperGameEngine {
 
     // Arena reset for fresh round
     this.socket.on('arena_reset', (data) => {
-      this.stopSpectating();
+      const mySpawn = data.players ? data.players.find(p => p.id === this.socket.id) : null;
       const newTheme = data.arenaTheme || 'neon';
       this.applyArenaTheme(newTheme);
       if (this.arena) this.arena.reset(this.totalPlayers, newTheme);
-      if (this.onAlert && typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[newTheme]) {
-        this.onAlert(`ROUND RESET: ENTERING ${ARENA_THEMES[newTheme].name}!`);
-      }
       if (this.aiManager) {
         this.aiManager.clear();
-        this.aiManager.spawnBotList(data.bots, 'hard');
+        this.aiManager.spawnBotList(data.bots, 'hard', newTheme || (this.arena ? this.arena.theme : "neon"));
       }
-      if (this.player) {
-        const mySpawn = data.players.find(p => p.id === this.socket.id);
-        if (mySpawn) {
-          this.player.reset(mySpawn.spawnX, mySpawn.spawnZ);
-          this.player.drag = (typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[newTheme] && ARENA_THEMES[newTheme].drag) || 0.93;
-          if (!this.player.group.parent) this.scene.add(this.player.group);
-          this.player.group.visible = true;
-          this.player.alive = true;
-          this.fellReported = false;
-          this.state = 'playing';
-          this.cameraTarget.set(mySpawn.spawnX, 0.85, mySpawn.spawnZ);
-          this.camDistance = 14.5;
-          this.camHeight = 11.0;
+
+      // If local player was dead and didn't click rematch, DO NOT drag them into the game!
+      if (!mySpawn) {
+        console.log('[ArenaReset] Local player is not active in this round (waiting on Game Over).');
+        if (this.player) {
+          this.player.alive = false;
+          if (this.player.group) this.player.group.visible = false;
         }
+        // Still update remote crafts so player can see others if spectating
+        if (data.players && this.remotePlayers) {
+          const currentIds = new Set(data.players.map(p => p.id));
+          this.remotePlayers.forEach((rc, id) => {
+            if (!currentIds.has(id)) {
+              rc.remove();
+              this.remotePlayers.delete(id);
+            }
+          });
+          data.players.forEach(p => {
+            if (p.id !== this.socket.id) {
+              let rc = this.remotePlayers.get(p.id);
+              if (!rc) {
+                rc = new BumperCraft(this.scene, p.suitColor, p.pilotName);
+                rc.isRemote = true;
+                rc.remoteId = p.id;
+                this.remotePlayers.set(p.id, rc);
+              }
+              rc.reset(p.spawnX, p.spawnZ);
+              rc.targetX = p.spawnX;
+              rc.targetZ = p.spawnZ;
+              rc.alive = true;
+              if (!rc.group.parent) this.scene.add(rc.group);
+              rc.group.visible = true;
+            }
+          });
+        }
+        return; // STAY ON GAME OVER SCREEN!
       }
+
+      // Local player is active! Spawn them in
+      this.stopSpectating();
+      this.score = 0;
+      this.kills = 0;
+      this.matchTime = 0;
+      if (this.onAlert && typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[newTheme]) {
+        this.onAlert('ROUND RESET: ENTERING ' + ARENA_THEMES[newTheme].name + '!');
+      }
+
+      if (this.player) {
+        const sX = mySpawn.spawnX || 0;
+        const sZ = mySpawn.spawnZ || 10.0;
+        this.player.reset(sX, sZ);
+        const themeCfg = (typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[newTheme]) || {};
+        this.player.drag = themeCfg.drag || 0.93;
+        this.player.baseSpeed = themeCfg.baseSpeed || 12.0;
+        this.player.accel = themeCfg.accel || 44.0;
+        if (!this.player.group.parent) this.scene.add(this.player.group);
+        this.player.group.visible = true;
+        this.player.alive = true;
+        this.fellReported = false;
+        this.state = 'playing';
+        this.cameraTarget.set(sX, 0.85, sZ);
+        this.camDistance = 14.5;
+        this.camHeight = 11.0;
+        this._spawnSparks(sX, sZ, 0x00FFC6, 2.5);
+      }
+
       if (data.players && this.remotePlayers) {
+        const currentIds = new Set(data.players.map(p => p.id));
+        this.remotePlayers.forEach((rc, id) => {
+          if (!currentIds.has(id)) {
+            rc.remove();
+            this.remotePlayers.delete(id);
+          }
+        });
         data.players.forEach(p => {
           if (p.id !== this.socket.id) {
             let rc = this.remotePlayers.get(p.id);
@@ -951,24 +1014,37 @@ class BumperGameEngine {
               this.remotePlayers.set(p.id, rc);
             }
             rc.reset(p.spawnX, p.spawnZ);
+            rc.targetX = p.spawnX;
+            rc.targetZ = p.spawnZ;
             rc.alive = true;
             if (!rc.group.parent) this.scene.add(rc.group);
             rc.group.visible = true;
           }
         });
       }
+      try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
       if (this.onRespawnSuccess) this.onRespawnSuccess();
     });
 
     // Respawn success for local player
     this.socket.on('respawn_success', (data) => {
       this.stopSpectating();
+      this.score = 0;
+      this.kills = 0;
+      const elapsed = data.roundElapsed || 0;
+      this.matchTime = elapsed;
       if (data.arenaTheme && data.arenaTheme !== this.currentArenaTheme) {
         this.applyArenaTheme(data.arenaTheme);
         if (this.arena) this.arena.reset(this.totalPlayers, data.arenaTheme);
       }
+      if (this.arena && elapsed > 0 && typeof this.arena.syncElapsed === 'function') {
+        this.arena.syncElapsed(elapsed);
+      }
       if (this.player) {
-        this.player.drag = (typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[this.currentArenaTheme] && ARENA_THEMES[this.currentArenaTheme].drag) || 0.93;
+        const themeCfg = (typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[this.currentArenaTheme]) || {};
+        this.player.drag = themeCfg.drag || 0.93;
+        this.player.baseSpeed = themeCfg.baseSpeed || 12.0;
+        this.player.accel = themeCfg.accel || 44.0;
         this.player.reset(data.mySpawn.spawnX, data.mySpawn.spawnZ);
         if (!this.player.group.parent) this.scene.add(this.player.group);
         this.player.group.visible = true;
@@ -989,7 +1065,7 @@ class BumperGameEngine {
     this.socket.on('bots_respawned', (data) => {
       if (this.aiManager && data && data.bots) {
         this.aiManager.clear();
-        this.aiManager.spawnBotList(data.bots, 'hard');
+        this.aiManager.spawnBotList(data.bots, 'hard', this.arena ? this.arena.theme : "neon");
       }
     });
   }
@@ -1007,7 +1083,6 @@ class BumperGameEngine {
       const s = this.socket || (typeof getSocket === 'function' ? getSocket() : null);
       if (s && s.connected) {
         s.emit('respawn_request');
-        s.emit('request_respawn');
       } else if (s) {
         s.emit('join_public_room', {
           pilotName: this.pilotName || 'Commander_Dili',
@@ -1050,7 +1125,7 @@ class BumperGameEngine {
 
       if (this.aiManager) {
         this.aiManager.clear();
-        this.aiManager.spawn(this.arena ? this.arena.currentRadius : 14.5, 3, 'hard');
+        this.aiManager.spawn(this.arena ? this.arena.currentRadius : 14.5, 3, 'hard', this.arena ? this.arena.theme : "neon");
       }
 
       if (this.onRespawnSuccess) {
@@ -1138,7 +1213,7 @@ class BumperGameEngine {
     if (this.aiManager) this.aiManager.clear();
     this.aiManager = new AIBumperManager(this.scene);
     if (matchData.bots && matchData.bots.length > 0) {
-      this.aiManager.spawnBotList(matchData.bots, 'hard');
+      this.aiManager.spawnBotList(matchData.bots, 'hard', this.arena ? this.arena.theme : "neon");
     }
 
     // Bind multiplayer socket events
@@ -1336,8 +1411,8 @@ class BumperGameEngine {
         allActiveCrafts.push(...this.aiManager.getCrafts().filter(c => c && c.alive));
       }
       if (this.remotePlayers) {
-        Object.values(this.remotePlayers).forEach(p => {
-          if (p.craft && p.craft.alive) allActiveCrafts.push(p.craft);
+        this.remotePlayers.forEach(rc => {
+          if (rc && rc.alive) allActiveCrafts.push(rc);
         });
       }
       this.arena.update(dt, this.player, allActiveCrafts);
@@ -1448,6 +1523,28 @@ class BumperGameEngine {
     const remoteCrafts = this.remotePlayers ? Array.from(this.remotePlayers.values()) : [];
     remoteCrafts.forEach(rc => {
       if (rc.alive) {
+        // Grounded check against current arena (fall if arena collapsed underneath!)
+        const isGrounded = this.arena ? this.arena.isPointGrounded(rc.x, rc.z) : true;
+        if (!isGrounded || (rc.y !== undefined && rc.y < 0.7)) {
+          rc.grounded = false;
+          rc.vy = (rc.vy || 0) - 36 * dt;
+          rc.y = (rc.y !== undefined ? rc.y : 0.85) + rc.vy * dt;
+          if (rc.y < -7.0) {
+            rc.alive = false;
+            rc.grounded = false;
+            if (rc.group) rc.group.visible = false;
+            if (rc.driftTrail) rc.driftTrail.setVisible(false);
+          }
+        } else {
+          rc.grounded = true;
+          rc.vy = 0;
+          if (rc.targetY !== undefined) {
+            rc.y += (rc.targetY - rc.y) * Math.min(1, 16 * dt);
+          } else {
+            rc.y = 0.85;
+          }
+        }
+
         rc.x += (rc.targetX - rc.x) * Math.min(1, 16 * dt);
         rc.z += (rc.targetZ - rc.z) * Math.min(1, 16 * dt);
         rc.facing += (rc.targetRotY - rc.facing) * Math.min(1, 16 * dt);
@@ -2169,8 +2266,37 @@ class BumperGameEngine {
       return;
     }
 
-    this.camHeight = 11.0;
-    this.camDistance = 14.5;
+    // Dynamic Wide-Angle Camera Tuning (Elevated & spacious for mobile)
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isPortrait = w < h;
+    const isMobile = w <= 768 || isPortrait;
+
+    if (isPortrait) {
+      // Mobile Portrait: Elevated wide-angle view so the full arena & collapse rings are visible!
+      this.camHeight = 18.5;
+      this.camDistance = 22.5;
+      if (this.camera.fov !== 66) {
+        this.camera.fov = 66;
+        this.camera.updateProjectionMatrix();
+      }
+    } else if (isMobile) {
+      // Mobile Landscape: Wider angle
+      this.camHeight = 13.5;
+      this.camDistance = 18.0;
+      if (this.camera.fov !== 58) {
+        this.camera.fov = 58;
+        this.camera.updateProjectionMatrix();
+      }
+    } else {
+      // Desktop: Standard balanced camera
+      this.camHeight = 11.0;
+      this.camDistance = 14.5;
+      if (this.camera.fov !== 54) {
+        this.camera.fov = 54;
+        this.camera.updateProjectionMatrix();
+      }
+    }
 
     this._reusableFocusVec.set(focusX, focusY, focusZ);
     this.cameraTarget.lerp(this._reusableFocusVec, Math.min(1, 6.0 * dt));
@@ -2233,7 +2359,9 @@ class BumperGameEngine {
         matchRank: matchRank,
         totalParticipants: totalParticipants,
         topSpeed: Math.round(this.maxRecordedSpeed * 7.2),
-        bestStreak: this.bestStreak || 0
+        bestStreak: this.bestStreak || 0,
+        mode: this.isMultiplayer ? 'public' : 'solo',
+        difficulty: this.difficulty || 'normal'
       });
     }
   }
@@ -2287,6 +2415,9 @@ class BumperGameEngine {
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.camera.aspect = w / h;
+    const isPortrait = w < h;
+    const isMobile = w <= 768 || isPortrait;
+    this.camera.fov = isPortrait ? 66 : (isMobile ? 58 : 54);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   }

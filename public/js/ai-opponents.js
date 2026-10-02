@@ -24,6 +24,7 @@ class AIBumperBot {
     this.targetCraft = null;
     this.targetLockTimer = 0;
     this.isRetreating = false;
+    this._cryoReduced = false;
   }
 
   spawn(x, z) {
@@ -35,6 +36,7 @@ class AIBumperBot {
     this.steerZ = 0;
     this.targetCraft = null;
     this.targetLockTimer = 0;
+    this._cryoReduced = false;
   }
 
   update(dt, allCrafts, arenaRadius, arena = null) {
@@ -52,6 +54,12 @@ class AIBumperBot {
       }
     }
 
+
+    // Cryo Glacier: 5% reduced aggression (smoother control on sub-zero ice drift)
+    if (arena && arena.theme === 'cryo' && !this._cryoReduced) {
+      this._cryoReduced = true;
+      this.personality.aggression = Math.max(0.40, this.personality.aggression - 0.05);
+    }
 
     // 2. Tactical AI Decision Cycle
     this.thinkTimer += dt;
@@ -460,7 +468,7 @@ class AIBumperManager {
    * @param {number} botCount - number of bots to spawn (default 4)
    * @param {string} difficulty - 'easy' | 'medium' | 'hard' | 'public' (default 'hard')
    */
-  spawn(arenaRadius, botCount = 4, difficulty = 'hard') {
+  spawn(arenaRadius, botCount = 4, difficulty = 'hard', theme = 'neon') {
     this.clear();
     const count = Math.min(botCount, this.extendedRoster.length);
     const spawnRadius = Math.min(arenaRadius * 0.50, 10.0);
@@ -481,34 +489,43 @@ class AIBumperManager {
       bot.craft.baseMass = 1.0;
 
       if (difficulty === 'easy') {
-        bot.personality.aggression = 0.60 + Math.random() * 0.12;
-        bot.personality.survival = 0.75 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.40 + Math.random() * 0.12;
-        bot.personality.dodgeSkill = 0.45 + Math.random() * 0.15;
-        bot.thinkInterval = 0.15 + Math.random() * 0.04;
-        bot.craft.baseSpeed = 10.8;
+        // Room 1 Easy: 72% to 84% aggression (increased from 60-72%)
+        bot.personality.aggression = 0.72 + Math.random() * 0.12;
+        bot.personality.survival = 0.78 + Math.random() * 0.08;
+        bot.personality.dashSkill = 0.50 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.50 + Math.random() * 0.14;
+        bot.thinkInterval = 0.14 + Math.random() * 0.03;
+        bot.craft.baseSpeed = 11.2;
       } else if (difficulty === 'medium') {
-        bot.personality.aggression = 0.82 + Math.random() * 0.12;
-        bot.personality.survival = 0.78 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.65 + Math.random() * 0.12;
-        bot.personality.dodgeSkill = 0.60 + Math.random() * 0.14;
+        // Room 2 Medium: 82% to 92% aggression (~8-10% gap from Easy)
+        bot.personality.aggression = 0.82 + Math.random() * 0.10;
+        bot.personality.survival = 0.80 + Math.random() * 0.08;
+        bot.personality.dashSkill = 0.66 + Math.random() * 0.12;
+        bot.personality.dodgeSkill = 0.62 + Math.random() * 0.12;
         bot.thinkInterval = 0.11 + Math.random() * 0.03;
         bot.craft.baseSpeed = 12.0;
       } else if (difficulty === 'hard') {
-        bot.personality.aggression = 0.90 + Math.random() * 0.10;
-        bot.personality.survival = 0.82 + Math.random() * 0.08;
-        bot.personality.dashSkill = 0.76 + Math.random() * 0.12;
+        // Room 3 Hard: 90% to 98% aggression (~6-8% gap from Medium, Champion)
+        bot.personality.aggression = 0.90 + Math.random() * 0.08;
+        bot.personality.survival = 0.84 + Math.random() * 0.06;
+        bot.personality.dashSkill = 0.76 + Math.random() * 0.10;
         bot.personality.dodgeSkill = 0.68 + Math.random() * 0.12;
         bot.thinkInterval = 0.09 + Math.random() * 0.03;
         bot.craft.baseSpeed = 12.6;
       } else {
         // 'public' (Battle Royale)
-        bot.personality.aggression = 0.85 + Math.random() * 0.12;
+        bot.personality.aggression = 0.85 + Math.random() * 0.10;
         bot.personality.survival = 0.80 + Math.random() * 0.10;
         bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
         bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
         bot.thinkInterval = 0.10 + Math.random() * 0.03;
         bot.craft.baseSpeed = 12.2;
+      }
+
+      // Cryo Glacier: 5% aggression reduction (as requested)
+      if (theme === 'cryo') {
+        bot.personality.aggression = Math.max(0.40, bot.personality.aggression - 0.05);
+        bot._cryoReduced = true;
       }
 
       bot.spawn(x, z);
@@ -528,7 +545,7 @@ class AIBumperManager {
     return this.bots.filter(b => b.craft.alive).length;
   }
 
-  spawnBotList(botList, difficulty = 'hard') {
+  spawnBotList(botList, difficulty = 'hard', theme = 'neon') {
     this.clear();
     if (!botList || !botList.length) return;
     botList.forEach(b => {
@@ -542,6 +559,21 @@ class AIBumperManager {
       bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
       bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
       bot.thinkInterval = 0.10 + Math.random() * 0.03;
+      // Exact Hard Level personality and aggression (identical to Solo Practice Hard)
+      bot.personality.aggression = 0.90 + Math.random() * 0.08;
+      bot.personality.survival = 0.84 + Math.random() * 0.06;
+      bot.personality.dashSkill = 0.76 + Math.random() * 0.10;
+      bot.personality.dodgeSkill = 0.68 + Math.random() * 0.12;
+      bot.thinkInterval = 0.09 + Math.random() * 0.03;
+      bot.craft.baseSpeed = 12.6;
+      bot.craft.mass = 1.0;
+      bot.craft.baseMass = 1.0;
+
+      // Cryo Glacier: 5% aggression reduction
+      if (theme === 'cryo') {
+        bot.personality.aggression = Math.max(0.40, bot.personality.aggression - 0.05);
+        bot._cryoReduced = true;
+      }
       // Faster, responsive base speed
       bot.craft.baseSpeed = 12.2;
       bot.craft.mass = 1.0;

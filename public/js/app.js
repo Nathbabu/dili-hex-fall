@@ -118,15 +118,29 @@
         target.style.display = 'flex';
       }
     }
+
+    // Toggle menu header controls (NEVER show during active gameplay in #hud)
+    const topControls = document.querySelector('.top-header-controls');
+    if (topControls) {
+      topControls.style.display = (id === 'hud') ? 'none' : 'flex';
+    }
+    if (id === 'hud') {
+      document.body.classList.add('in-game');
+    } else {
+      document.body.classList.remove('in-game');
+    }
   }
 
   // Fullscreen Mode Toggle
   const btnFullscreen = document.getElementById('btnFullscreen');
   const fullscreenIcon = document.getElementById('fullscreenIcon');
   if (btnFullscreen) {
+    const FS_ENTER_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+    const FS_EXIT_SVG  = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+
     const updateFsState = () => {
       const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      if (fullscreenIcon) fullscreenIcon.innerHTML = isFs ? '&#x25A3;' : '&#x26F6;';
+      if (fullscreenIcon) fullscreenIcon.innerHTML = isFs ? FS_EXIT_SVG : FS_ENTER_SVG;
       btnFullscreen.title = isFs ? 'Exit Fullscreen' : 'Toggle Fullscreen';
       btnFullscreen.classList.toggle('fullscreen-active', isFs);
     };
@@ -160,15 +174,36 @@
     document.addEventListener('webkitfullscreenchange', updateFsState);
   }
 
-  // Audio Toggle
+  // Audio Toggle with Crisp Vector SVGs
+  const AUDIO_ON_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+  const AUDIO_OFF_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+
+  const syncSoundState = (isUnmuted) => {
+    const audioIcon = document.getElementById('audioIcon');
+    const hudSoundIcon = document.getElementById('hudSoundIcon');
+    const hudSoundToggle = document.getElementById('hudSoundToggle');
+    if (audioIcon) audioIcon.innerHTML = isUnmuted ? AUDIO_ON_SVG : AUDIO_OFF_SVG;
+    if (hudSoundIcon) hudSoundIcon.innerHTML = isUnmuted ? AUDIO_ON_SVG : AUDIO_OFF_SVG;
+    globalAudioBtn.classList.toggle('muted', !isUnmuted);
+    if (hudSoundToggle) hudSoundToggle.classList.toggle('muted', !isUnmuted);
+  };
+
   globalAudioBtn.addEventListener('click', () => {
     HexAudio.init();
     HexAudio.resumeCtx();
     const isUnmuted = HexAudio.toggleMute();
-    const audioIcon = document.getElementById('audioIcon');
-    if (audioIcon) audioIcon.innerHTML = isUnmuted ? '&#128266;' : '&#128263;';
-    globalAudioBtn.classList.toggle('muted', !isUnmuted);
+    syncSoundState(isUnmuted);
   });
+
+  const hudSoundToggle = document.getElementById('hudSoundToggle');
+  if (hudSoundToggle) {
+    hudSoundToggle.addEventListener('click', () => {
+      HexAudio.init();
+      HexAudio.resumeCtx();
+      const isUnmuted = HexAudio.toggleMute();
+      syncSoundState(isUnmuted);
+    });
+  }
 
   // Authentic Dlicom Mascot Showcase Controls
   const mascotPreviewImg = document.getElementById('mascotPreviewImg');
@@ -386,9 +421,19 @@
         goRank.textContent = 'Submitting...';
         if (goStreak) goStreak.textContent = (data.bestStreak && data.bestStreak >= 2) ? ('x' + data.bestStreak + ' STREAK') : 'NONE';
 
-        if (data.score > personalBest) {
-          personalBest = data.score;
-          localStorage.setItem('cyberbumpers_pb', String(personalBest));
+        const isMp = (data.mode === 'public') || (engine && engine.isMultiplayer) || (currentModeConfig && currentModeConfig.mode === 'multiplayer');
+        const modeLabel = isMp ? 'PUBLIC ARENA' : 'SOLO SURVIVAL';
+        const goRankLabel = document.getElementById('goRankLabel');
+        if (goRankLabel) {
+          goRankLabel.textContent = isMp ? 'ARENA GLOBAL RANK' : 'SOLO GLOBAL RANK';
+        }
+
+        // Separate Personal Bests for Solo vs Public Arena
+        const pbKey = isMp ? 'hexfall_public_pb' : 'hexfall_solo_pb';
+        const currentPB = parseInt(localStorage.getItem(pbKey) || '0', 10);
+        if (data.score > currentPB) {
+          localStorage.setItem(pbKey, String(data.score));
+          newRecordBanner.textContent = `🏆 NEW ${modeLabel} RECORD: ${data.score.toLocaleString()} PTS!`;
           newRecordBanner.classList.remove('hidden');
           launchConfetti();
         } else {
@@ -399,7 +444,7 @@
           if (res && res.rank) {
             goRank.textContent = `#${res.rank} of ${res.totalPilots || 1}`;
           } else {
-            goRank.textContent = 'Recorded';
+            goRank.textContent = '#1';
           }
         });
       };
@@ -423,6 +468,24 @@
   // ============================================================
   let currentModeConfig = { mode: 'solo', difficulty: 'hard', botCount: 4, totalPlayers: 5, arenaTheme: 'neon' };
   let socket = null;
+
+  
+  // Mobile phone screen lock / tab hidden detection
+  document.addEventListener('visibilitychange', () => {
+    const s = getSocket();
+    if (!s || !s.connected) return;
+    if (document.hidden) {
+      console.log('[Visibility] Screen locked or tab backgrounded.');
+      s.emit('player_visibility', { visible: false });
+    } else {
+      console.log('[Visibility] Screen unlocked or tab restored.');
+      s.emit('player_visibility', { visible: true });
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    const s = getSocket();
+    if (s && s.connected) s.emit('player_visibility', { visible: false });
+  });
 
   function getSocket() {
     if (!socket && typeof io !== 'undefined') {
@@ -791,6 +854,18 @@
   });
 
   btnGoLb.addEventListener('click', () => {
+    const eg = getEngine();
+    const isMp = eg && (eg.isMultiplayer || (currentModeConfig && currentModeConfig.mode === 'multiplayer'));
+    currentLbMode = isMp ? 'public' : 'solo';
+    currentLbFilter = 'all';
+
+    const btnSolo = document.getElementById('lbModeSolo');
+    const btnPublic = document.getElementById('lbModePublic');
+    if (btnSolo && btnPublic) {
+      btnSolo.classList.toggle('active', !isMp);
+      btnPublic.classList.toggle('active', isMp);
+    }
+
     showScreen('leaderboardScreen');
     fetchLeaderboard();
   });
@@ -821,29 +896,163 @@
     });
   }
 
-  // Leaderboard API — Strictly Human Players Only
+  // =========================================================================
+  // DUAL LEADERBOARD SYSTEM (SOLO SURVIVAL & PUBLIC ARENA)
+  // =========================================================================
+  let cachedSoloLeaderboard = [];
+  let cachedPublicLeaderboard = [];
+  let currentLbMode = 'solo'; // 'solo' or 'public'
+  let currentLbFilter = 'all';
+
+  function setupLeaderboardTabs() {
+    const btnSolo = document.getElementById('lbModeSolo');
+    const btnPublic = document.getElementById('lbModePublic');
+
+    if (btnSolo) {
+      btnSolo.addEventListener('click', () => {
+        HexAudio.init(); HexAudio.resumeCtx();
+        HexAudio.playTone(600, 'triangle', 0.05);
+        btnSolo.classList.add('active');
+        if (btnPublic) btnPublic.classList.remove('active');
+        currentLbMode = 'solo';
+        currentLbFilter = 'all';
+        renderSubFilterTabs();
+        renderLeaderboardTable();
+      });
+    }
+
+    if (btnPublic) {
+      btnPublic.addEventListener('click', () => {
+        HexAudio.init(); HexAudio.resumeCtx();
+        HexAudio.playTone(700, 'triangle', 0.05);
+        btnPublic.classList.add('active');
+        if (btnSolo) btnSolo.classList.remove('active');
+        currentLbMode = 'public';
+        currentLbFilter = 'all';
+        renderSubFilterTabs();
+        renderLeaderboardTable();
+      });
+    }
+  }
+
+  function renderSubFilterTabs() {
+    const subContainer = document.getElementById('lbSubFilterTabs');
+    if (!subContainer) return;
+
+    if (currentLbMode === 'solo') {
+      subContainer.innerHTML = `
+        <button class="lb-filter-btn ${currentLbFilter === 'all' ? 'active' : ''}" data-filter="all">ALL</button>
+        <button class="lb-filter-btn ${currentLbFilter === 'normal' ? 'active' : ''}" data-filter="normal">NORMAL</button>
+        <button class="lb-filter-btn ${currentLbFilter === 'medium' ? 'active' : ''}" data-filter="medium">MEDIUM</button>
+        <button class="lb-filter-btn ${currentLbFilter === 'hard' ? 'active' : ''}" data-filter="hard">HARD</button>
+      `;
+    } else {
+      subContainer.innerHTML = `
+        <button class="lb-filter-btn ${currentLbFilter === 'all' ? 'active' : ''}" data-filter="all">ALL FIGHTERS</button>
+        <button class="lb-filter-btn ${currentLbFilter === 'champions' ? 'active' : ''}" data-filter="champions">CHAMPIONS (WINS)</button>
+      `;
+    }
+
+    subContainer.querySelectorAll('.lb-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        HexAudio.init(); HexAudio.resumeCtx();
+        HexAudio.playTone(550, 'sine', 0.04);
+        subContainer.querySelectorAll('.lb-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentLbFilter = btn.dataset.filter || 'all';
+        renderLeaderboardTable();
+      });
+    });
+  }
+
+  function renderLeaderboardTable() {
+    if (!lbBody) return;
+    const isSolo = currentLbMode === 'solo';
+    const list = isSolo ? cachedSoloLeaderboard : cachedPublicLeaderboard;
+
+    let filtered = [];
+    if (isSolo) {
+      if (currentLbFilter === 'all') {
+        const bestMap = new Map();
+        list.forEach(e => {
+          const key = (e.pilot || '').toLowerCase();
+          if (!bestMap.has(key) || e.score > bestMap.get(key).score) {
+            bestMap.set(key, e);
+          }
+        });
+        filtered = Array.from(bestMap.values()).sort((a, b) => b.score - a.score);
+      } else {
+        filtered = list.filter(e => (e.difficulty || 'normal').toLowerCase() === currentLbFilter)
+                       .sort((a, b) => b.score - a.score);
+      }
+    } else {
+      // Public Arena
+      if (currentLbFilter === 'champions') {
+        filtered = list.filter(e => e.win || (e.wins && e.wins > 0))
+                       .sort((a, b) => b.score - a.score);
+      } else {
+        const bestMap = new Map();
+        list.forEach(e => {
+          const key = (e.pilot || '').toLowerCase();
+          if (!bestMap.has(key) || e.score > bestMap.get(key).score) {
+            bestMap.set(key, e);
+          }
+        });
+        filtered = Array.from(bestMap.values()).sort((a, b) => b.score - a.score);
+      }
+    }
+
+    if (filtered.length === 0) {
+      lbBody.innerHTML = `<tr><td colspan="4" class="lb-loading">No ${isSolo ? 'Solo' : 'Public Arena'} records yet &mdash; Be the first to claim #1!</td></tr>`;
+      return;
+    }
+
+    lbBody.innerHTML = filtered.slice(0, 50).map((entry, idx) => {
+      const rankClass = idx === 0 ? 'rank-1' : (idx === 1 ? 'rank-2' : (idx === 2 ? 'rank-3' : ''));
+      const medal = idx === 0 ? '🥇 ' : (idx === 1 ? '🥈 ' : (idx === 2 ? '🥉 ' : ''));
+      const suitColorHex = suitColorMap[entry.suitColor] ? ('#' + suitColorMap[entry.suitColor].toString(16).padStart(6, '0')) : '#00FFC6';
+
+      let modeBadgeHtml = '';
+      if (isSolo) {
+        const diffKey = (entry.difficulty || 'normal').toLowerCase();
+        const diffClass = diffKey === 'hard' ? 'diff-hard' : (diffKey === 'medium' ? 'diff-medium' : 'diff-normal');
+        const diffLabel = diffKey.toUpperCase();
+        modeBadgeHtml = `<span class="pilot-diff-pill ${diffClass}">${diffLabel}</span>`;
+      } else {
+        if (entry.win) {
+          modeBadgeHtml = `<span class="pilot-diff-pill diff-champion">👑 CHAMPION</span>`;
+        } else {
+          modeBadgeHtml = `<span class="pilot-diff-pill diff-live">ARENA</span>`;
+        }
+      }
+
+      return `<tr>
+        <td class="${rankClass}">${medal}#${idx + 1}</td>
+        <td>
+          <div class="pilot-cell">
+            <span class="pilot-suit-dot" style="background:${suitColorHex}; box-shadow: 0 0 6px ${suitColorHex};"></span>
+            <span class="pilot-name-text">${escapeHtml(entry.pilot)}</span>
+            ${modeBadgeHtml}
+          </div>
+        </td>
+        <td class="highlight-pink">${entry.kills || 0}</td>
+        <td class="highlight-gold" style="font-weight:800;">${(entry.score || 0).toLocaleString()} PTS</td>
+      </tr>`;
+    }).join('');
+  }
+
   async function fetchLeaderboard() {
     lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>';
+    renderSubFilterTabs();
     try {
       const res = await fetch('/api/leaderboard');
       const data = await res.json();
-      if (data.success && data.leaderboard && data.leaderboard.length > 0) {
-        const realPilots = data.leaderboard.filter(e => e && e.pilot && !isBotAccount(e.pilot));
-        if (realPilots.length > 0) {
-          lbBody.innerHTML = realPilots.slice(0, 50).map((e, idx) => {
-            const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-            return `<tr>
-              <td>${rankBadge}</td>
-              <td><strong>${escapeHtml(e.pilot)}</strong></td>
-              <td class="highlight-pink">${e.crystals || e.tier || 0}</td>
-              <td class="highlight-gold">${e.score}</td>
-            </tr>`;
-          }).join('');
-        } else {
-          lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim #1 rank!</td></tr>';
-        }
+      if (data.success) {
+        cachedSoloLeaderboard = (data.solo || []).filter(e => e && e.pilot && !isBotAccount(e.pilot));
+        cachedPublicLeaderboard = (data.public || []).filter(e => e && e.pilot && !isBotAccount(e.pilot));
+        renderLeaderboardTable();
       } else {
-        lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet — claim #1 rank!</td></tr>';
+        lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet &mdash; claim #1 rank!</td></tr>';
       }
     } catch (err) {
       lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
@@ -852,17 +1061,20 @@
 
   async function submitScore(data) {
     try {
+      const isMp = (data.mode === 'public') || (engine && engine.isMultiplayer) || (currentModeConfig && currentModeConfig.mode === 'multiplayer');
       const res = await fetch('/api/score/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: isMp ? 'public' : 'solo',
           pilot: data.pilot,
           score: data.score,
           survivalTime: data.time,
-          tier: data.kills, // store knockouts in tier/crystals field for display
-          crystals: data.kills,
+          kills: data.kills,
+          difficulty: data.difficulty || (currentModeConfig ? currentModeConfig.difficulty : 'normal'),
           suitColor: selectedSuit,
-          win: data.win
+          win: data.win,
+          matchRank: data.matchRank || 1
         })
       });
       return await res.json();
@@ -871,6 +1083,9 @@
       return null;
     }
   }
+
+  // Setup mode switcher listeners
+  setupLeaderboardTabs();
 
   // Celebratory Confetti
   function launchConfetti() {

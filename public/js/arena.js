@@ -176,6 +176,32 @@ class ArenaColosseum {
     return dist <= (this.currentRadius + 0.35);
   }
 
+  syncElapsed(elapsed) {
+    this.elapsedTime = Math.max(0, elapsed);
+    if (!this.ringStages) return;
+    this.ringStages.forEach(stage => {
+      if (this.elapsedTime >= stage.collapseTime) {
+        stage.collapsed = true;
+        stage.dropping = true;
+        stage.warned = false;
+        stage.dropSpeed = 100;
+        this.currentRadius = stage.radiusMin;
+        this.upperRadius = this.currentRadius;
+        if (stage.mesh && stage.states) {
+          stage.states.forEach((s, idx) => {
+            s.active = false;
+            s.y = -60;
+            this._dummy.position.set(s.x, s.y, s.z);
+            this._dummy.scale.setScalar(0);
+            this._dummy.updateMatrix();
+            stage.mesh.setMatrixAt(idx, this._dummy.matrix);
+          });
+          stage.mesh.instanceMatrix.needsUpdate = true;
+        }
+      }
+    });
+  }
+
   build() {
     const hexRadius = 1.1;
     const hexGap = 0.12;
@@ -1946,11 +1972,30 @@ class ArenaColosseum {
   // CLEAN RESET
   // ============================================================
   reset() {
-    this.rings.forEach(r => {
-      if (r.mesh && r.mesh.parent) this.scene.remove(r.mesh);
-      if (r.mesh && r.mesh.geometry) r.mesh.geometry.dispose();
-      if (r.mesh && r.mesh.material) r.mesh.material.dispose();
-    });
+    if (this.ringStages) {
+      this.ringStages.forEach(stage => {
+        if (stage.mesh) {
+          if (stage.mesh.parent) this.scene.remove(stage.mesh);
+          if (stage.mesh.geometry) stage.mesh.geometry.dispose();
+          if (stage.mesh.material) {
+            if (Array.isArray(stage.mesh.material)) stage.mesh.material.forEach(m => m.dispose());
+            else stage.mesh.material.dispose();
+          }
+          stage.mesh = null;
+        }
+      });
+    }
+    if (this.rings) {
+      this.rings.forEach(r => {
+        if (r.mesh && r.mesh.parent) this.scene.remove(r.mesh);
+        if (r.mesh && r.mesh.geometry) r.mesh.geometry.dispose();
+        if (r.mesh && r.mesh.material) {
+          if (Array.isArray(r.mesh.material)) r.mesh.material.forEach(m => m.dispose());
+          else r.mesh.material.dispose();
+        }
+        r.mesh = null;
+      });
+    }
 
     this.powerUps.forEach(p => {
       if (p.mesh) {

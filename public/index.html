@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/game.css?v=v49-match-rank-modal"/>
+  <link rel="stylesheet" href="css/game.css?v=v52-dual-lb"/>
 </head>
 <body>
   <!-- 3D WebGL Canvas -->
@@ -18,10 +18,20 @@
   <!-- Top Right Header Controls -->
   <div class="top-header-controls">
     <button id="btnFullscreen" class="hdr-btn fullscreen-btn" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
-      <span id="fullscreenIcon" class="hdr-icon">&#x26F6;</span>
+      <span id="fullscreenIcon" class="hdr-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+      </span>
     </button>
     <button id="globalAudioBtn" class="hdr-btn audio-btn" aria-label="Toggle Audio" title="Toggle Sound">
-      <span id="audioIcon" class="audio-icon">&#128266;</span>
+      <span id="audioIcon" class="audio-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+      </span>
     </button>
   </div>
 
@@ -322,7 +332,7 @@
           <span class="hud-label">PING</span>
           <span class="hud-value ping-text"><span class="ping-dot"></span><span id="hudPingVal">22ms</span></span>
         </div>
-        <button id="btnFullscreenToggle" class="fullscreen-toggle-btn" title="Toggle Fullscreen">⛶</button>
+
       </div>
 
       <!-- Ring Collapse Countdown Badge -->
@@ -380,10 +390,17 @@
       <div class="powerup-progress"><div id="powerUpBar" class="powerup-bar"></div></div>
     </div>
 
-    <!-- Pause Button -->
-    <button class="hud-pause-btn" id="btnPause" aria-label="Pause Game" title="Pause">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
-    </button>
+    <!-- In-Game Corner Action Controls (Audio + Pause) -->
+    <div class="hud-corner-actions" id="hudCornerActions">
+      <button class="hud-action-icon-btn" id="hudSoundToggle" aria-label="Toggle Sound" title="Sound">
+        <span id="hudSoundIcon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        </span>
+      </button>
+      <button class="hud-action-icon-btn" id="btnPause" aria-label="Pause Game" title="Pause">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
+      </button>
+    </div>
 
     <!-- Mobile Virtual Controls -->
     <div class="mobile-controls" id="mobileControls">
@@ -496,7 +513,7 @@
           <span id="goMatchRank" class="highlight-cyan">#1 of 4</span>
         </div>
         <div class="go-stat">
-          <span>GLOBAL RANK</span>
+          <span id="goRankLabel">GLOBAL STANDING</span>
           <span id="goRank" class="highlight-gold">#1</span>
         </div>
         <div class="go-stat">
@@ -519,25 +536,46 @@
     </div>
   </div>
 
-  <!-- GLOBAL LEADERBOARD OVERLAY -->
+  <!-- GLOBAL LEADERBOARD OVERLAY (SEPARATE SOLO & PUBLIC ARENA) -->
   <div id="leaderboardScreen" class="screen overlay">
     <div class="overlay-card leaderboard-card">
       <div class="lb-header">
-        <h2>GLOBAL TOP SMASHERS</h2>
-        <p class="lb-sub">Real-Time Cloud High Scores</p>
+        <div class="lb-header-brand">
+          <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="lb-logo" onerror="this.style.display='none'">
+          <h2>CYBER ARENA LEADERBOARDS</h2>
+        </div>
+        <p class="lb-sub">Authoritative Cloud Rankings &amp; Global Standings</p>
       </div>
+
+      <!-- Mode Switcher Tabs (Solo Survival vs Public Arena) -->
+      <div class="lb-mode-switcher">
+        <button class="lb-mode-btn active" id="lbModeSolo" data-mode="solo">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>SOLO SURVIVAL</span>
+        </button>
+        <button class="lb-mode-btn" id="lbModePublic" data-mode="public">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span>PUBLIC ARENA</span>
+        </button>
+      </div>
+
+      <!-- Difficulty / Category Filter Sub-Tabs -->
+      <div class="leaderboard-filter-tabs" id="lbSubFilterTabs">
+        <!-- Rendered dynamically in JS -->
+      </div>
+
       <div class="lb-table-wrap">
         <table class="lb-table">
           <thead>
             <tr>
-              <th style="width:14%">RANK</th>
-              <th style="width:38%">PILOT</th>
-              <th style="width:18%">KOs</th>
-              <th style="width:30%">SCORE</th>
+              <th style="width:16%">RANK</th>
+              <th style="width:44%">PILOT &amp; MODE</th>
+              <th style="width:16%">KOs</th>
+              <th style="width:24%">SCORE</th>
             </tr>
           </thead>
           <tbody id="lbBody">
-            <tr><td colspan="4" class="lb-loading">Loading top pilots...</td></tr>
+            <tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>
           </tbody>
         </table>
       </div>

@@ -86,8 +86,6 @@ canvas#gameCanvas {
 
 /* Audio Toggle */
 .audio-btn {
-  position: fixed; top: 16px; right: 16px;
-  z-index: 50;
   width: 44px; height: 44px;
   background: rgba(8, 14, 26, 0.75);
   border: 1px solid var(--glass-border);
@@ -2310,41 +2308,142 @@ canvas#gameCanvas {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Hide menu header controls during active gameplay to eliminate overlapping buttons */
+body.in-game .top-header-controls {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
-  .radar-container {
-    top: 10px;
-    right: 56px;
-    width: 76px;
-    height: 76px;
+  #hud {
+    padding: 8px !important;
   }
-  .kill-feed {
-    top: 92px;
-    right: 10px;
-    max-width: 200px;
-  }
-  .kill-item {
-    font-size: 0.6rem;
-    padding: 4px 8px;
-  }
+
+  /* Compact Cyber Status Capsule on Mobile (Top Left) */
   .hud-top-bar {
-    max-width: calc(100vw - 140px);
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    max-width: calc(100vw - 86px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+    z-index: 20;
   }
+
   .hud-top {
-    gap: 6px;
-    padding: 6px 10px;
-  }
-  .hud-stat {
-    min-width: 40px;
-  }
-  .hud-value {
-    font-size: 0.85rem;
-  }
-  .ring-countdown-hud {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 7px;
+    background: rgba(6, 12, 24, 0.94);
+    border: 1px solid rgba(0, 229, 255, 0.45);
+    border-radius: 10px;
     padding: 4px 8px;
+    width: fit-content;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    pointer-events: auto;
   }
-  .rc-info {
+
+  .hud-stat {
+    min-width: unset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 3px;
+  }
+
+  .hud-label {
+    font-size: 0.46rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1;
+  }
+
+  .hud-value {
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* Hide bulky ping badge on small mobile screen to give breathing room */
+  .hud-arena-badge,
+  .hud-ping-badge,
+  .fullscreen-toggle-btn {
+    display: none !important;
+  }
+
+  /* Compact Ring Collapse Countdown */
+  .ring-countdown-hud {
+    padding: 3px 8px;
+    border-radius: 6px;
+    gap: 3px;
+    width: fit-content;
+    background: rgba(6, 12, 24, 0.90);
+    border: 1px solid rgba(0, 229, 255, 0.35);
+  }
+
+  .ring-countdown-hud .rc-info {
     font-size: 0.55rem;
+    gap: 6px;
   }
+
+  .ring-countdown-hud .rc-progress-track {
+    height: 3px;
+  }
+
+  /* In-Game Corner Controls (Top Right: Audio + Pause) */
+  .hud-corner-actions {
+    top: 8px;
+    right: 8px;
+    gap: 5px;
+    z-index: 25;
+  }
+
+  .hud-action-icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .hud-pause-btn {
+    display: none !important;
+  }
+
+  /* Cyber Radar: Positioned safely below the corner buttons (Zero overlap!) */
+  .radar-container {
+    top: 48px;
+    right: 8px;
+    width: 62px;
+    height: 62px;
+    z-index: 20;
+  }
+
+  /* Live Kill Feed: Positioned safely below the radar */
+  .kill-feed {
+    top: 116px;
+    right: 8px;
+    max-width: 150px;
+    z-index: 15;
+  }
+
+  .kill-item {
+    font-size: 0.56rem;
+    padding: 3px 6px;
+  }
+
+  /* Arena Alert */
+  .arena-alert {
+    top: 84px;
+    font-size: 0.68rem;
+    padding: 5px 12px;
+    gap: 6px;
+  }
+
   .spectator-bar {
     bottom: 90px;
     padding: 6px 12px;
@@ -2364,282 +2463,138 @@ canvas#gameCanvas {
     font-size: 0.95rem;
   }
 }
-
-
-/* Arcade Speed Lines on Screen Edges (Hyper Nitro & Dash) */
-.speed-lines {
-  display: none !important;
-  position: fixed;
-  pointer-events: none;
-}
-
-.speed-lines.active {
-  opacity: 0.92;
-  animation: speedLineJitter 0.075s steps(2, start) infinite;
-}
-
-@keyframes speedLineJitter {
-  0% { transform: scale(1.0) rotate(0deg); }
-  50% { transform: scale(1.02) rotate(0.4deg); }
-  100% { transform: scale(0.99) rotate(-0.3deg); }
-}
-
-/* ============================================================
-   3 ARENAS SELECTION & HUD BADGE
-   ============================================================ */
-.arena-selector-section {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  background: rgba(10, 18, 34, 0.7);
-  border: 1px solid rgba(0, 229, 255, 0.18);
-  border-radius: 14px;
-  backdrop-filter: blur(10px);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.03);
-}
-
-.arena-selector-header {
+/* =========================================================================
+   DUAL LEADERBOARD (SOLO vs PUBLIC ARENA) & DILI JUMP RANKING STYLES
+   ========================================================================= */
+.lb-header-brand {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.arena-selector-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: #7b92b2;
-}
-
-.arena-active-tag {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #00FFC6;
-  text-shadow: 0 0 10px rgba(0, 255, 198, 0.4);
-  transition: all 0.25s ease;
-}
-
-.arena-pills-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.arena-pill {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 9px 4px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  color: #a0b2cc;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.lb-logo {
+  height: 24px;
+  width: auto;
+}
+.lb-mode-switcher {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+.lb-mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: rgba(12, 20, 36, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.65);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 1px;
   cursor: pointer;
-  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.lb-mode-btn:hover {
+  border-color: var(--neon-cyan);
+  color: #fff;
+}
+.lb-mode-btn.active {
+  background: rgba(0, 229, 255, 0.16);
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
   font-weight: 700;
-  font-size: 0.74rem;
-  letter-spacing: 0.5px;
-  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  user-select: none;
 }
-
-.arena-pill-icon {
-  font-size: 1.15rem;
-  line-height: 1;
-  transition: transform 0.2s ease;
+.leaderboard-filter-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
 }
-
-.arena-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
-  transform: translateY(-2px);
-  color: #ffffff;
+.lb-filter-btn {
+  flex: 1;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #94a3b8;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
-
-.arena-pill:hover .arena-pill-icon {
-  transform: scale(1.15);
+.lb-filter-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
 }
-
-.arena-pill.active {
-  transform: translateY(-2px);
+.lb-filter-btn.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--neon-cyan);
+  color: #00f3ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+.pilot-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+}
+.pilot-suit-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pilot-name-text {
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.pilot-diff-pill {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
   font-weight: 800;
-}
-
-.arena-pill[data-theme="neon"].active {
-  border-color: #00FFC6;
-  background: rgba(0, 255, 198, 0.12);
-  color: #00FFC6;
-  box-shadow: 0 0 16px rgba(0, 255, 198, 0.35);
-}
-
-.arena-pill[data-theme="inferno"].active {
-  border-color: #FF5500;
-  background: rgba(255, 85, 0, 0.15);
-  color: #FFAA00;
-  box-shadow: 0 0 16px rgba(255, 85, 0, 0.45);
-}
-
-.arena-pill[data-theme="cryo"].active {
-  border-color: #00E5FF;
-  background: rgba(0, 229, 255, 0.14);
-  color: #DCF8FF;
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
-}
-
-.arena-pill[data-theme="random"].active {
-  border-color: #BF00FF;
-  background: rgba(191, 0, 255, 0.14);
-  color: #F0A3FF;
-  box-shadow: 0 0 16px rgba(191, 0, 255, 0.4);
-}
-
-/* In-Game HUD Arena Badge */
-.hud-arena-badge {
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  padding-left: 12px;
-}
-
-#hudArenaName {
-  font-size: 0.95rem;
-  letter-spacing: 0.8px;
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
-}
-
-@media (max-width: 600px) {
-  .arena-pills-row {
-    gap: 5px;
-  }
-  .arena-pill {
-    padding: 7px 2px;
-    font-size: 0.68rem;
-  }
-  .arena-pill-icon {
-    font-size: 1.0rem;
-  }
-  .hud-arena-badge {
-    padding-left: 8px;
-  }
-  #hudArenaName {
-    font-size: 0.82rem;
-  }
-}
-
-/* ============================================================
-   IMPACT SCREEN VIGNETTE FLASH (Heavy smacks & rotor hits)
-   ============================================================ */
-.impact-vignette {
-  display: none !important;
-  position: fixed;
-  pointer-events: none;
-}
-.impact-vignette.flash-cryo {
-  opacity: 1;
-  box-shadow: inset 0 0 120px rgba(0, 240, 255, 0.85), inset 0 0 45px rgba(255, 255, 255, 0.55);
-  transition: none;
-}
-.impact-vignette.flash-inferno {
-  opacity: 1;
-  box-shadow: inset 0 0 120px rgba(255, 68, 0, 0.85), inset 0 0 45px rgba(255, 170, 0, 0.55);
-  transition: none;
-}
-.impact-vignette.flash-neon {
-  opacity: 1;
-  box-shadow: inset 0 0 120px rgba(255, 0, 128, 0.85), inset 0 0 45px rgba(0, 255, 200, 0.55);
-  transition: none;
-}
-.impact-vignette.flash-superram {
-  opacity: 1;
-  box-shadow: inset 0 0 130px rgba(255, 215, 0, 0.90), inset 0 0 50px rgba(255, 255, 255, 0.7);
-  transition: none;
-}
-
-/* ============================================================
-   MULTI-KO COMBO STREAK ARCADE BANNER
-   ============================================================ */
-.combo-banner {
-  position: absolute;
-  top: 15%;
-  left: 50%;
-  transform: translateX(-50%) scale(1);
-  pointer-events: none;
-  z-index: 95;
-  text-align: center;
-  animation: comboPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.combo-banner.hidden {
-  display: none !important;
-}
-.combo-title {
-  font-family: 'Orbitron', monospace, sans-serif;
-  font-size: 2.3rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #FFD700;
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 35px rgba(255, 68, 0, 0.65);
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
   text-transform: uppercase;
 }
-.combo-sub {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: 3px;
-  color: #00F0FF;
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.7);
+.pilot-diff-pill.diff-hard {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
-@keyframes comboPop {
-  0% { transform: translateX(-50%) scale(0.35); opacity: 0; }
-  65% { transform: translateX(-50%) scale(1.18); opacity: 1; }
-  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+.pilot-diff-pill.diff-medium {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.4);
 }
-
-/* ============================================================
-   HUD PING BADGE & FULLSCREEN TOGGLE
-   ============================================================ */
-.hud-ping-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.pilot-diff-pill.diff-normal {
+  color: #00ffc2;
+  background: rgba(0, 255, 194, 0.12);
+  border: 1px solid rgba(0, 255, 194, 0.35);
 }
-.ping-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.82rem;
+.pilot-diff-pill.diff-champion {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.18);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
 }
-.ping-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #00FF88;
-  box-shadow: 0 0 6px #00FF88;
-  animation: pingPulse 1.8s infinite;
+.pilot-diff-pill.diff-live {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
 }
-@keyframes pingPulse {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.25); }
-}
-
-.fullscreen-toggle-btn {
-  background: rgba(4, 13, 26, 0.75);
-  border: 1px solid rgba(0, 240, 255, 0.35);
-  color: #00F0FF;
-  font-size: 1.15rem;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(6px);
-  margin-left: 6px;
-}
-.fullscreen-toggle-btn:hover {
-  background: rgba(0, 240, 255, 0.2);
-  border-color: #00F0FF;
-  transform: scale(1.08);
-}
+.rank-1 { color: #facc15 !important; font-weight: 900 !important; }
+.rank-2 { color: #e2e8f0 !important; font-weight: 800 !important; }
+.rank-3 { color: #cd7f32 !important; font-weight: 800 !important; }
