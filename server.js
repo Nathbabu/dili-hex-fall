@@ -41,7 +41,7 @@ function isBotAccount(name) {
   if (!name || typeof name !== 'string') return true;
   const n = name.trim().toLowerCase().replace(/[\[\]\s\-_]+/g, '');
   if (n.startsWith('bot') || n.startsWith('ai') || n.endsWith('bot')) return true;
-  if (n.includes('audit') || n.includes('tiepilot') || n.includes('testpilot')) return true;
+  if (n.includes('audit') || n.includes('tiepilot') || n.includes('test') || n.includes('championstar') || n.includes('dummy') || n.includes('mock')) return true;
   return KNOWN_BOT_NAMES.some(b => {
     const cleanB = b.replace(/[\[\]\s\-_]+/g, '');
     return n === cleanB || n.includes(cleanB);
