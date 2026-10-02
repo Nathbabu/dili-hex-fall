@@ -95,22 +95,80 @@ async function saveScoreToRedis(mode, newEntry) {
   current = current.filter(e => !isBotAccount(e.pilot));
 
   const existingIdx = current.findIndex(e => e.pilot.toLowerCase() === newEntry.pilot.toLowerCase());
+  const matchScore = Math.floor(newEntry.score || 0);
+
   if (existingIdx !== -1) {
-    if (newEntry.score > current[existingIdx].score) {
-      current[existingIdx] = Object.assign({}, current[existingIdx], newEntry);
-    } else {
-      if (newEntry.win && !current[existingIdx].win) {
-        current[existingIdx].win = true;
-      }
-      if (newEntry.kills && newEntry.kills > (current[existingIdx].kills || 0)) {
-        current[existingIdx].kills = newEntry.kills;
-      }
-    }
+    const prev = current[existingIdx];
+    const prevTotal = Number(prev.totalScore !== undefined ? prev.totalScore : prev.score) || 0;
+    const newTotal = prevTotal + matchScore;
+    const bestScore = Math.max(Number(prev.bestScore !== undefined ? prev.bestScore : prev.score) || 0, matchScore);
+    const matchesPlayed = (Number(prev.matchesPlayed) || 1) + 1;
+    const totalWins = (Number(prev.wins) || (prev.win ? 1 : 0)) + (newEntry.win ? 1 : 0);
+    const totalKills = (Number(prev.kills) || 0) + (Number(newEntry.kills) || 0);
+    const totalSurvival = (Number(prev.survivalTime) || 0) + (Number(newEntry.survivalTime) || 0);
+
+    current[existingIdx] = {
+      ...prev,
+      pilot: newEntry.pilot,
+      mode: isPublic ? 'public' : 'solo',
+      totalScore: newTotal,
+      score: newTotal,
+      bestScore: bestScore,
+      lastMatchScore: matchScore,
+      matchesPlayed: matchesPlayed,
+      wins: totalWins,
+      kills: totalKills,
+      survivalTime: totalSurvival,
+      difficulty: newEntry.difficulty || prev.difficulty || 'normal',
+      suitColor: newEntry.suitColor || prev.suitColor || 'mint',
+      win: totalWins > 0,
+      matchRank: newEntry.matchRank || prev.matchRank || 1,
+      updatedAt: new Date().toISOString()
+    };
   } else {
-    current.push(newEntry);
+    current.push({
+      pilot: newEntry.pilot,
+      mode: isPublic ? 'public' : 'solo',
+      totalScore: matchScore,
+      score: matchScore,
+      bestScore: matchScore,
+      lastMatchScore: matchScore,
+      matchesPlayed: 1,
+      wins: newEntry.win ? 1 : 0,
+      kills: Number(newEntry.kills) || 0,
+      survivalTime: Number(newEntry.survivalTime) || 0,
+      difficulty: newEntry.difficulty || 'normal',
+      suitColor: newEntry.suitColor || 'mint',
+      win: !!newEntry.win,
+      matchRank: newEntry.matchRank || 1,
+      updatedAt: new Date().toISOString()
+    });
   }
 
-  current = current.sort((a, b) => b.score - a.score).slice(0, 100);
+  // 5-Layer Foolproof Tie-Breaker Sorting
+  current.sort((a, b) => {
+    const scoreA = Number(a.totalScore !== undefined ? a.totalScore : a.score) || 0;
+    const scoreB = Number(b.totalScore !== undefined ? b.totalScore : b.score) || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA; // 1. Total Cumulative Score
+
+    const winsA = Number(a.wins) || (a.win ? 1 : 0);
+    const winsB = Number(b.wins) || (b.win ? 1 : 0);
+    if (winsB !== winsA) return winsB - winsA; // 2. Total Wins
+
+    const killsA = Number(a.kills) || 0;
+    const killsB = Number(b.kills) || 0;
+    if (killsB !== killsA) return killsB - killsA; // 3. Total Kills
+
+    const bestA = Number(a.bestScore !== undefined ? a.bestScore : a.score) || 0;
+    const bestB = Number(b.bestScore !== undefined ? b.bestScore : b.score) || 0;
+    if (bestB !== bestA) return bestB - bestA; // 4. Best Single Match Record
+
+    const timeA = new Date(a.updatedAt || a.timestamp || 0).getTime();
+    const timeB = new Date(b.updatedAt || b.timestamp || 0).getTime();
+    return timeA - timeB; // 5. Earliest timestamp
+  });
+
+  current = current.slice(0, 100);
   if (isPublic) {
     publicLeaderboardCache = current;
   } else {
@@ -190,19 +248,26 @@ app.post('/api/score/submit', async (req, res) => {
     };
 
     const updated = await saveScoreToRedis(entryMode, entry);
+    const updatedEntry = updated.find(e => e.pilot.toLowerCase() === cleanPilot.toLowerCase()) || entry;
     const rank = updated.findIndex(e => e.pilot.toLowerCase() === cleanPilot.toLowerCase()) + 1;
 
     res.json({
       success: true,
       mode: entryMode,
       rank: rank > 0 ? rank : updated.length,
-      entry,
+      entry: updatedEntry,
+      matchScore: Math.floor(score),
+      totalScore: updatedEntry.totalScore || updatedEntry.score,
+      bestScore: updatedEntry.bestScore || updatedEntry.score,
+      matchesPlayed: updatedEntry.matchesPlayed || 1,
+      wins: updatedEntry.wins || (updatedEntry.win ? 1 : 0),
       totalPilots: updated.length
     });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
 });
+
 
 // Admin wipe endpoint for fresh tests
 app.post('/api/leaderboard/clear', async (req, res) => {

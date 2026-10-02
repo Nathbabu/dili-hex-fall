@@ -24,28 +24,49 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  try {
-    const redisRes = await fetch(`${UPSTASH_REDIS_REST_URL}/get/dlicom_hexfall_leaderboard`, {
-      headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
-    });
-
-    if (redisRes.ok) {
-      const data = await redisRes.json();
-      let list = [];
-      if (data.result) {
-        list = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
-        if (Array.isArray(list)) {
-          // Strictly human player scores only
-          const humanList = list
-            .filter(e => e && e.pilot && !isBotAccount(e.pilot))
-            .sort((a, b) => b.score - a.score);
-          return res.status(200).json({ success: true, count: humanList.length, leaderboard: humanList });
+  async function fetchKey(k) {
+    try {
+      const getRes = await fetch(`${UPSTASH_REDIS_REST_URL}/get/${k}`, {
+        headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        if (data.result) {
+          const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+          if (Array.isArray(parsed)) {
+            return parsed.filter(e => e && e.pilot && !isBotAccount(e.pilot));
+          }
         }
       }
+    } catch (e) {
+      console.warn('Leaderboard fetch error for ' + k + ':', e.message);
     }
-  } catch (e) {
-    console.warn('Leaderboard fetch error:', e.message);
+    return [];
   }
 
-  return res.status(200).json({ success: true, count: 0, leaderboard: [] });
+  try {
+    const reqMode = String(req.query?.mode || 'all').toLowerCase();
+    if (reqMode === 'solo') {
+      const solo = await fetchKey('dlicom_hexfall_solo_lb');
+      return res.status(200).json({ success: true, mode: 'solo', leaderboard: solo });
+    } else if (reqMode === 'public' || reqMode === 'multiplayer') {
+      const pub = await fetchKey('dlicom_hexfall_public_lb');
+      return res.status(200).json({ success: true, mode: 'public', leaderboard: pub });
+    }
+
+    const [solo, pub] = await Promise.all([
+      fetchKey('dlicom_hexfall_solo_lb'),
+      fetchKey('dlicom_hexfall_public_lb')
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      mode: 'all',
+      solo,
+      public: pub
+    });
+  } catch (e) {
+    return res.status(500).json({ success: false, error: e.message });
+  }
 };
+

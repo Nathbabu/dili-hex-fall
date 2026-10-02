@@ -79,6 +79,9 @@
   const goScore = document.getElementById('goScore');
   const goRank = document.getElementById('goRank');
   const goMatchRank = document.getElementById('goMatchRank');
+  const goTotalScore = document.getElementById('goTotalScore');
+  const goBonusRow = document.getElementById('goBonusRow');
+  const goBonusPill = document.getElementById('goBonusPill');
   const goStreak = document.getElementById('goStreak');
   const btnFullscreenToggle = document.getElementById('btnFullscreenToggle');
   const newRecordBanner = document.getElementById('newRecordBanner');
@@ -405,7 +408,26 @@
 
         goTime.textContent = formatTime(data.time);
         goKills.textContent = data.kills;
-        goScore.textContent = data.score;
+        goScore.textContent = (data.score || 0).toLocaleString() + ' PTS';
+        if (goTotalScore) goTotalScore.textContent = 'Syncing...';
+
+        // Bonus and Multiplier Row
+        if (goBonusRow && goBonusPill) {
+          const parts = [];
+          if (data.difficultyMultiplier && data.difficultyMultiplier > 1.0) {
+            parts.push(`${data.difficultyMultiplier}x ${(data.difficulty || '').toUpperCase()}`);
+          }
+          if (data.placementBonus && data.placementBonus > 0) {
+            parts.push(`+${data.placementBonus.toLocaleString()} PODIUM PTS`);
+          }
+          if (parts.length > 0) {
+            goBonusPill.textContent = parts.join(' | ');
+            goBonusRow.style.display = 'flex';
+          } else {
+            goBonusRow.style.display = 'none';
+          }
+        }
+
         if (goMatchRank) {
           const mRank = data.matchRank || 1;
           const mTotal = data.totalParticipants || 4;
@@ -413,6 +435,8 @@
           if (mRank === 1) {
             goMatchRank.className = 'highlight-gold';
           } else if (mRank === 2) {
+            goMatchRank.className = 'highlight-cyan';
+          } else if (mRank === 3) {
             goMatchRank.className = 'highlight-cyan';
           } else {
             goMatchRank.className = 'highlight-pink';
@@ -433,7 +457,7 @@
         const currentPB = parseInt(localStorage.getItem(pbKey) || '0', 10);
         if (data.score > currentPB) {
           localStorage.setItem(pbKey, String(data.score));
-          newRecordBanner.textContent = `🏆 NEW ${modeLabel} RECORD: ${data.score.toLocaleString()} PTS!`;
+          newRecordBanner.textContent = `🏆 NEW ${modeLabel} MATCH BEST: ${data.score.toLocaleString()} PTS!`;
           newRecordBanner.classList.remove('hidden');
           launchConfetti();
         } else {
@@ -446,8 +470,13 @@
           } else {
             goRank.textContent = '#1';
           }
+          if (res && goTotalScore) {
+            const careerPts = res.totalScore || res.score || data.score;
+            goTotalScore.textContent = careerPts.toLocaleString() + ' PTS';
+          }
         });
       };
+
     }
           engine.onRespawnSuccess = () => {
         showScreen('hud');
@@ -965,6 +994,30 @@
     });
   }
 
+  function sortLeaderboardEntries(arr) {
+    return arr.sort((a, b) => {
+      const scoreA = Number(a.totalScore !== undefined ? a.totalScore : a.score) || 0;
+      const scoreB = Number(b.totalScore !== undefined ? b.totalScore : b.score) || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const winsA = Number(a.wins) || (a.win ? 1 : 0);
+      const winsB = Number(b.wins) || (b.win ? 1 : 0);
+      if (winsB !== winsA) return winsB - winsA;
+
+      const killsA = Number(a.kills) || 0;
+      const killsB = Number(b.kills) || 0;
+      if (killsB !== killsA) return killsB - killsA;
+
+      const bestA = Number(a.bestScore !== undefined ? a.bestScore : a.score) || 0;
+      const bestB = Number(b.bestScore !== undefined ? b.bestScore : b.score) || 0;
+      if (bestB !== bestA) return bestB - bestA;
+
+      const timeA = new Date(a.updatedAt || a.timestamp || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.timestamp || 0).getTime();
+      return timeA - timeB;
+    });
+  }
+
   function renderLeaderboardTable() {
     if (!lbBody) return;
     const isSolo = currentLbMode === 'solo';
@@ -973,37 +1026,27 @@
     let filtered = [];
     if (isSolo) {
       if (currentLbFilter === 'all') {
-        const bestMap = new Map();
-        list.forEach(e => {
-          const key = (e.pilot || '').toLowerCase();
-          if (!bestMap.has(key) || e.score > bestMap.get(key).score) {
-            bestMap.set(key, e);
-          }
-        });
-        filtered = Array.from(bestMap.values()).sort((a, b) => b.score - a.score);
+        filtered = sortLeaderboardEntries([...list]);
       } else {
-        filtered = list.filter(e => (e.difficulty || 'normal').toLowerCase() === currentLbFilter)
-                       .sort((a, b) => b.score - a.score);
+        filtered = sortLeaderboardEntries(list.filter(e => (e.difficulty || 'normal').toLowerCase() === currentLbFilter));
       }
     } else {
       // Public Arena
       if (currentLbFilter === 'champions') {
-        filtered = list.filter(e => e.win || (e.wins && e.wins > 0))
-                       .sort((a, b) => b.score - a.score);
+        filtered = list.filter(e => (e.wins && e.wins > 0) || e.win)
+                       .sort((a, b) => {
+                         const winsA = Number(a.wins) || (a.win ? 1 : 0);
+                         const winsB = Number(b.wins) || (b.win ? 1 : 0);
+                         if (winsB !== winsA) return winsB - winsA;
+                         return (Number(b.totalScore || b.score) || 0) - (Number(a.totalScore || a.score) || 0);
+                       });
       } else {
-        const bestMap = new Map();
-        list.forEach(e => {
-          const key = (e.pilot || '').toLowerCase();
-          if (!bestMap.has(key) || e.score > bestMap.get(key).score) {
-            bestMap.set(key, e);
-          }
-        });
-        filtered = Array.from(bestMap.values()).sort((a, b) => b.score - a.score);
+        filtered = sortLeaderboardEntries([...list]);
       }
     }
 
     if (filtered.length === 0) {
-      lbBody.innerHTML = `<tr><td colspan="4" class="lb-loading">No ${isSolo ? 'Solo' : 'Public Arena'} records yet &mdash; Be the first to claim #1!</td></tr>`;
+      lbBody.innerHTML = `<tr><td colspan="5" class="lb-loading">No ${isSolo ? 'Solo' : 'Public Arena'} records yet &mdash; Be the first to claim #1!</td></tr>`;
       return;
     }
 
@@ -1019,12 +1062,18 @@
         const diffLabel = diffKey.toUpperCase();
         modeBadgeHtml = `<span class="pilot-diff-pill ${diffClass}">${diffLabel}</span>`;
       } else {
-        if (entry.win) {
-          modeBadgeHtml = `<span class="pilot-diff-pill diff-champion">👑 CHAMPION</span>`;
+        const totalWins = Number(entry.wins) || (entry.win ? 1 : 0);
+        if (totalWins > 0) {
+          modeBadgeHtml = `<span class="pilot-diff-pill diff-champion">👑 ${totalWins} WIN${totalWins > 1 ? 'S' : ''}</span>`;
         } else {
           modeBadgeHtml = `<span class="pilot-diff-pill diff-live">ARENA</span>`;
         }
       }
+
+      const totalWins = Number(entry.wins) || (entry.win ? 1 : 0);
+      const matchesPlayed = Number(entry.matchesPlayed) || 1;
+      const bestScore = Number(entry.bestScore !== undefined ? entry.bestScore : entry.score) || 0;
+      const totalScore = Number(entry.totalScore !== undefined ? entry.totalScore : entry.score) || 0;
 
       return `<tr>
         <td class="${rankClass}">${medal}#${idx + 1}</td>
@@ -1034,15 +1083,17 @@
             <span class="pilot-name-text">${escapeHtml(entry.pilot)}</span>
             ${modeBadgeHtml}
           </div>
+          <span class="pilot-stats-sub">${matchesPlayed} match${matchesPlayed > 1 ? 'es' : ''} • Best: ${bestScore.toLocaleString()} pts</span>
         </td>
+        <td class="highlight-cyan" style="font-weight:700;">${totalWins}</td>
         <td class="highlight-pink">${entry.kills || 0}</td>
-        <td class="highlight-gold" style="font-weight:800;">${(entry.score || 0).toLocaleString()} PTS</td>
+        <td class="highlight-gold" style="font-weight:800;">${totalScore.toLocaleString()} PTS</td>
       </tr>`;
     }).join('');
   }
 
   async function fetchLeaderboard() {
-    lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>';
+    lbBody.innerHTML = '<tr><td colspan="5" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>';
     renderSubFilterTabs();
     try {
       const res = await fetch('/api/leaderboard');
@@ -1052,12 +1103,13 @@
         cachedPublicLeaderboard = (data.public || []).filter(e => e && e.pilot && !isBotAccount(e.pilot));
         renderLeaderboardTable();
       } else {
-        lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading">No scores yet &mdash; claim #1 rank!</td></tr>';
+        lbBody.innerHTML = '<tr><td colspan="5" class="lb-loading">No scores yet &mdash; claim #1 rank!</td></tr>';
       }
     } catch (err) {
-      lbBody.innerHTML = '<tr><td colspan="4" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
+      lbBody.innerHTML = '<tr><td colspan="5" class="lb-loading" style="color:#FF4444">Failed to load leaderboard</td></tr>';
     }
   }
+
 
   async function submitScore(data) {
     try {

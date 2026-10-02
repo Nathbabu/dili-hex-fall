@@ -1,4 +1,4 @@
-﻿// =============================================
+// =============================================
 // DILI: CYBER BUMPERS — 3D Arena Physics Engine
 // =============================================
 class BumperGameEngine {
@@ -35,6 +35,7 @@ class BumperGameEngine {
     // Stats
     this.matchTime = 0;
     this.score = 0;
+    this.bonusScore = 0;
     this.crystals = 0;
     this.kills = 0;
     this.pilotName = 'Commander_Dili';
@@ -617,6 +618,7 @@ class BumperGameEngine {
     this.suitKey = suitKey || 'mint';
     this.matchTime = 0;
     this.score = 0;
+    this.bonusScore = 0;
     this.crystals = 0;
     this.kills = 0;
     this.cameraYaw = 0;
@@ -628,6 +630,7 @@ class BumperGameEngine {
     this.totalPlayers = (modeConfig.totalPlayers || botCount) + 1; // +1 for the player
     this.gameMode = mode;
     this.gameDifficulty = difficulty;
+    this.difficulty = difficulty;
 
     let chosenTheme = modeConfig.arenaTheme || 'neon';
     if (chosenTheme === 'random') {
@@ -1695,7 +1698,7 @@ class BumperGameEngine {
     }
 
     // Score Calculation
-    this.score = Math.floor(this.matchTime * 15) + (this.kills * 350) + (this.crystals * 150);
+    this.score = Math.floor(this.matchTime * 15) + (this.kills * 350) + (this.crystals * 150) + (this.bonusScore || 0);
 
     // Ring Countdown HUD updates
     if (this.arena && this.arena.ringStages && this.onRingCountdown) {
@@ -1734,7 +1737,6 @@ class BumperGameEngine {
 
     // Check Solo Victory (Last pilot remaining!)
     if (!this.isMultiplayer && this.player && this.player.alive && this.aiManager && this.aiManager.getAliveCount() === 0) {
-      this.score += 1500; // huge victory reward!
       this._triggerGameOver(true);
       return;
     }
@@ -2019,16 +2021,19 @@ class BumperGameEngine {
         }
 
         if (this.killStreak === 2) {
+          this.bonusScore = (this.bonusScore || 0) + 200;
           this.score += 200;
           if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('double_ko');
           this.triggerComboBanner('DOUBLE K.O.!', '+200 BONUS POINTS');
           this.triggerImpactFlash('neon');
         } else if (this.killStreak === 3) {
+          this.bonusScore = (this.bonusScore || 0) + 500;
           this.score += 500;
           if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('triple_ko');
           this.triggerComboBanner('TRIPLE K.O.!', '+500 MULTI-RAM BONUS');
           this.triggerImpactFlash('inferno');
         } else if (this.killStreak >= 4) {
+          this.bonusScore = (this.bonusScore || 0) + 1000;
           this.score += 1000;
           if (typeof HexAudio !== 'undefined' && HexAudio.announce) HexAudio.announce('unstoppable');
           this.triggerComboBanner('UNSTOPPABLE!', '+1000 ARENA GOD BONUS');
@@ -2346,12 +2351,42 @@ class BumperGameEngine {
       matchRank = Math.min(totalParticipants, Math.max(2, aliveOthers + 1));
     }
 
+    // 1. Placement Bonus (Podium Ranking)
+    let placementBonus = 0;
+    if (matchRank === 1) {
+      placementBonus = 1500;
+    } else if (matchRank === 2) {
+      placementBonus = 600;
+    } else if (matchRank === 3) {
+      placementBonus = 300;
+    }
+
+    // 2. Difficulty Multiplier (Solo Mode)
+    let difficultyMultiplier = 1.0;
+    if (!this.isMultiplayer) {
+      const diff = (this.difficulty || this.gameDifficulty || 'normal').toLowerCase();
+      if (diff === 'hard') {
+        difficultyMultiplier = 1.6;
+      } else if (diff === 'medium') {
+        difficultyMultiplier = 1.3;
+      } else {
+        difficultyMultiplier = 1.0;
+      }
+    }
+
+    // 3. Final Match Score with Bonuses & Multipliers
+    const rawScore = Math.floor(this.matchTime * 15) + (this.kills * 350) + (this.crystals * 150) + (this.bonusScore || 0) + placementBonus;
+    this.score = Math.round(rawScore * difficultyMultiplier);
+
     if (this.onGameOver) {
       this.onGameOver({
         win: isWin,
         time: Math.floor(this.matchTime),
         kills: this.kills,
         score: this.score,
+        rawScore: rawScore,
+        difficultyMultiplier: difficultyMultiplier,
+        placementBonus: placementBonus,
         pilot: this.pilotName,
         suitColor: this.suitKey,
         winnerName: winnerName,
@@ -2361,7 +2396,7 @@ class BumperGameEngine {
         topSpeed: Math.round(this.maxRecordedSpeed * 7.2),
         bestStreak: this.bestStreak || 0,
         mode: this.isMultiplayer ? 'public' : 'solo',
-        difficulty: this.difficulty || 'normal'
+        difficulty: this.difficulty || this.gameDifficulty || 'normal'
       });
     }
   }

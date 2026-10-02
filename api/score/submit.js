@@ -26,32 +26,23 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { pilot, score, survivalTime, tier, crystals, suitColor, win } = req.body || {};
+    const { mode, pilot, score, survivalTime, difficulty, kills, suitColor, win, matchRank } = req.body || {};
     if (!pilot || typeof score !== 'number' || score <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid score submission' });
     }
 
     const cleanPilot = String(pilot).trim().slice(0, 25);
-
-    // Defense: Disallow bot accounts
     if (isBotAccount(cleanPilot)) {
       return res.status(403).json({ success: false, error: 'Bot accounts cannot submit to leaderboard' });
     }
 
-    const entry = {
-      pilot: cleanPilot,
-      score: Math.floor(score),
-      survivalTime: Math.floor(survivalTime || 0),
-      tier: tier || 1,
-      crystals: crystals || 0,
-      suitColor: suitColor || 'mint',
-      win: !!win,
-      timestamp: new Date().toISOString()
-    };
+    const isPublic = mode === 'public' || mode === 'multiplayer';
+    const redisKey = isPublic ? 'dlicom_hexfall_public_lb' : 'dlicom_hexfall_solo_lb';
+    const matchScore = Math.floor(score);
 
     let current = [];
     try {
-      const getRes = await fetch(`${UPSTASH_REDIS_REST_URL}/get/dlicom_hexfall_leaderboard`, {
+      const getRes = await fetch(`${UPSTASH_REDIS_REST_URL}/get/${redisKey}`, {
         headers: { Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}` }
       });
       if (getRes.ok) {
@@ -68,24 +59,85 @@ module.exports = async (req, res) => {
     }
 
     const idx = current.findIndex(e => e.pilot.toLowerCase() === cleanPilot.toLowerCase());
-    let isNewRecord = false;
-    let prevScore = 0;
+    let updatedEntry;
 
     if (idx !== -1) {
-      prevScore = current[idx].score;
-      if (entry.score > current[idx].score) {
-        current[idx] = Object.assign({}, current[idx], entry);
-        isNewRecord = true;
-      }
+      const prev = current[idx];
+      const prevTotal = Number(prev.totalScore !== undefined ? prev.totalScore : prev.score) || 0;
+      const newTotal = prevTotal + matchScore;
+      const bestScore = Math.max(Number(prev.bestScore !== undefined ? prev.bestScore : prev.score) || 0, matchScore);
+      const matchesPlayed = (Number(prev.matchesPlayed) || 1) + 1;
+      const totalWins = (Number(prev.wins) || (prev.win ? 1 : 0)) + (win ? 1 : 0);
+      const totalKills = (Number(prev.kills) || 0) + (Number(kills) || 0);
+      const totalSurvival = (Number(prev.survivalTime) || 0) + (Number(survivalTime) || 0);
+
+      updatedEntry = {
+        ...prev,
+        pilot: cleanPilot,
+        mode: isPublic ? 'public' : 'solo',
+        totalScore: newTotal,
+        score: newTotal,
+        bestScore: bestScore,
+        lastMatchScore: matchScore,
+        matchesPlayed: matchesPlayed,
+        wins: totalWins,
+        kills: totalKills,
+        survivalTime: totalSurvival,
+        difficulty: difficulty || prev.difficulty || 'normal',
+        suitColor: suitColor || prev.suitColor || 'mint',
+        win: totalWins > 0,
+        matchRank: matchRank || prev.matchRank || 1,
+        updatedAt: new Date().toISOString()
+      };
+      current[idx] = updatedEntry;
     } else {
-      current.push(entry);
-      isNewRecord = true;
+      updatedEntry = {
+        pilot: cleanPilot,
+        mode: isPublic ? 'public' : 'solo',
+        totalScore: matchScore,
+        score: matchScore,
+        bestScore: matchScore,
+        lastMatchScore: matchScore,
+        matchesPlayed: 1,
+        wins: win ? 1 : 0,
+        kills: Number(kills) || 0,
+        survivalTime: Number(survivalTime) || 0,
+        difficulty: difficulty || 'normal',
+        suitColor: suitColor || 'mint',
+        win: !!win,
+        matchRank: matchRank || 1,
+        updatedAt: new Date().toISOString()
+      };
+      current.push(updatedEntry);
     }
 
-    current = current.sort((a, b) => b.score - a.score).slice(0, 100);
+    // 5-Layer Tie-Breaker
+    current.sort((a, b) => {
+      const scoreA = Number(a.totalScore !== undefined ? a.totalScore : a.score) || 0;
+      const scoreB = Number(b.totalScore !== undefined ? b.totalScore : b.score) || 0;
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const winsA = Number(a.wins) || (a.win ? 1 : 0);
+      const winsB = Number(b.wins) || (b.win ? 1 : 0);
+      if (winsB !== winsA) return winsB - winsA;
+
+      const killsA = Number(a.kills) || 0;
+      const killsB = Number(b.kills) || 0;
+      if (killsB !== killsA) return killsB - killsA;
+
+      const bestA = Number(a.bestScore !== undefined ? a.bestScore : a.score) || 0;
+      const bestB = Number(b.bestScore !== undefined ? b.bestScore : b.score) || 0;
+      if (bestB !== bestA) return bestB - bestA;
+
+      const timeA = new Date(a.updatedAt || a.timestamp || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.timestamp || 0).getTime();
+      return timeA - timeB;
+    });
+
+    current = current.slice(0, 100);
 
     try {
-      await fetch(`${UPSTASH_REDIS_REST_URL}/set/dlicom_hexfall_leaderboard`, {
+      await fetch(`${UPSTASH_REDIS_REST_URL}/set/${redisKey}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
@@ -101,13 +153,18 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      mode: isPublic ? 'public' : 'solo',
       rank: rank > 0 ? rank : current.length,
-      entry,
-      isNewRecord,
-      personalBest: Math.max(prevScore, entry.score),
+      entry: updatedEntry,
+      matchScore: matchScore,
+      totalScore: updatedEntry.totalScore || updatedEntry.score,
+      bestScore: updatedEntry.bestScore || updatedEntry.score,
+      matchesPlayed: updatedEntry.matchesPlayed || 1,
+      wins: updatedEntry.wins || (updatedEntry.win ? 1 : 0),
       totalPilots: current.length
     });
   } catch (e) {
     return res.status(500).json({ success: false, error: e.message });
   }
 };
+

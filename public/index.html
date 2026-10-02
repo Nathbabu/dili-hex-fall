@@ -505,8 +505,12 @@
           <span id="goKills" class="highlight-pink">0</span>
         </div>
         <div class="go-stat">
-          <span>FINAL SCORE</span>
+          <span>MATCH POINTS</span>
           <span id="goScore" class="highlight-gold">0</span>
+        </div>
+        <div class="go-stat" id="goBonusRow" style="display:none;">
+          <span>BONUS &amp; MULTIPLIER</span>
+          <span id="goBonusPill" class="highlight-cyan" style="font-size:0.85rem;">+0 PTS</span>
         </div>
         <div class="go-stat">
           <span>CURRENT MATCH RANK</span>
@@ -515,6 +519,10 @@
         <div class="go-stat">
           <span id="goRankLabel">GLOBAL STANDING</span>
           <span id="goRank" class="highlight-gold">#1</span>
+        </div>
+        <div class="go-stat">
+          <span>CAREER TOTAL PTS</span>
+          <span id="goTotalScore" class="highlight-gold">0 PTS</span>
         </div>
         <div class="go-stat">
           <span>BEST COMBO</span>
@@ -568,14 +576,15 @@
         <table class="lb-table">
           <thead>
             <tr>
-              <th style="width:16%">RANK</th>
-              <th style="width:44%">PILOT &amp; MODE</th>
-              <th style="width:16%">KOs</th>
-              <th style="width:24%">SCORE</th>
+              <th style="width:14%">RANK</th>
+              <th style="width:40%">PILOT &amp; STATS</th>
+              <th style="width:14%">WINS</th>
+              <th style="width:14%">KOs</th>
+              <th style="width:18%">TOTAL PTS</th>
             </tr>
           </thead>
           <tbody id="lbBody">
-            <tr><td colspan="4" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>
+            <tr><td colspan="5" class="lb-loading">Connecting to Dlicom Cloud...</td></tr>
           </tbody>
         </table>
       </div>
