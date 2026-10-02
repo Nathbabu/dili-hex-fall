@@ -83,7 +83,6 @@
   const goBonusRow = document.getElementById('goBonusRow');
   const goBonusPill = document.getElementById('goBonusPill');
   const goStreak = document.getElementById('goStreak');
-  const btnFullscreenToggle = document.getElementById('btnFullscreenToggle');
   const newRecordBanner = document.getElementById('newRecordBanner');
   const btnRetry = document.getElementById('btnRetry');
   const btnGoLb = document.getElementById('btnGoLb');
