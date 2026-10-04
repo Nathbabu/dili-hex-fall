@@ -17,6 +17,16 @@
 
   <!-- Top Right Header Controls -->
   <div class="top-header-controls">
+    <div id="menuMusicPill" class="music-pill menu-music-pill" title="NCS Gaming Radio - Click to Skip Track (N)">
+      <span class="music-bars-anim">
+        <span class="music-bar b1"></span>
+        <span class="music-bar b2"></span>
+        <span class="music-bar b3"></span>
+      </span>
+      <span class="music-genre-badge">NCS</span>
+      <span id="menuTrackName" class="music-track-text">⚡ CYBER DRIFT</span>
+      <button id="btnMenuSkipTrack" class="music-skip-btn" title="Next Song (N)" aria-label="Next Song">⏭️</button>
+    </div>
     <button id="btnFullscreen" class="hdr-btn fullscreen-btn" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
       <span id="fullscreenIcon" class="hdr-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -393,9 +403,19 @@
       <div class="powerup-progress"><div id="powerUpBar" class="powerup-bar"></div></div>
     </div>
 
-    <!-- In-Game Corner Action Controls (Audio + Pause) -->
+    <!-- In-Game Corner Action Controls (Audio + Pause + NCS Radio Pill) -->
     <div class="hud-corner-actions" id="hudCornerActions">
-      <button class="hud-action-icon-btn" id="hudSoundToggle" aria-label="Toggle Sound" title="Sound">
+      <div id="hudMusicPill" class="music-pill hud-music-pill" title="NCS Gaming Radio - Click to Skip Track (N)">
+        <span class="music-bars-anim">
+          <span class="music-bar b1"></span>
+          <span class="music-bar b2"></span>
+          <span class="music-bar b3"></span>
+        </span>
+        <span class="music-genre-badge">NCS</span>
+        <span id="hudTrackName" class="music-track-text">⚡ CYBER DRIFT</span>
+        <button id="btnHudSkipTrack" class="music-skip-btn" title="Next Song (N)" aria-label="Next Song">⏭️</button>
+      </div>
+      <button class="hud-action-icon-btn" id="hudSoundToggle" aria-label="Toggle Sound" title="Sound (M)">
         <span id="hudSoundIcon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
         </span>

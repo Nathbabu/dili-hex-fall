@@ -184,11 +184,84 @@
     const audioIcon = document.getElementById('audioIcon');
     const hudSoundIcon = document.getElementById('hudSoundIcon');
     const hudSoundToggle = document.getElementById('hudSoundToggle');
+    const menuMusicPill = document.getElementById('menuMusicPill');
+    const hudMusicPill = document.getElementById('hudMusicPill');
     if (audioIcon) audioIcon.innerHTML = isUnmuted ? AUDIO_ON_SVG : AUDIO_OFF_SVG;
     if (hudSoundIcon) hudSoundIcon.innerHTML = isUnmuted ? AUDIO_ON_SVG : AUDIO_OFF_SVG;
-    globalAudioBtn.classList.toggle('muted', !isUnmuted);
+    if (globalAudioBtn) globalAudioBtn.classList.toggle('muted', !isUnmuted);
     if (hudSoundToggle) hudSoundToggle.classList.toggle('muted', !isUnmuted);
+    if (menuMusicPill) menuMusicPill.classList.toggle('paused', !isUnmuted);
+    if (hudMusicPill) hudMusicPill.classList.toggle('paused', !isUnmuted);
   };
+
+  // NCS Music Controller & HUD Pill Sync
+  const menuMusicPill = document.getElementById('menuMusicPill');
+  const menuTrackName = document.getElementById('menuTrackName');
+  const btnMenuSkipTrack = document.getElementById('btnMenuSkipTrack');
+  const hudMusicPill = document.getElementById('hudMusicPill');
+  const hudTrackName = document.getElementById('hudTrackName');
+  const btnHudSkipTrack = document.getElementById('btnHudSkipTrack');
+
+  const updateTrackDisplay = (track) => {
+    if (!track) return;
+    const title = `${track.icon || '🎵'} ${track.name}`;
+    [menuTrackName, hudTrackName].forEach(el => {
+      if (el) {
+        el.textContent = title;
+        el.classList.remove('track-changed-flash');
+        void el.offsetWidth;
+        el.classList.add('track-changed-flash');
+      }
+    });
+  };
+
+  const handleSkipTrack = (e) => {
+    if (e) e.stopPropagation();
+    HexAudio.init();
+    HexAudio.resumeCtx();
+    const track = HexAudio.nextTrack();
+    updateTrackDisplay(track);
+  };
+
+  const handlePillClick = () => {
+    HexAudio.init();
+    HexAudio.resumeCtx();
+    if (HexAudio.getIsMuted()) {
+      const isUnmuted = HexAudio.toggleMute();
+      syncSoundState(isUnmuted);
+    } else {
+      handleSkipTrack();
+    }
+  };
+
+  if (btnMenuSkipTrack) btnMenuSkipTrack.addEventListener('click', handleSkipTrack);
+  if (btnHudSkipTrack) btnHudSkipTrack.addEventListener('click', handleSkipTrack);
+  if (menuMusicPill) menuMusicPill.addEventListener('click', handlePillClick);
+  if (hudMusicPill) hudMusicPill.addEventListener('click', handlePillClick);
+
+  window.addEventListener('ncs-track-changed', (e) => {
+    updateTrackDisplay(e.detail);
+  });
+
+  // Global Keyboard Shortcuts: N = Skip Track, M = Toggle Mute
+  window.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (e.code === 'KeyN') {
+      handleSkipTrack();
+    } else if (e.code === 'KeyM') {
+      HexAudio.init();
+      HexAudio.resumeCtx();
+      const isUnmuted = HexAudio.toggleMute();
+      syncSoundState(isUnmuted);
+    }
+  });
+
+  // Initialize track title on load
+  try {
+    if (typeof HexAudio !== 'undefined' && HexAudio.getCurrentTrack) {
+      updateTrackDisplay(HexAudio.getCurrentTrack());
+    }
+  } catch (_) {}
 
   globalAudioBtn.addEventListener('click', () => {
     HexAudio.init();
