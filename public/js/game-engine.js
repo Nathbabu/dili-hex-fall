@@ -768,7 +768,7 @@ class BumperGameEngine {
     // Instant start (guaranteed start!)
     this.state = 'playing';
     try { this.clock.start(); } catch(e) {}
-    try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
+    try { HexAudio.startMatchMusic(); } catch(e) {}
     try { if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart(); } catch(e) {}
   }
 
@@ -1076,7 +1076,7 @@ class BumperGameEngine {
           }
         });
       }
-      try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
+      try { HexAudio.startMatchMusic(); } catch(e) {}
       if (this.onRespawnSuccess) this.onRespawnSuccess();
     });
 
@@ -1109,7 +1109,7 @@ class BumperGameEngine {
         this.camDistance = 14.5;
         this.camHeight = 11.0;
         this._spawnSparks(data.mySpawn.spawnX, data.mySpawn.spawnZ, 0x00FFC6, 2.5);
-        HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
+        HexAudio.startMatchMusic();
         if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart();
       }
       if (this.onRespawnSuccess) this.onRespawnSuccess();
@@ -1187,7 +1187,7 @@ class BumperGameEngine {
       }
     }
 
-    try { HexAudio.startMusic(this.arena ? this.arena.theme : 'neon'); } catch(e) {}
+    try { HexAudio.startMatchMusic(); } catch(e) {}
     try { if (typeof DiliVoice !== 'undefined') DiliVoice.onMatchStart(); } catch(e) {}
   }
 
@@ -1376,6 +1376,7 @@ class BumperGameEngine {
     document.body.appendChild(modal);
 
     HexAudio.sfxCountdown();
+    try { if (typeof HexAudio !== 'undefined') HexAudio.startMatchMusic(); } catch(e) {}
 
     const iv = setInterval(() => {
       count--;
@@ -1395,7 +1396,7 @@ class BumperGameEngine {
           modal.remove();
           this.state = 'playing';
           this.clock.start();
-          HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
+          if (typeof HexAudio !== 'undefined') HexAudio.resumeMusic();
         }, 500);
       }
     }, 750);
@@ -1404,20 +1405,20 @@ class BumperGameEngine {
   pause() {
     if (this.state !== 'playing') return;
     this.state = 'paused';
-    HexAudio.stopMusic();
+    HexAudio.pauseMusic();
   }
 
   resume() {
     if (this.state !== 'paused') return;
     this.state = 'playing';
     this.clock.getDelta();
-    HexAudio.startMusic(this.arena ? this.arena.theme : 'neon');
+    HexAudio.resumeMusic();
   }
 
   quit() {
     this.state = 'idle';
     this.isMultiplayer = false;
-    HexAudio.stopMusic();
+    if (typeof HexAudio !== 'undefined') HexAudio.startLobbyMusic();
     if (this.player) { this.player.remove(); this.player = null; }
     if (this.aiManager) { this.aiManager.clear(); this.aiManager = null; }
   }
@@ -2403,7 +2404,7 @@ class BumperGameEngine {
   _triggerGameOver(isWin, winnerName) {
     if (this.state === 'gameover') return;
     this.state = 'gameover';
-    HexAudio.stopMusic();
+    if (typeof HexAudio !== 'undefined') HexAudio.startLobbyMusic();
 
     if (isWin) {
       HexAudio.sfxVictory();

@@ -260,12 +260,23 @@
     }
   });
 
-  // Initialize track title on load
+  // Initialize track title on load and start lobby music on first user gesture
   try {
     if (typeof HexAudio !== 'undefined' && HexAudio.getCurrentTrack) {
       updateTrackDisplay(HexAudio.getCurrentTrack());
     }
   } catch (_) {}
+
+  const triggerLobbyMusic = () => {
+    if (typeof HexAudio !== 'undefined') {
+      HexAudio.init();
+      HexAudio.resumeCtx();
+      HexAudio.startLobbyMusic();
+    }
+  };
+  ['click', 'touchstart', 'keydown'].forEach(ev => {
+    window.addEventListener(ev, triggerLobbyMusic, { once: true, passive: true });
+  });
 
   globalAudioBtn.addEventListener('click', () => {
     HexAudio.init();
@@ -689,6 +700,7 @@
 
   btnSoloBack.addEventListener('click', () => {
     showScreen('titleScreen');
+    if (typeof HexAudio !== 'undefined') HexAudio.startLobbyMusic();
   });
 
   // Arena Selection in Solo Screen
@@ -974,12 +986,14 @@
     if (engine) engine.quit();
     leaveRealPublicLobby();
     showScreen('titleScreen');
+    if (typeof HexAudio !== 'undefined') HexAudio.startLobbyMusic();
   });
 
   btnGoMenu.addEventListener('click', () => {
     if (engine) engine.quit();
     leaveRealPublicLobby();
     showScreen('titleScreen');
+    if (typeof HexAudio !== 'undefined') HexAudio.startLobbyMusic();
   });
 
   btnGoLb.addEventListener('click', () => {

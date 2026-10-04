@@ -11,7 +11,7 @@ const HexAudio = (() => {
   let isMuted = false;
   let currentAudio = null;
   let currentTrackIdx = 0;
-  let musicVolume = 0.70;
+  let musicVolume = 0.32;
 
   function init() {
     if (ctx) return;
@@ -33,24 +33,25 @@ const HexAudio = (() => {
       masterGain.connect(compressor);
 
       sfxGain = ctx.createGain();
-      // Controlled SFX volume (0.20): crisp impacts, perfectly balanced under high-energy music
+      // Controlled SFX volume (0.20): crisp impacts, perfectly balanced under background music
       sfxGain.gain.setValueAtTime(0.20, ctx.currentTime);
       sfxGain.connect(masterGain);
 
       musicGain = ctx.createGain();
-      // High-energy, loud & clear background NCS music (0.75)
-      musicGain.gain.setValueAtTime(0.75, ctx.currentTime);
+      // Balanced, comfortable background music (0.32) - non-fatiguing and crystal clear
+      musicGain.gain.setValueAtTime(0.32, ctx.currentTime);
       musicGain.connect(masterGain);
     } catch (e) {
       console.warn('[Audio] Init error:', e.message);
     }
   }
 
-  // Universal user-gesture AudioContext auto-unlock
+  // Universal user-gesture AudioContext auto-unlock & Lobby Music Start
   if (typeof window !== 'undefined') {
     const unlockAudio = () => {
       if (!ctx) init();
       resumeCtx();
+      startLobbyMusic();
       if (currentAudio && currentAudio.paused && !isMuted) {
         currentAudio.play().catch(() => {});
       }
@@ -105,7 +106,7 @@ const HexAudio = (() => {
   }
 
   function getMusicVolume() {
-    return musicGain ? musicGain.gain.value : 0.75;
+    return musicVolume;
   }
 
   function getSfxVolume() {
@@ -443,6 +444,10 @@ const HexAudio = (() => {
   // Real YouTube Gaming Anthems (Alan Walker, Elektronomia, Tobu, etc.)
   // High-fidelity local MP3 playback with instant seek & skip
   // ============================================================
+  // AUTHENTIC NCS (NoCopyrightSounds) GAMING RADIO PLAYLIST
+  // 100% PURE INSTRUMENTAL GAMING TRACKS (Zero Lyrics / No Vocals)
+  // Each track starts immediately at its peak drop / main hook
+  // ============================================================
   const NCS_TRACKS = [
     {
       id: 'alan_walker_fade',
@@ -450,6 +455,7 @@ const HexAudio = (() => {
       artist: 'Alan Walker',
       genre: 'Electro House',
       icon: '⚡',
+      dropTime: 44.0, // Iconic EDM bassline drop
       src: '/assets/music/01-alan-walker-fade.mp3'
     },
     {
@@ -458,15 +464,17 @@ const HexAudio = (() => {
       artist: 'Elektronomia',
       genre: 'Progressive House',
       icon: '🚀',
+      dropTime: 55.0, // Peak festival EDM drop
       src: '/assets/music/02-elektronomia-sky-high.mp3'
     },
     {
-      id: 'cartoon_on_and_on',
-      name: 'On & On',
-      artist: 'Cartoon ft. Daniel Levi',
-      genre: 'Drum & Bass',
+      id: 'spektrem_shine',
+      name: 'Shine',
+      artist: 'Spektrem',
+      genre: 'Progressive House',
       icon: '✨',
-      src: '/assets/music/03-cartoon-on-and-on.mp3'
+      dropTime: 60.0, // Soaring melodic house drop
+      src: '/assets/music/03-spektrem-shine.mp3'
     },
     {
       id: 'different_heaven_my_heart',
@@ -474,6 +482,7 @@ const HexAudio = (() => {
       artist: 'Different Heaven & EH!DE',
       genre: 'Dubstep',
       icon: '❤️',
+      dropTime: 58.0, // Famous 8-bit dubstep drop
       src: '/assets/music/04-different-heaven-my-heart.mp3'
     },
     {
@@ -482,6 +491,7 @@ const HexAudio = (() => {
       artist: 'Disfigure',
       genre: 'Melodic Dubstep',
       icon: '🌌',
+      dropTime: 64.0, // Heavy melodic dubstep drop
       src: '/assets/music/05-disfigure-blank.mp3'
     },
     {
@@ -490,6 +500,7 @@ const HexAudio = (() => {
       artist: 'Tobu',
       genre: 'Melodic Bounce',
       icon: '🍭',
+      dropTime: 16.0, // Bouncy melodic hook
       src: '/assets/music/06-tobu-candyland.mp3'
     },
     {
@@ -498,15 +509,17 @@ const HexAudio = (() => {
       artist: 'DEAF KEV',
       genre: 'Glitch Hop',
       icon: '🛡️',
+      dropTime: 49.0, // Glitch hop energetic drop
       src: '/assets/music/07-deaf-kev-invincible.mp3'
     },
     {
-      id: 'warriyo_mortals',
-      name: 'Mortals',
-      artist: 'Warriyo ft. Laura Brehm',
-      genre: 'Future Trap',
-      icon: '🌋',
-      src: '/assets/music/08-warriyo-mortals.mp3'
+      id: 'jim_yosef_firefly',
+      name: 'Firefly',
+      artist: 'Jim Yosef',
+      genre: 'Melodic Electro',
+      icon: '🔥',
+      dropTime: 46.0, // Fast electro lead drop
+      src: '/assets/music/08-jim-yosef-firefly.mp3'
     }
   ];
 
@@ -514,6 +527,7 @@ const HexAudio = (() => {
     if (!currentAudio && typeof Audio !== 'undefined') {
       currentAudio = new Audio();
       currentAudio.preload = 'auto';
+      // Continuous radio: when one track finishes, smoothly start the next
       currentAudio.addEventListener('ended', () => {
         nextTrack();
       });
@@ -525,15 +539,30 @@ const HexAudio = (() => {
     return currentAudio;
   }
 
-  function startMusic(trackSelect = null, forceRestart = false) {
+  function _applyDropTime(audio, dropTime) {
+    if (!dropTime || dropTime <= 0) return;
+    const setTime = () => {
+      try {
+        if (Math.abs(audio.currentTime - dropTime) > 1.5) {
+          audio.currentTime = dropTime;
+        }
+      } catch (_) {}
+    };
+    setTime();
+    audio.addEventListener('loadedmetadata', setTime, { once: true });
+    audio.addEventListener('canplay', setTime, { once: true });
+    audio.addEventListener('playing', setTime, { once: true });
+  }
+
+  function startMusic(trackSelect = null, forceRestart = false, fromDrop = true) {
     if (!ctx) init();
     resumeCtx();
 
     if (typeof trackSelect === 'string') {
       const lower = trackSelect.toLowerCase();
-      if (lower === 'inferno') currentTrackIdx = 7; // Warriyo Mortals
+      if (lower === 'inferno') currentTrackIdx = 7; // Jim Yosef Firefly
       else if (lower === 'cryo') currentTrackIdx = 4; // Disfigure Blank
-      else if (lower === 'neon') currentTrackIdx = 0; // Alan Walker Fade
+      else if (lower === 'neon') currentTrackIdx = 1; // Elektronomia Sky High
       else {
         const found = NCS_TRACKS.findIndex(t =>
           t.id === lower ||
@@ -551,7 +580,7 @@ const HexAudio = (() => {
 
     const track = NCS_TRACKS[currentTrackIdx];
 
-    // If already playing this track and not force-restarted, just make sure volume and play state are active
+    // If already playing this track and not forced, ensure volume is correct and keep playing
     if (!forceRestart && audio.src && audio.src.includes(track.src) && !audio.paused) {
       audio.volume = isMuted ? 0 : musicVolume;
       return track;
@@ -560,9 +589,16 @@ const HexAudio = (() => {
     try {
       audio.src = track.src;
       audio.volume = isMuted ? 0 : musicVolume;
+      if (fromDrop && track.dropTime) {
+        _applyDropTime(audio, track.dropTime);
+      }
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => {
+        playPromise.then(() => {
+          if (fromDrop && track.dropTime && Math.abs(audio.currentTime - track.dropTime) > 2.0) {
+            try { audio.currentTime = track.dropTime; } catch (_) {}
+          }
+        }).catch(() => {
           // Unlocks automatically on first user click/touch
         });
       }
@@ -573,6 +609,29 @@ const HexAudio = (() => {
     }
 
     return track;
+  }
+
+  // Starts a new, DIFFERENT track on every match start, jumping straight to its energetic drop
+  function startMatchMusic() {
+    let nextIdx;
+    if (NCS_TRACKS.length > 1) {
+      do {
+        nextIdx = Math.floor(Math.random() * NCS_TRACKS.length);
+      } while (nextIdx === currentTrackIdx);
+    } else {
+      nextIdx = 0;
+    }
+    currentTrackIdx = nextIdx;
+    return startMusic(currentTrackIdx, true, true);
+  }
+
+  // Continuous background lobby radio
+  function startLobbyMusic() {
+    const audio = _getAudioElement();
+    if (audio && !audio.paused && audio.currentTime > 0) {
+      return NCS_TRACKS[currentTrackIdx];
+    }
+    return startMusic(currentTrackIdx, false, true);
   }
 
   function stopMusic() {
@@ -591,18 +650,18 @@ const HexAudio = (() => {
     if (currentAudio && !isMuted) {
       currentAudio.play().catch(() => {});
     } else {
-      startMusic(currentTrackIdx);
+      startMusic(currentTrackIdx, false, true);
     }
   }
 
   function nextTrack() {
     currentTrackIdx = (currentTrackIdx + 1) % NCS_TRACKS.length;
-    return startMusic(currentTrackIdx, true);
+    return startMusic(currentTrackIdx, true, true);
   }
 
   function prevTrack() {
     currentTrackIdx = (currentTrackIdx - 1 + NCS_TRACKS.length) % NCS_TRACKS.length;
-    return startMusic(currentTrackIdx, true);
+    return startMusic(currentTrackIdx, true, true);
   }
 
   function getCurrentTrack() {
@@ -616,7 +675,7 @@ const HexAudio = (() => {
   function setTrackByIndex(idx) {
     if (typeof idx === 'number' && idx >= 0 && idx < NCS_TRACKS.length) {
       currentTrackIdx = idx;
-      return startMusic(currentTrackIdx, true);
+      return startMusic(currentTrackIdx, true, true);
     }
     return getCurrentTrack();
   }
@@ -685,7 +744,8 @@ const HexAudio = (() => {
     sfxCountdown, sfxGo,
     sfxVoiceOof, sfxVoiceHappy, sfxVoicePanic, sfxVoiceScream, sfxVoiceTaunt, sfxSweeperSmack, sfxTrapGlitch, sfxTrapJam,
     sfxSuperRam, sfxMineDrop, sfxMineFreeze, announce,
-    startMusic, stopMusic,
+    startMusic, stopMusic, pauseMusic, resumeMusic,
+    startMatchMusic, startLobbyMusic,
     nextTrack, prevTrack, getCurrentTrack, getPlaylist, setTrackByIndex,
     setMusicVolume, setSfxVolume, getMusicVolume, getSfxVolume
   };
