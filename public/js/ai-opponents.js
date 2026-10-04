@@ -11,10 +11,12 @@ class AIBumperBot {
     this.thinkTimer = 0;
     this.thinkInterval = 0.10 + Math.random() * 0.03; // Fast 10 Hz reflexes
     this.personality = {
-      aggression: 0.86 + Math.random() * 0.12, // +15% Boosted fierce aggression & relentless pursuit
-      survival: 0.80 + Math.random() * 0.10,   // Balanced ring awareness
-      dashSkill: 0.72 + Math.random() * 0.14,  // Sharp tactical ram reflexes
-      dodgeSkill: 0.62 + Math.random() * 0.14  // Evasive lateral jukes
+      aggression: 0.76 + Math.random() * 0.10, // Controlled tactical engagement
+      survival: 0.86 + Math.random() * 0.08,   // High edge awareness (avoids self-suicide)
+      dashSkill: 0.78 + Math.random() * 0.12,  // Precise, calculated outward ramming
+      dodgeSkill: 0.70 + Math.random() * 0.12, // Smart lateral sidesteps & counter-jukes
+      disruptSkill: 0.88 + Math.random() * 0.10, // High smarts for cutting off routes & gatekeeping
+      empSkill: 0.80 + Math.random() * 0.12    // Tactical shockwave ring-out finisher
     };
 
     this.steerX = 0;
@@ -54,7 +56,6 @@ class AIBumperBot {
       }
     }
 
-
     // Cryo Glacier: 5% reduced aggression (smoother control on sub-zero ice drift)
     if (arena && arena.theme === 'cryo' && !this._cryoReduced) {
       this._cryoReduced = true;
@@ -86,6 +87,7 @@ class AIBumperBot {
     const myTier = this.craft.currentTier || 1;
     let safeZoneRadius = 18.5;
     let isImminentDrop = false;
+    let warningDropStage = null;
 
     if (myTier === 2) {
       // TIER 2: SUB-LEVEL CYBER DECK (Fast shrinking pit!)
@@ -94,10 +96,11 @@ class AIBumperBot {
         const activeDangerStage = arena.lowerRingStages.find(s => !s.collapsed && (s.warned || s.dropping));
         if (activeDangerStage) {
           currentLowerSafe = Math.min(currentLowerSafe, activeDangerStage.radiusMin);
+          warningDropStage = activeDangerStage;
         }
       }
       safeZoneRadius = Math.max(4.5, currentLowerSafe - 1.8);
-      isImminentDrop = myDist > (safeZoneRadius + 0.5);
+      isImminentDrop = myDist > (safeZoneRadius + 0.4);
     } else {
       // TIER 1: UPPER SKY COLISEUM
       let megaDanger = false;
@@ -110,13 +113,16 @@ class AIBumperBot {
         const mid = arena.ringStages.find(s => s.id === 1);
 
         if (mega && (mega.warned || mega.dropping || mega.collapsed)) {
-          if (Math.random() < this.personality.survival + 0.15) megaDanger = true;
+          megaDanger = true;
+          if (mega.warned || mega.dropping) warningDropStage = mega;
         }
         if (outer && (outer.warned || outer.dropping || outer.collapsed)) {
-          if (Math.random() < this.personality.survival + 0.15) outerDanger = true;
+          outerDanger = true;
+          if (outer.warned || outer.dropping) warningDropStage = outer;
         }
         if (mid && (mid.warned || mid.dropping || mid.collapsed)) {
-          if (Math.random() < this.personality.survival + 0.15) midDanger = true;
+          midDanger = true;
+          if (mid.warned || mid.dropping) warningDropStage = mid;
         }
       } else {
         if (arenaRadius <= 15.0) outerDanger = true;
@@ -170,8 +176,9 @@ class AIBumperBot {
     this.isRetreating = false;
 
     // -------------------------------------------------------------
-    // STEP 2.5: ACTIVE THREAT EVASION & DASH JUKE
-    // If an opponent is in active dash charging directly at this bot, juke laterally!
+    // STEP 2.5: ACTIVE THREAT EVASION & COUNTER-EMP JUKE
+    // If an opponent is in active dash charging directly at this bot:
+    // Try smart defensive EMP first; otherwise juke laterally!
     // -------------------------------------------------------------
     let incomingCharger = null;
     let chargerDist = Infinity;
@@ -197,22 +204,34 @@ class AIBumperBot {
       }
     }
 
-    if (incomingCharger && Math.random() < this.personality.dodgeSkill) {
-      // Lateral evasion perpendicular to incoming charge vector
-      const perpX1 = -incomingCharger.cdz / incomingCharger.dist;
-      const perpZ1 = incomingCharger.cdx / incomingCharger.dist;
-      const perpX2 = incomingCharger.cdz / incomingCharger.dist;
-      const perpZ2 = -incomingCharger.cdx / incomingCharger.dist;
+    if (incomingCharger) {
+      // Smart Counter-Play: If attacker is within 3.8m and bot has EMP ready, blast them away!
+      if (this.craft.empCooldown <= 0 && incomingCharger.dist < 3.8 && !this.craft.isJammed && Math.random() < this.personality.dodgeSkill) {
+        if (this.craft.triggerEmp(allCrafts)) {
+          if (this.craft.setEmotion) {
+            this.craft.setEmotion('dash', 1.0, 'COUNTER BLAST! ⚡', '🛡️');
+          }
+          return;
+        }
+      }
 
-      const dCenter1 = Math.hypot(this.craft.x + perpX1 * 2, this.craft.z + perpZ1 * 2);
-      const dCenter2 = Math.hypot(this.craft.x + perpX2 * 2, this.craft.z + perpZ2 * 2);
+      if (Math.random() < this.personality.dodgeSkill) {
+        // Lateral evasion perpendicular to incoming charge vector
+        const perpX1 = -incomingCharger.cdz / incomingCharger.dist;
+        const perpZ1 = incomingCharger.cdx / incomingCharger.dist;
+        const perpX2 = incomingCharger.cdz / incomingCharger.dist;
+        const perpZ2 = -incomingCharger.cdx / incomingCharger.dist;
 
-      const bestPerpX = dCenter1 < dCenter2 ? perpX1 : perpX2;
-      const bestPerpZ = dCenter1 < dCenter2 ? perpZ1 : perpZ2;
+        const dCenter1 = Math.hypot(this.craft.x + perpX1 * 2, this.craft.z + perpZ1 * 2);
+        const dCenter2 = Math.hypot(this.craft.x + perpX2 * 2, this.craft.z + perpZ2 * 2);
 
-      this.targetSteerX = bestPerpX * 1.1;
-      this.targetSteerZ = bestPerpZ * 1.1;
-      return;
+        const bestPerpX = dCenter1 < dCenter2 ? perpX1 : perpX2;
+        const bestPerpZ = dCenter1 < dCenter2 ? perpZ1 : perpZ2;
+
+        this.targetSteerX = bestPerpX * 1.1;
+        this.targetSteerZ = bestPerpZ * 1.1;
+        return;
+      }
     }
 
     // -------------------------------------------------------------
@@ -262,8 +281,8 @@ class AIBumperBot {
         }
       }
 
-      // 4B: Opportunistic grab of positive buffs (Rocket, Shield, Crystal)
-      if (!this.craft.hasShield && !this.craft.hasRocket) {
+      // 4B: Opportunistic grab of positive buffs (Rocket, Shield, Crystal, Super Ram)
+      if (!this.craft.hasShield && !this.craft.hasRocket && !this.craft.hasSuperRam) {
         let bestPU = null;
         let minPUDist = Infinity;
 
@@ -275,13 +294,13 @@ class AIBumperBot {
           if (puDistCenter > safeZoneRadius - 1.2) continue;
 
           const distToMe = Math.hypot(pu.x - this.craft.x, pu.z - this.craft.z);
-          if (distToMe < 6.0 && distToMe < minPUDist) {
+          if (distToMe < 5.5 && distToMe < minPUDist) {
             minPUDist = distToMe;
             bestPU = pu;
           }
         }
 
-        if (bestPU && minPUDist < 6.0 && Math.random() < 0.60) {
+        if (bestPU && minPUDist < 5.5 && Math.random() < 0.55) {
           const puDx = bestPU.x - this.craft.x;
           const puDz = bestPU.z - this.craft.z;
           this.targetSteerX = puDx / minPUDist;
@@ -292,9 +311,9 @@ class AIBumperBot {
     }
 
     // -------------------------------------------------------------
-    // STEP 5: FAIR COMBAT TARGET SELECTION (Natural Free-For-All)
-    // Bots engage whoever is closest and most vulnerable, dueling each other
-    // naturally instead of ganging up on the human player!
+    // STEP 5: SMART DISRUPTOR TARGET SELECTION
+    // Prime focus: Human players! Goal: Disrupt their path, push them,
+    // and launch them off the arena.
     // -------------------------------------------------------------
     this.targetLockTimer -= this.thinkInterval;
 
@@ -305,7 +324,7 @@ class AIBumperBot {
     const isCurrentTargetValid = this.targetCraft &&
       this.targetCraft.alive &&
       this.targetCraft.grounded &&
-      (Math.hypot(this.targetCraft.x - this.craft.x, this.targetCraft.z - this.craft.z) < 14.0) &&
+      (Math.hypot(this.targetCraft.x - this.craft.x, this.targetCraft.z - this.craft.z) < 16.0) &&
       this.targetLockTimer > 0;
 
     allCrafts.forEach(c => {
@@ -314,16 +333,36 @@ class AIBumperBot {
       const dx = c.x - this.craft.x;
       const dz = c.z - this.craft.z;
       const dist = Math.hypot(dx, dz);
-      const rivalDistFromCenter = Math.hypot(c.x, c.z);
+      const rivalDistCenter = Math.hypot(c.x, c.z);
 
-      // Distance-based priority
-      let score = 40.0 - dist * 1.5;
+      // Distance scoring: closer targets are easier to disrupt
+      let score = 32.0 - dist * 1.3;
 
-      // Human Player Detection & Prime Target Assignment
+      // HUMAN DISRUPTOR FOCUS:
       const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
       if (isHumanRival) {
-        // Human is the prime target! (+15% boosted relentless hunt on human)
-        score += 46.0 * this.personality.aggression;
+        // Base priority for human disruption
+        score += 38.0;
+
+        // SMART DISRUPTION OPPORTUNITY BONUSES:
+        // 1. Edge Vulnerability: If human is near the boundary, prime target to shove off!
+        if (rivalDistCenter > safeZoneRadius - 3.2) {
+          score += 26.0 * (this.personality.disruptSkill || 0.85);
+        }
+
+        // 2. Trapped in collapsing ring: Gatekeep them and don't let them back in!
+        if (warningDropStage && rivalDistCenter >= warningDropStage.radiusMin) {
+          score += 22.0 * (this.personality.disruptSkill || 0.85);
+        }
+
+        // 3. Vulnerability states: in knockback, slowed, or jammed
+        if (c.knockbackTimer > 0) score += 14.0;
+        if (c.isGlitchSlow) score += 12.0;
+        if (c.isJammed) score += 10.0;
+      } else {
+        // Other bots: only target if very close or already teetering on edge
+        if (rivalDistCenter > safeZoneRadius - 2.0) score += 12.0;
+        if (c.knockbackTimer > 0) score += 8.0;
       }
 
       // Target persistence bonus: stick to current duel rather than whipping around every tick
@@ -331,14 +370,7 @@ class AIBumperBot {
         score += 6.0;
       }
 
-      // Tactical opportunism
-      if (c.isGlitchSlow) score += 6.0;
-      if (c.isJammed) score += 5.0;
-      if (c.knockbackTimer > 0) score += 4.0;
-      if (rivalDistFromCenter > safeZoneRadius - 2.8) {
-        score += 8.0 * this.personality.aggression;
-      }
-      if (c.hasShield) score -= 12.0;
+      if (c.hasShield) score -= 14.0;
 
       if (score > bestScore) {
         bestScore = score;
@@ -348,7 +380,7 @@ class AIBumperBot {
 
     if (bestTarget !== this.targetCraft) {
       this.targetCraft = bestTarget;
-      this.targetLockTimer = 1.2 + Math.random() * 0.8; // Lock onto target for 1.2s - 2.0s
+      this.targetLockTimer = 1.0 + Math.random() * 0.7; // Lock onto target for 1.0s - 1.7s
     }
 
     if (!bestTarget) {
@@ -360,63 +392,138 @@ class AIBumperBot {
     }
 
     // -------------------------------------------------------------
-    // STEP 6: TACTICAL APPROACH & STEERING
-    // Smooth target aiming without jarring threshold oscillations
+    // STEP 6: PREDICTIVE INTERCEPTION & OUTWARD RING-OUT PUSH
+    // Don't just chase behind; calculate lead time, angle, and shove!
     // -------------------------------------------------------------
+    const targetVx = bestTarget.vx || 0;
+    const targetVz = bestTarget.vz || 0;
     const toTargetDx = bestTarget.x - this.craft.x;
     const toTargetDz = bestTarget.z - this.craft.z;
     const directDist = Math.hypot(toTargetDx, toTargetDz);
 
-    // Aim slightly behind target relative to arena center to push them outwards
-    const targetDistCenter = Math.hypot(bestTarget.x, bestTarget.z);
-    const edgeDirX = bestTarget.x / (targetDistCenter || 1);
-    const edgeDirZ = bestTarget.z / (targetDistCenter || 1);
+    // Target outward radial vector from arena center (points straight into the void!)
+    const targetCenterDist = Math.hypot(bestTarget.x, bestTarget.z) || 1;
+    const outDirX = bestTarget.x / targetCenterDist;
+    const outDirZ = bestTarget.z / targetCenterDist;
 
-    // Smoothly scale flank offset with distance (continuous, no abrupt 1.8m jump!)
-    const flankWeight = Math.min(0.75, directDist * 0.12) * this.personality.aggression;
-    const aimX = bestTarget.x - edgeDirX * flankWeight;
-    const aimZ = bestTarget.z - edgeDirZ * flankWeight;
+    // Smart lead time prediction based on distance and relative velocity
+    const leadTime = Math.min(0.55, directDist / (this.craft.baseSpeed || 12.0));
+    const predTargetX = bestTarget.x + targetVx * leadTime;
+    const predTargetZ = bestTarget.z + targetVz * leadTime;
 
-    const steerDx = aimX - this.craft.x;
-    const steerDz = aimZ - this.craft.z;
-    const steerDist = Math.hypot(steerDx, steerDz);
+    const isHuman = bestTarget.isPlayer || (bestTarget.isRemote && !bestTarget.pilotName.startsWith('[BOT]'));
 
-    if (steerDist > 0.05) {
-      this.targetSteerX = steerDx / steerDist;
-      this.targetSteerZ = steerDz / steerDist;
-    } else {
-      this.targetSteerX = 0;
-      this.targetSteerZ = 0;
+    // -------------------------------------------------------------
+    // GATEKEEPER TACTIC:
+    // If the human is trapped outside safeZoneRadius or on a dropping ring,
+    // position at the boundary border to body-block their return to safety!
+    // -------------------------------------------------------------
+    let isGatekeeping = false;
+    if (isHuman && (targetCenterDist > safeZoneRadius || (warningDropStage && targetCenterDist >= warningDropStage.radiusMin))) {
+      const blockPointX = outDirX * (safeZoneRadius - 0.7);
+      const blockPointZ = outDirZ * (safeZoneRadius - 0.7);
+      const toBlockDx = blockPointX - this.craft.x;
+      const toBlockDz = blockPointZ - this.craft.z;
+      const blockDist = Math.hypot(toBlockDx, toBlockDz);
+
+      if (blockDist > 0.4) {
+        this.targetSteerX = toBlockDx / blockDist;
+        this.targetSteerZ = toBlockDz / blockDist;
+      } else {
+        // At the gate! Face the human and push outward against them!
+        this.targetSteerX = outDirX * 1.1;
+        this.targetSteerZ = outDirZ * 1.1;
+      }
+      isGatekeeping = true;
+    }
+
+    if (!isGatekeeping) {
+      // -------------------------------------------------------------
+      // OUTWARD SHOVE GEOMETRY:
+      // Attack from the center-side of the target so collision momentum
+      // blows the target outward toward the void!
+      // -------------------------------------------------------------
+      const shoveOffset = Math.min(1.8, Math.max(0.75, directDist * 0.28));
+      const attackX = predTargetX - outDirX * shoveOffset;
+      const attackZ = predTargetZ - outDirZ * shoveOffset;
+
+      const steerDx = attackX - this.craft.x;
+      const steerDz = attackZ - this.craft.z;
+      const steerDist = Math.hypot(steerDx, steerDz);
+
+      if (steerDist > 0.05) {
+        this.targetSteerX = steerDx / steerDist;
+        this.targetSteerZ = steerDz / steerDist;
+      }
+
+      // CLOSE-RANGE STICKY BUMPER BULL-SHOVE:
+      // When close to target ($< 2.3m$) and positioned center-side:
+      if (directDist < 2.3 && (targetCenterDist >= myDist - 0.35)) {
+        // Shove outward with maximum traction!
+        this.targetSteerX = outDirX * 1.25;
+        this.targetSteerZ = outDirZ * 1.25;
+      }
     }
 
     // -------------------------------------------------------------
-    // STEP 7: TACTICAL DASH RAM
-    // Three.js forward vector: facing = atan2(dx, dz) -> fx = sin(facing), fz = cos(facing)
+    // EDGE-BRAKING SELF-CONTROL:
+    // Don't commit suicide! If the bot gets dangerously close to edge,
+    // apply counter-steer inward so it stops safely while rival falls!
+    // -------------------------------------------------------------
+    if (myDist > safeZoneRadius - 0.55) {
+      const inX = -this.craft.x / myDist;
+      const inZ = -this.craft.z / myDist;
+      this.targetSteerX = this.targetSteerX * 0.35 + inX * 1.15;
+      this.targetSteerZ = this.targetSteerZ * 0.35 + inZ * 1.15;
+      const len = Math.hypot(this.targetSteerX, this.targetSteerZ);
+      if (len > 1.0) {
+        this.targetSteerX /= len;
+        this.targetSteerZ /= len;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // STEP 7: TACTICAL ABILITIES (EMP SHOCKWAVE & CONTROLLED DASH)
     // -------------------------------------------------------------
     const forwardX = Math.sin(this.craft.facing);
     const forwardZ = Math.cos(this.craft.facing);
 
-    // Predict landing spot after ~5m dash
-    const predX = this.craft.x + forwardX * 5.0;
-    const predZ = this.craft.z + forwardZ * 5.0;
-    const predDist = Math.hypot(predX, predZ);
-    const isDashSafe = predDist < (safeZoneRadius - 1.2);
+    // 1. TACTICAL EMP SHOCKWAVE FINISHER:
+    // When human is in blast range (< 7.0m) and near the edge, blast them outward!
+    if (this.craft.empCooldown <= 0 && this.craft.grounded && !this.craft.isJammed) {
+      if (isHuman && directDist < 7.0 && targetCenterDist > (safeZoneRadius - 4.2)) {
+        const blastDx = (bestTarget.x - this.craft.x) / (directDist || 1);
+        const blastDz = (bestTarget.z - this.craft.z) / (directDist || 1);
+        const blastOutwardDot = blastDx * outDirX + blastDz * outDirZ;
 
-    // Angle to target
+        // Ensure shockwave knocks them towards the void
+        if (blastOutwardDot > 0.35 && Math.random() < (this.personality.empSkill || 0.80)) {
+          if (this.craft.triggerEmp(allCrafts)) {
+            if (this.craft.setEmotion) {
+              this.craft.setEmotion('dash', 1.2, 'BLAST OFF! ⚡', '💥');
+            }
+          }
+        }
+      }
+    }
+
+    // 2. CONTROLLED TACTICAL DASH RAM:
+    // Only dash when it knocks the rival OUTWARD and the bot won't slide into the void!
+    const predStopDist = Math.hypot(this.craft.x + forwardX * 4.2, this.craft.z + forwardZ * 4.2);
+    const isDashSafeForBot = predStopDist < (safeZoneRadius - 0.4);
+    const dashTowardsVoid = (forwardX * outDirX + forwardZ * outDirZ) > 0.38;
+
     const angleToTarget = Math.atan2(toTargetDx, toTargetDz);
     let angleDiff = angleToTarget - this.craft.facing;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    // Tactical Dash Ram (+15% more frequent and lethal):
-    // Dash when aligned with target at an aggressive engagement window
-    if (directDist >= 1.8 && directDist <= 5.8 && this.craft.dashCooldown <= 0 && isDashSafe) {
-      if (Math.abs(angleDiff) < 0.44 && Math.random() < this.personality.dashSkill) {
+    if (directDist >= 1.6 && directDist <= 5.2 && this.craft.dashCooldown <= 0 && isDashSafeForBot && dashTowardsVoid) {
+      if (Math.abs(angleDiff) < 0.42 && Math.random() < this.personality.dashSkill) {
         this.craft.triggerDash();
-        // Snappy, aggressive cooldown (3.2s - 4.6s) for thrilling combat pressure
-        this.craft.dashCooldown = 3.2 + Math.random() * 1.4;
+        this.craft.dashCooldown = 3.6 + Math.random() * 1.5;
         if (Math.random() < 0.45 && this.craft.setEmotion) {
-          const taunts = ['OUT OF MY WAY!', 'RAMMING SPEED!', 'FEEL THE IMPACT!', 'NO ESCAPE!', 'EAT BUMPER!'];
+          const taunts = ['OUT OF THE RING!', 'OVER THE EDGE!', 'NOT ON MY WATCH!', 'TAKE A DIVE!', 'NO ESCAPE!'];
           this.craft.setEmotion('dash', 1.0, taunts[Math.floor(Math.random() * taunts.length)], '💥');
         }
       }
@@ -463,10 +570,11 @@ class AIBumperManager {
   }
 
   /**
-   * Spawn bots with balanced difficulty scaling.
+   * Spawn bots with smart disruptor difficulty scaling.
    * @param {number} arenaRadius - current arena radius for placement
    * @param {number} botCount - number of bots to spawn (default 4)
    * @param {string} difficulty - 'easy' | 'medium' | 'hard' | 'public' (default 'hard')
+   * @param {string} theme - 'neon' | 'inferno' | 'cryo'
    */
   spawn(arenaRadius, botCount = 4, difficulty = 'hard', theme = 'neon') {
     this.clear();
@@ -484,45 +592,53 @@ class AIBumperManager {
 
       const bot = new AIBumperBot(this.scene, cfg.name, cfg.color);
 
-      // Fair, fun arcade tuning (mass = 1.0 same as player!)
+      // Fair arcade tuning (mass = 1.0 same as player!)
       bot.craft.mass = 1.0;
       bot.craft.baseMass = 1.0;
 
       if (difficulty === 'easy') {
-        // Room 1 Easy: 72% to 84% aggression (increased from 60-72%)
-        bot.personality.aggression = 0.72 + Math.random() * 0.12;
-        bot.personality.survival = 0.78 + Math.random() * 0.08;
-        bot.personality.dashSkill = 0.50 + Math.random() * 0.12;
-        bot.personality.dodgeSkill = 0.50 + Math.random() * 0.14;
-        bot.thinkInterval = 0.14 + Math.random() * 0.03;
-        bot.craft.baseSpeed = 11.2;
-      } else if (difficulty === 'medium') {
-        // Room 2 Medium: 82% to 92% aggression (~8-10% gap from Easy)
-        bot.personality.aggression = 0.82 + Math.random() * 0.10;
+        // Room 1 Easy: Moderate disruption with lenient reaction window
+        bot.personality.aggression = 0.68 + Math.random() * 0.10;
         bot.personality.survival = 0.80 + Math.random() * 0.08;
-        bot.personality.dashSkill = 0.66 + Math.random() * 0.12;
-        bot.personality.dodgeSkill = 0.62 + Math.random() * 0.12;
-        bot.thinkInterval = 0.11 + Math.random() * 0.03;
+        bot.personality.dashSkill = 0.52 + Math.random() * 0.10;
+        bot.personality.dodgeSkill = 0.52 + Math.random() * 0.12;
+        bot.personality.disruptSkill = 0.62 + Math.random() * 0.10;
+        bot.personality.empSkill = 0.55 + Math.random() * 0.10;
+        bot.thinkInterval = 0.13 + Math.random() * 0.03;
+        bot.craft.baseSpeed = 11.4;
+      } else if (difficulty === 'medium') {
+        // Room 2 Medium: Focused smart disruption and route cutoffs
+        bot.personality.aggression = 0.74 + Math.random() * 0.08;
+        bot.personality.survival = 0.84 + Math.random() * 0.06;
+        bot.personality.dashSkill = 0.68 + Math.random() * 0.10;
+        bot.personality.dodgeSkill = 0.64 + Math.random() * 0.10;
+        bot.personality.disruptSkill = 0.78 + Math.random() * 0.10;
+        bot.personality.empSkill = 0.72 + Math.random() * 0.10;
+        bot.thinkInterval = 0.11 + Math.random() * 0.02;
         bot.craft.baseSpeed = 12.0;
       } else if (difficulty === 'hard') {
-        // Room 3 Hard: 90% to 98% aggression (~6-8% gap from Medium, Champion)
-        bot.personality.aggression = 0.90 + Math.random() * 0.08;
-        bot.personality.survival = 0.84 + Math.random() * 0.06;
-        bot.personality.dashSkill = 0.76 + Math.random() * 0.10;
-        bot.personality.dodgeSkill = 0.68 + Math.random() * 0.12;
-        bot.thinkInterval = 0.09 + Math.random() * 0.03;
+        // Room 3 Hard: Master Gatekeeper & Ring-Out Hunter
+        bot.personality.aggression = 0.78 + Math.random() * 0.08;
+        bot.personality.survival = 0.88 + Math.random() * 0.05;
+        bot.personality.dashSkill = 0.80 + Math.random() * 0.08;
+        bot.personality.dodgeSkill = 0.72 + Math.random() * 0.08;
+        bot.personality.disruptSkill = 0.92 + Math.random() * 0.06;
+        bot.personality.empSkill = 0.85 + Math.random() * 0.08;
+        bot.thinkInterval = 0.09 + Math.random() * 0.02;
         bot.craft.baseSpeed = 12.6;
       } else {
-        // 'public' (Battle Royale)
-        bot.personality.aggression = 0.85 + Math.random() * 0.10;
-        bot.personality.survival = 0.80 + Math.random() * 0.10;
-        bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
-        bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
-        bot.thinkInterval = 0.10 + Math.random() * 0.03;
-        bot.craft.baseSpeed = 12.2;
+        // 'public' (Battle Royale Colosseum)
+        bot.personality.aggression = 0.76 + Math.random() * 0.08;
+        bot.personality.survival = 0.87 + Math.random() * 0.06;
+        bot.personality.dashSkill = 0.78 + Math.random() * 0.10;
+        bot.personality.dodgeSkill = 0.70 + Math.random() * 0.10;
+        bot.personality.disruptSkill = 0.90 + Math.random() * 0.08;
+        bot.personality.empSkill = 0.82 + Math.random() * 0.08;
+        bot.thinkInterval = 0.09 + Math.random() * 0.02;
+        bot.craft.baseSpeed = 12.4;
       }
 
-      // Cryo Glacier: 5% aggression reduction (as requested)
+      // Cryo Glacier: ice physics compensation (smooth controlled grip)
       if (theme === 'cryo') {
         bot.personality.aggression = Math.max(0.40, bot.personality.aggression - 0.05);
         bot._cryoReduced = true;
@@ -553,31 +669,24 @@ class AIBumperManager {
       bot.id = b.id;
       bot.craft.id = b.id;
       bot.craft.pilotName = b.pilotName;
-      // Balanced arcade brawler personality (+15% boosted aggression)
-      bot.personality.aggression = 0.85 + Math.random() * 0.12;
-      bot.personality.survival = 0.80 + Math.random() * 0.10;
-      bot.personality.dashSkill = 0.68 + Math.random() * 0.14;
-      bot.personality.dodgeSkill = 0.62 + Math.random() * 0.14;
-      bot.thinkInterval = 0.10 + Math.random() * 0.03;
-      // Exact Hard Level personality and aggression (identical to Solo Practice Hard)
-      bot.personality.aggression = 0.90 + Math.random() * 0.08;
-      bot.personality.survival = 0.84 + Math.random() * 0.06;
-      bot.personality.dashSkill = 0.76 + Math.random() * 0.10;
-      bot.personality.dodgeSkill = 0.68 + Math.random() * 0.12;
-      bot.thinkInterval = 0.09 + Math.random() * 0.03;
-      bot.craft.baseSpeed = 12.6;
+      // Master Smart Disruptor tuning for Public Arena & Multiplayer
+      bot.personality.aggression = 0.78 + Math.random() * 0.08;
+      bot.personality.survival = 0.88 + Math.random() * 0.05;
+      bot.personality.dashSkill = 0.80 + Math.random() * 0.08;
+      bot.personality.dodgeSkill = 0.72 + Math.random() * 0.08;
+      bot.personality.disruptSkill = 0.92 + Math.random() * 0.06;
+      bot.personality.empSkill = 0.85 + Math.random() * 0.08;
+      bot.thinkInterval = 0.09 + Math.random() * 0.02;
+      bot.craft.baseSpeed = 12.4;
       bot.craft.mass = 1.0;
       bot.craft.baseMass = 1.0;
 
-      // Cryo Glacier: 5% aggression reduction
+      // Cryo Glacier: ice physics compensation
       if (theme === 'cryo') {
         bot.personality.aggression = Math.max(0.40, bot.personality.aggression - 0.05);
         bot._cryoReduced = true;
       }
-      // Faster, responsive base speed
-      bot.craft.baseSpeed = 12.2;
-      bot.craft.mass = 1.0;
-      bot.craft.baseMass = 1.0;
+
       bot.spawn(b.spawnX, b.spawnZ);
       this.bots.push(bot);
     });
