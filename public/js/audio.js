@@ -11,7 +11,7 @@ const HexAudio = (() => {
   let isMuted = false;
   let currentAudio = null;
   let currentTrackIdx = 0;
-  let musicVolume = 0.32;
+  let musicVolume = 0.19;
 
   function init() {
     if (ctx) return;
@@ -38,8 +38,8 @@ const HexAudio = (() => {
       sfxGain.connect(masterGain);
 
       musicGain = ctx.createGain();
-      // Balanced, comfortable background music (0.32) - non-fatiguing and crystal clear
-      musicGain.gain.setValueAtTime(0.32, ctx.currentTime);
+      // Balanced, comfortable background music (0.19) - reduced by 40%
+      musicGain.gain.setValueAtTime(0.19, ctx.currentTime);
       musicGain.connect(masterGain);
     } catch (e) {
       console.warn('[Audio] Init error:', e.message);
