@@ -535,30 +535,7 @@ function removePlayerFromArena(socketId) {
   }
 }
 
-// 45-Second Inactivity Heartbeat Check across all active arenas (Generous for cloud network jitter)
-setInterval(() => {
-  const now = Date.now();
-  publicArenas.forEach(arena => {
-    let changed = false;
-    arena.players.forEach(p => {
-      if (p.isAlive && (now - p.lastActivity > 45000)) {
-        console.log(`[PublicArena:${arena.id}] ${p.pilotName} (${p.id}) timed out (45s AFK).`);
-        p.isAlive = false;
-        changed = true;
-        io.to(arena.id).emit('player_eliminated', {
-          victimId: p.id,
-          victimName: p.pilotName,
-          killerId: null,
-          killerName: 'AFK Timeout (45s)'
-        });
-      }
-    });
 
-    if (changed) {
-      arena.checkWinConditions();
-    }
-  });
-}, 5000);
 
 io.on('connection', (socket) => {
   // Join Persistent Public Arena (Dynamic Matchmaking: Max 6 Humans per Room)
@@ -702,16 +679,7 @@ io.on('connection', (socket) => {
     removePlayerFromArena(socket.id);
   });
 
-  // Mobile screen lock / Tab hidden listener (informational only — no false kills!)
-  socket.on('player_visibility', (data) => {
-    const arena = getArenaForSocket(socket.id);
-    if (!arena) return;
 
-    const p = arena.players.get(socket.id);
-    if (p) {
-      p.isTabHidden = !data.visible;
-    }
-  });
 
   // Player Respawn Request after getting eliminated
   const handleRespawn = () => {

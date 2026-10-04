@@ -564,40 +564,11 @@
           }
         });
 
-        // 3-Second Quick / Auto-Respawn Countdown in Public Arena (Never stranded on game over!)
-        if (isMp && !data.win) {
-          let respawnSec = 3;
-          const retryTxt = btnRetry.querySelector('.btn-text');
-          if (retryTxt) retryTxt.textContent = `RESPAWN IN ${respawnSec}s (SPACE / TAP)`;
-          if (window._respawnTimer) clearInterval(window._respawnTimer);
-          window._respawnTimer = setInterval(() => {
-            respawnSec--;
-            if (respawnSec > 0) {
-              const txt = btnRetry.querySelector('.btn-text');
-              if (txt) txt.textContent = `RESPAWN IN ${respawnSec}s (SPACE / TAP)`;
-            } else {
-              clearInterval(window._respawnTimer);
-              window._respawnTimer = null;
-              const txt = btnRetry.querySelector('.btn-text');
-              if (txt) txt.textContent = 'RESPAWN NOW';
-              btnRetry.click();
-            }
-          }, 1000);
-        } else {
-          if (window._respawnTimer) {
-            clearInterval(window._respawnTimer);
-            window._respawnTimer = null;
-          }
-          const retryTxt = btnRetry.querySelector('.btn-text');
-          if (retryTxt) retryTxt.textContent = data.win ? 'NEXT BATTLE' : 'REMATCH NOW';
-        }
+        const retryTxt = btnRetry.querySelector('.btn-text');
+        if (retryTxt) retryTxt.textContent = data.win ? 'NEXT BATTLE' : 'REMATCH NOW';
       };
 
       engine.onRespawnSuccess = () => {
-        if (window._respawnTimer) {
-          clearInterval(window._respawnTimer);
-          window._respawnTimer = null;
-        }
         showScreen('hud');
         if (spectatorBar) spectatorBar.classList.add('hidden');
       };
@@ -642,23 +613,7 @@
   let currentModeConfig = { mode: 'solo', difficulty: 'hard', botCount: 4, totalPlayers: 5, arenaTheme: 'neon' };
   let socket = null;
 
-  
-  // Mobile phone screen lock / tab hidden detection
-  document.addEventListener('visibilitychange', () => {
-    const s = getSocket();
-    if (!s || !s.connected) return;
-    if (document.hidden) {
-      console.log('[Visibility] Screen locked or tab backgrounded.');
-      s.emit('player_visibility', { visible: false });
-    } else {
-      console.log('[Visibility] Screen unlocked or tab restored.');
-      s.emit('player_visibility', { visible: true });
-    }
-  });
-  window.addEventListener('pagehide', () => {
-    const s = getSocket();
-    if (s && s.connected) s.emit('player_visibility', { visible: false });
-  });
+
 
   function getSocket() {
     if (!socket && typeof io !== 'undefined') {
@@ -983,10 +938,7 @@
     if (spectatorBar) spectatorBar.classList.add('hidden');
     if (eg) eg.stopSpectating();
 
-    if (window._respawnTimer) {
-      clearInterval(window._respawnTimer);
-      window._respawnTimer = null;
-    }
+
 
     if (isMp) {
       console.log('[Rematch] Respawning in Persistent Arena...');
