@@ -71,6 +71,8 @@ class BumperGameEngine {
     this.onSpectateChange = null;
     this.onRespawnSuccess = null;
     this.onSpectatorEnded = null;
+    this.onMatchEnded = null;
+    this.matchEnded = false;
 
     // Spectator Mode
     this.isSpectating = false;
@@ -631,6 +633,7 @@ class BumperGameEngine {
     this.gameMode = mode;
     this.gameDifficulty = difficulty;
     this.difficulty = difficulty;
+    this.matchEnded = false;
 
     let chosenTheme = modeConfig.arenaTheme || 'neon';
     if (chosenTheme === 'random') {
@@ -697,6 +700,7 @@ class BumperGameEngine {
     this.matchTime = elapsed;
     const theme = arenaData.arenaTheme || 'neon';
     this.applyArenaTheme(theme);
+    this.matchEnded = !!arenaData.matchEnded;
 
     // Arena Colosseum
     if (this.arena) {
@@ -778,6 +782,7 @@ class BumperGameEngine {
     this.socket.off('remote_player_left');
     this.socket.off('bots_won');
     this.socket.off('player_won');
+    this.socket.off('round_ended');
     this.socket.off('arena_reset');
     this.socket.off('bots_respawned');
     this.socket.off('respawn_success');
@@ -907,11 +912,48 @@ class BumperGameEngine {
       }
     });
 
-    // Bots won (all humans eliminated) -> room stays active
+    // Bots won (all humans eliminated)
+    const handleMatchConcluded = (winnerName, isWinner, message) => {
+      this.matchEnded = true;
+
+      // Mark all remote crafts as no longer alive so spectating cannot lock onto them
+      if (this.remotePlayers) {
+        this.remotePlayers.forEach(rc => {
+          if (rc) rc.alive = false;
+        });
+      }
+
+      // If local player was currently spectating:
+      if (this.isSpectating) {
+        this.stopSpectating();
+        if (this.onSpectatorEnded) {
+          this.onSpectatorEnded({
+            winnerName: winnerName,
+            isWinner: isWinner,
+            message: message || (winnerName ? `${winnerName} won the match!` : 'Match ended!')
+          });
+        }
+      }
+
+      // If local player is already on game over screen or just won/lost:
+      if (this.state === 'gameover') {
+        if (this.onMatchEnded) {
+          this.onMatchEnded({
+            winnerName: winnerName,
+            isWinner: isWinner,
+            message: message
+          });
+        }
+      } else {
+        this._triggerGameOver(isWinner, winnerName);
+      }
+    };
+
     this.socket.on('bots_won', (data) => {
       if (this.onAlert) {
         this.onAlert(data.message || 'BOTS DOMINATED THE ARENA! RESPAWN TO FIGHT BACK!');
       }
+      handleMatchConcluded('Cyber Bots', false, data.message || 'BOTS WON THIS ROUND! CLICK REMATCH TO FIGHT BACK!');
     });
 
     // Real player won
@@ -920,11 +962,20 @@ class BumperGameEngine {
       if (isWinner && typeof DiliVoice !== 'undefined') {
         DiliVoice.onVictory();
       }
-      this._triggerGameOver(isWinner, data.winnerName);
+      handleMatchConcluded(data.winnerName, isWinner, data.winnerName ? `${data.winnerName} WON THE MATCH!` : 'MATCH CONCLUDED!');
+    });
+
+    // Round ended (all combatants eliminated)
+    this.socket.on('round_ended', (data) => {
+      if (this.onAlert) {
+        this.onAlert(data.message || 'ALL COMBATANTS ELIMINATED!');
+      }
+      handleMatchConcluded(null, false, data.message || 'ALL COMBATANTS ELIMINATED! CLICK REMATCH FOR A NEW ROUND!');
     });
 
     // Arena reset for fresh round
     this.socket.on('arena_reset', (data) => {
+      this.matchEnded = false;
       const mySpawn = data.players ? data.players.find(p => p.id === this.socket.id) : null;
       const newTheme = data.arenaTheme || 'neon';
       this.applyArenaTheme(newTheme);
@@ -2278,19 +2329,19 @@ class BumperGameEngine {
     const isMobile = w <= 768 || isPortrait;
 
     if (isPortrait) {
-      // Mobile Portrait: Elevated wide-angle view so the full arena & collapse rings are visible!
-      this.camHeight = 18.5;
-      this.camDistance = 22.5;
-      if (this.camera.fov !== 66) {
-        this.camera.fov = 66;
+      // Mobile Portrait: Closer, clear view of pilot & arena without feeling distant
+      this.camHeight = 14.0;
+      this.camDistance = 16.5;
+      if (this.camera.fov !== 58) {
+        this.camera.fov = 58;
         this.camera.updateProjectionMatrix();
       }
     } else if (isMobile) {
-      // Mobile Landscape: Wider angle
-      this.camHeight = 13.5;
-      this.camDistance = 18.0;
-      if (this.camera.fov !== 58) {
-        this.camera.fov = 58;
+      // Mobile Landscape: Closer, punchy action
+      this.camHeight = 11.5;
+      this.camDistance = 15.0;
+      if (this.camera.fov !== 54) {
+        this.camera.fov = 54;
         this.camera.updateProjectionMatrix();
       }
     } else {
@@ -2612,13 +2663,14 @@ class BumperGameEngine {
   // SPECTATOR MODE SYSTEM (ONLY FOR REAL HUMAN OPPONENTS)
   // =============================================
   hasRealHumansToSpectate() {
+    if (this.matchEnded) return false;
     if (!this.isMultiplayer || !this.remotePlayers) return false;
     const aliveHumans = Array.from(this.remotePlayers.values()).filter(rc => rc && rc.alive);
     return aliveHumans.length > 0;
   }
 
   startSpectating() {
-    if (!this.hasRealHumansToSpectate()) {
+    if (this.matchEnded || !this.hasRealHumansToSpectate()) {
       this.stopSpectating();
       return false;
     }

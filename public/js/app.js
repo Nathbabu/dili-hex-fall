@@ -482,10 +482,34 @@
         if (spectatorBar) spectatorBar.classList.add('hidden');
       };
 
-      engine.onSpectatorEnded = () => {
+      engine.onSpectatorEnded = (info) => {
         if (spectatorBar) spectatorBar.classList.add('hidden');
         showScreen('gameOverScreen');
         if (btnGoSpectate) btnGoSpectate.style.display = 'none';
+        if (goSubtitle) {
+          if (info && info.winnerName) {
+            goSubtitle.textContent = (info.winnerName === 'Cyber Bots')
+              ? 'Bots dominated the arena! Click REMATCH to fight back!'
+              : (info.winnerName + ' won the match!');
+          } else if (info && info.message) {
+            goSubtitle.textContent = info.message;
+          }
+          goSubtitle.style.color = '#00E5FF';
+        }
+      };
+
+      engine.onMatchEnded = (info) => {
+        if (btnGoSpectate) btnGoSpectate.style.display = 'none';
+        if (goSubtitle) {
+          if (info && info.winnerName) {
+            goSubtitle.textContent = (info.winnerName === 'Cyber Bots')
+              ? 'Bots dominated the arena! Click REMATCH to fight back!'
+              : (info.winnerName + ' won the match! Click REMATCH for a new round.');
+          } else if (info && info.message) {
+            goSubtitle.textContent = info.message;
+          }
+          goSubtitle.style.color = '#00E5FF';
+        }
       };
 
       return engine;
@@ -1317,11 +1341,27 @@
   if (btnGoSpectate) {
     btnGoSpectate.addEventListener('click', () => {
       const eg = getEngine();
-      if (eg && eg.hasRealHumansToSpectate()) {
-        showScreen('hud');
-        if (spectatorBar) spectatorBar.classList.remove('hidden');
-        eg.startSpectating();
+      if (!eg || eg.matchEnded || !eg.hasRealHumansToSpectate()) {
+        btnGoSpectate.style.display = 'none';
+        if (goSubtitle) {
+          goSubtitle.textContent = 'Match has already ended! Click REMATCH for a fresh round.';
+          goSubtitle.style.color = '#00E5FF';
+        }
+        return;
+      }
+      showScreen('hud');
+      if (spectatorBar) spectatorBar.classList.remove('hidden');
+      const started = eg.startSpectating();
+      if (started) {
         if (specPilotName) specPilotName.textContent = eg.getSpectateName();
+      } else {
+        if (spectatorBar) spectatorBar.classList.add('hidden');
+        showScreen('gameOverScreen');
+        btnGoSpectate.style.display = 'none';
+        if (goSubtitle) {
+          goSubtitle.textContent = 'Match has already ended! Click REMATCH for a fresh round.';
+          goSubtitle.style.color = '#00E5FF';
+        }
       }
     });
   }

@@ -332,6 +332,7 @@ class PersistentPublicArena {
     this.currentThemeIndex = 0;
     this.currentTheme = ARENA_THEMES_LIST[0];
     this.resetTimer = null;
+    this.matchEnded = false;
   }
 
   getNextSpawn(radius = 10.0) {
@@ -349,6 +350,7 @@ class PersistentPublicArena {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
+    this.matchEnded = false;
     this.currentThemeIndex = (this.currentThemeIndex + 1) % ARENA_THEMES_LIST.length;
     this.currentTheme = ARENA_THEMES_LIST[this.currentThemeIndex];
     console.log('[PublicArena] Resetting arena for a fresh round! Rotating to theme: ' + this.currentTheme.toUpperCase());
@@ -425,10 +427,12 @@ function checkWinConditions() {
   if (aliveHumans.length === 1 && aliveBots === 0) {
     const winner = aliveHumans[0];
     console.log('[PublicArena] Real player won: ' + winner.pilotName + '! Match ended. Waiting for Rematch click.');
+    publicArena.matchEnded = true;
     io.to(publicArena.id).emit('player_won', {
       winnerId: winner.id,
       winnerName: winner.pilotName,
-      winnerSuit: winner.suitColor
+      winnerSuit: winner.suitColor,
+      matchEnded: true
     });
 
     // Mark winner as inactive so match is complete and does NOT auto-restart
@@ -438,15 +442,19 @@ function checkWinConditions() {
     publicArena.resetTimer = null;
   } else if (aliveHumans.length === 0 && aliveBots > 0) {
     console.log('[PublicArena] Bots won this round! Match ended. Waiting for Rematch click.');
+    publicArena.matchEnded = true;
     io.to(publicArena.id).emit('bots_won', {
-      message: 'BOTS DOMINATED THE ARENA! CLICK REMATCH TO FIGHT BACK!'
+      message: 'BOTS DOMINATED THE ARENA! CLICK REMATCH TO FIGHT BACK!',
+      matchEnded: true
     });
     if (publicArena.resetTimer) clearTimeout(publicArena.resetTimer);
     publicArena.resetTimer = null;
   } else if (aliveHumans.length === 0 && aliveBots === 0) {
     console.log('[PublicArena] All players and bots eliminated! Match ended.');
+    publicArena.matchEnded = true;
     io.to(publicArena.id).emit('round_ended', {
-      message: 'ALL COMBATANTS ELIMINATED! CLICK REMATCH FOR A NEW ROUND!'
+      message: 'ALL COMBATANTS ELIMINATED! CLICK REMATCH FOR A NEW ROUND!',
+      matchEnded: true
     });
     if (publicArena.resetTimer) clearTimeout(publicArena.resetTimer);
     publicArena.resetTimer = null;
@@ -531,7 +539,8 @@ io.on('connection', (socket) => {
         bots: publicArena.bots,
         arenaSeed: publicArena.arenaSeed,
         arenaTheme: publicArena.currentTheme,
-        roundElapsed: 0
+        roundElapsed: 0,
+        matchEnded: !!publicArena.matchEnded
       });
       return;
     }
@@ -589,7 +598,8 @@ io.on('connection', (socket) => {
       bots: publicArena.bots.filter(b => publicArena.aliveBotIds.has(b.id)),
       arenaSeed: publicArena.arenaSeed,
       arenaTheme: publicArena.currentTheme,
-      roundElapsed: elapsed
+      roundElapsed: elapsed,
+      matchEnded: !!publicArena.matchEnded
     });
 
     socket.to(publicArena.id).emit('player_spawned', {
@@ -691,6 +701,19 @@ io.on('connection', (socket) => {
   };
   socket.on('respawn_request', handleRespawn);
   socket.on('request_respawn', handleRespawn);
+
+  // Instant Verification if Spectating is allowed
+  socket.on('check_spectate', (callback) => {
+    const activeHumans = Array.from(publicArena.players.values()).filter(p => p.isAlive && p.id !== socket.id);
+    const canSpectate = !publicArena.matchEnded && activeHumans.length > 0;
+    if (typeof callback === 'function') {
+      callback({
+        canSpectate,
+        matchEnded: !!publicArena.matchEnded,
+        aliveHumansCount: activeHumans.length
+      });
+    }
+  });
 
   // High-Frequency Real-Time Movement Sync
   socket.on('player_update', (data) => {
