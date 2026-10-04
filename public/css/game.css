@@ -914,6 +914,7 @@ canvas#gameCanvas {
   position: relative;
 }
 .mascot-bubble-wrap {
+  display: none !important;
   margin-bottom: 6px;
   min-height: 32px;
 }

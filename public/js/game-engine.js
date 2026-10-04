@@ -1900,7 +1900,7 @@ class BumperGameEngine {
               B.lastAttacker = A;
               HexAudio.sfxBump(2.2);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF, (A.y + B.y) / 2);
-              if (A.setEmotion) A.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (A.setEmotion) A.setEmotion('kill', 1.2);
               if (B.onImpact) B.onImpact(2.0);
               continue;
             }
@@ -1911,7 +1911,7 @@ class BumperGameEngine {
               A.lastAttacker = B;
               HexAudio.sfxBump(2.2);
               this._spawnSparks((A.x + B.x) / 2, (A.z + B.z) / 2, 0x00E5FF);
-              if (B.setEmotion) B.setEmotion('kill', 1.2, 'DEFLECTED!', '🛡️');
+              if (B.setEmotion) B.setEmotion('kill', 1.2);
               if (A.onImpact) A.onImpact(2.0);
               continue;
             }
@@ -1974,8 +1974,7 @@ class BumperGameEngine {
               bRecoil = 1.18;
               B.knockbackTimer = isHeavyHit ? (A.isDashing ? 0.36 : 0.22) : 0;
               if (A.setEmotion && Math.random() < 0.4) {
-                const calls = ['RAMMED!', 'BOOM!', 'PUSH!', 'SMACK!'];
-                A.setEmotion('dash', 0.8, calls[Math.floor(Math.random() * calls.length)], '💥');
+                A.setEmotion('dash', 0.8);
               }
             } else if (B.isPlayer && bForward >= aForward) {
               // Player is ramming A!
@@ -1983,8 +1982,7 @@ class BumperGameEngine {
               aRecoil = 1.18;
               A.knockbackTimer = isHeavyHit ? (B.isDashing ? 0.36 : 0.22) : 0;
               if (B.setEmotion && Math.random() < 0.4) {
-                const calls = ['RAMMED!', 'BOOM!', 'PUSH!', 'SMACK!'];
-                B.setEmotion('dash', 0.8, calls[Math.floor(Math.random() * calls.length)], '💥');
+                B.setEmotion('dash', 0.8);
               }
             } else {
               // Bot is ramming Player or Bot vs Bot

@@ -146,116 +146,19 @@ class EmoteBubble {
   constructor(scene, parentGroup) {
     this.scene = scene;
     this.parentGroup = parentGroup;
-
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = 384;
-    this.canvas.height = 160;
-    this.ctx = this.canvas.getContext('2d');
-
-    this.texture = new THREE.CanvasTexture(this.canvas);
-    this.material = new THREE.SpriteMaterial({
-      map: this.texture,
-      transparent: true,
-      opacity: 0,
-      depthTest: true,
-      depthWrite: false
-    });
-
-    this.sprite = new THREE.Sprite(this.material);
-    this.sprite.scale.set(1.85, 0.78, 1);
-    this.sprite.position.set(0, 2.65, 0); // Float cleanly above Dili's ears
-    this.parentGroup.add(this.sprite);
-
     this.active = false;
-    this.timer = 0;
-    this.duration = 1.6;
-    this.elapsed = 0;
   }
 
-  show(text, emoji = '💥', color = '#00FFC6') {
-    this.active = true;
-    this.timer = this.duration;
-    this.elapsed = 0;
-
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, 384, 160);
-
-    // Comic Speech Bubble with neon glow
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 24;
-
-    // Dark sleek glassmorphic bubble fill
-    ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(16, 16, 352, 104, 22);
-    } else {
-      ctx.rect(16, 16, 352, 104);
-    }
-    ctx.fill();
-
-    // Vibrant glowing border
-    ctx.lineWidth = 4.0;
-    ctx.strokeStyle = color;
-    ctx.stroke();
-
-    // Pointer pointing straight down to Dili's head
-    ctx.beginPath();
-    ctx.moveTo(192 - 18, 120);
-    ctx.lineTo(192, 148);
-    ctx.lineTo(192 + 18, 120);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(8, 14, 28, 0.94)';
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // Big expressive Emoji
-    ctx.font = 'bold 36px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 30, 68);
-
-    // Dynamic Comic Text
-    ctx.font = '900 24px "Orbitron", sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 12;
-    ctx.fillText(text, 86, 68);
-
-    this.texture.needsUpdate = true;
-    this.material.opacity = 1;
-    this.sprite.position.y = 3.8;
+  show() {
+    // Disabled: Speech/emote bubbles above characters completely removed per user preference
   }
 
-  update(dt) {
-    if (!this.active) return;
-
-    this.timer -= dt;
-    this.elapsed += dt;
-
-    // Elastic pop animation with gentle upward drift
-    const popProgress = Math.min(1, this.elapsed * 8);
-    const popScale = 1.0 + Math.sin(popProgress * Math.PI) * 0.26;
-    this.sprite.scale.set(2.4 * popScale, 1.0 * popScale, 1);
-    this.sprite.position.y = 3.8 + (this.elapsed * 0.22);
-
-    // Smooth fade out
-    if (this.timer <= 0.45) {
-      this.material.opacity = Math.max(0, this.timer / 0.45);
-    }
-
-    if (this.timer <= 0) {
-      this.active = false;
-      this.material.opacity = 0;
-    }
+  update() {
+    // Disabled
   }
 
   remove() {
-    this.parentGroup.remove(this.sprite);
-    this.texture.dispose();
-    this.material.dispose();
+    // Disabled
   }
 }
 
@@ -836,16 +739,12 @@ class BumperCraft {
 
   
 
-  // Set Emotion State and Trigger Animated Speech Bubble
-  setEmotion(emotion, duration = 1.3, bubbleText = null, emoji = '💥') {
+  // Set Emotion State (Pose / Expression) - Speech bubbles completely removed
+  setEmotion(emotion, duration = 1.3) {
     this.currentEmotion = emotion;
     this.emotionLockTimer = duration;
     this._redrawExpressiveDili();
     if (this.dili3D) this.dili3D.setEmotion(this.currentEmotion);
-
-    if (bubbleText) {
-      this.emoteBubble.show(bubbleText, emoji, this.suitColorStr);
-    }
   }
 
   triggerSideEvade(dir = 'left') {
