@@ -27,6 +27,7 @@ class AIBumperBot {
     this.targetLockTimer = 0;
     this.isRetreating = false;
     this._cryoReduced = false;
+    this.lifetime = 0;
   }
 
   spawn(x, z) {
@@ -39,10 +40,12 @@ class AIBumperBot {
     this.targetCraft = null;
     this.targetLockTimer = 0;
     this._cryoReduced = false;
+    this.lifetime = 0;
   }
 
   update(dt, allCrafts, arenaRadius, arena = null) {
     if (!this.craft.alive) return;
+    this.lifetime += dt;
 
     // 1. Check Power-Up Pickups & Jump Pads for this bot
     if (arena && arena.checkPickups) {
@@ -341,8 +344,9 @@ class AIBumperBot {
       // HUMAN DISRUPTOR FOCUS:
       const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
       if (isHumanRival) {
-        // Base priority for human disruption
-        score += 38.0;
+        // Base priority for human disruption (ramps smoothly from early exploration to intense battle)
+        const isEarlyMatch = this.lifetime < 7.0;
+        score += isEarlyMatch ? 12.0 : 38.0;
 
         // SMART DISRUPTION OPPORTUNITY BONUSES:
         // 1. Edge Vulnerability: If human is near the boundary, prime target to shove off!
@@ -430,9 +434,9 @@ class AIBumperBot {
         this.targetSteerX = toBlockDx / blockDist;
         this.targetSteerZ = toBlockDz / blockDist;
       } else {
-        // At the gate! Face the human and push outward against them!
-        this.targetSteerX = outDirX * 1.1;
-        this.targetSteerZ = outDirZ * 1.1;
+        // At the gate! Face the human and push outward against them with fair 1.0x engine force!
+        this.targetSteerX = outDirX * 1.0;
+        this.targetSteerZ = outDirZ * 1.0;
       }
       isGatekeeping = true;
     }
@@ -456,12 +460,15 @@ class AIBumperBot {
         this.targetSteerZ = steerDz / steerDist;
       }
 
-      // CLOSE-RANGE STICKY BUMPER BULL-SHOVE:
-      // When close to target ($< 2.3m$) and positioned center-side:
+      // CLOSE-RANGE BUMPER SHOVE:
+      // When close to target (< 2.3m) and positioned center-side:
       if (directDist < 2.3 && (targetCenterDist >= myDist - 0.35)) {
-        // Shove outward with maximum traction!
-        this.targetSteerX = outDirX * 1.25;
-        this.targetSteerZ = outDirZ * 1.25;
+        // Drive towards target and press outward, fair 1.0x engine force (human-equivalent power)
+        const pushDx = outDirX * 0.7 + (toTargetDx / (directDist || 1)) * 0.3;
+        const pushDz = outDirZ * 0.7 + (toTargetDz / (directDist || 1)) * 0.3;
+        const pushLen = Math.hypot(pushDx, pushDz) || 1;
+        this.targetSteerX = pushDx / pushLen;
+        this.targetSteerZ = pushDz / pushLen;
       }
     }
 

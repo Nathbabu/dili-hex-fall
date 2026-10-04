@@ -1095,6 +1095,10 @@ class BumperCraft {
     }
     this.group.visible = true;
 
+    // Track active steering inputs for physics glance & deflection
+    this.lastInputX = inputX;
+    this.lastInputZ = inputZ;
+
     // Cooldowns
     if (this.hazardHitCooldown > 0) this.hazardHitCooldown -= dt;
     if (this.boostCooldown > 0) this.boostCooldown -= dt;
@@ -1212,21 +1216,23 @@ class BumperCraft {
         accel = this.accel * 0.45;
       }
 
-      // Responsive steering input (reduced during knockback so player/bot feels the blast momentum)
-      const inputAuthority = inKnockback ? 0.15 : 1.0;
+      // Responsive steering input:
+      // Even during heavy knockback blasts, keep 0.60 authority so drivers can fight momentum & steer
+      const inputAuthority = inKnockback ? 0.60 : 1.0;
       this.vx += inputX * accel * inputAuthority * dt;
       this.vz += inputZ * accel * inputAuthority * dt;
 
-      // Tight lateral arcade grip: only apply when steering actively and NOT in knockback
+      // Tight lateral arcade grip: active whenever steering, allowing sharp jukes & bumper deflection
       const hasInput = (Math.abs(inputX) > 0.05 || Math.abs(inputZ) > 0.05);
-      if (hasInput && !inKnockback) {
+      if (hasInput) {
         const inLen = Math.hypot(inputX, inputZ) || 1;
         const ix = inputX / inLen;
         const iz = inputZ / inLen;
         const vParallel = this.vx * ix + this.vz * iz;
         const vPerpX = this.vx - vParallel * ix;
         const vPerpZ = this.vz - vParallel * iz;
-        const lateralGrip = this.isFrostDrift ? Math.pow(0.95, dt * 60) : Math.pow(0.84, dt * 60);
+        const gripFactor = inKnockback ? 0.89 : (this.isFrostDrift ? 0.95 : 0.84);
+        const lateralGrip = Math.pow(gripFactor, dt * 60);
         this.vx = vParallel * ix + vPerpX * lateralGrip;
         this.vz = vParallel * iz + vPerpZ * lateralGrip;
       }

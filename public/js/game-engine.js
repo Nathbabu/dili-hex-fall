@@ -1859,6 +1859,26 @@ class BumperGameEngine {
           B.x += nx * overlap * 0.5;
           B.z += nz * overlap * 0.5;
 
+          // Natural round bumper tangential slip:
+          // If either craft steers or moves sideways relative to the collision normal,
+          // the curved circular bumper naturally glances/deflects them laterally instead of pinning them!
+          const tx = -nz;
+          const tz = nx;
+          const aTangential = ((A.lastInputX || 0) * tx + (A.lastInputZ || 0) * tz) + (A.vx * tx + A.vz * tz) * 0.15;
+          const bTangential = ((B.lastInputX || 0) * tx + (B.lastInputZ || 0) * tz) + (B.vx * tx + B.vz * tz) * 0.15;
+          const netTangential = bTangential - aTangential;
+
+          if (Math.abs(netTangential) > 0.08) {
+            const slipDir = Math.sign(netTangential);
+            const slipForce = Math.min(overlap * 0.65, 0.14);
+            B.x += tx * slipDir * slipForce;
+            B.z += tz * slipDir * slipForce;
+            A.x -= tx * slipDir * slipForce * 0.4;
+            A.z -= tz * slipDir * slipForce * 0.4;
+            B.vx += tx * slipDir * 1.8 * Math.min(1, overlap);
+            B.vz += tz * slipDir * 1.8 * Math.min(1, overlap);
+          }
+
           // Relative velocity
           const rvx = B.vx - A.vx;
           const rvz = B.vz - A.vz;
@@ -1944,11 +1964,15 @@ class BumperGameEngine {
             let aRecoil = 1.0;
             let bRecoil = 1.0;
 
+            // Only high-energy explosive impacts (Dash, Super Ram, or high velocity clashes) trigger knockback stun.
+            // Regular bumper contact keeps 100% steering control for both combatants!
+            const isHeavyHit = A.isDashing || B.isDashing || A.hasSuperRam || B.hasSuperRam || Math.abs(velAlongNormal) > 5.5;
+
             if (A.isPlayer && aForward >= bForward) {
               // Player is ramming B!
               aRecoil = 0.32;
               bRecoil = 1.18;
-              B.knockbackTimer = A.isDashing ? 0.36 : 0.22;
+              B.knockbackTimer = isHeavyHit ? (A.isDashing ? 0.36 : 0.22) : 0;
               if (A.setEmotion && Math.random() < 0.4) {
                 const calls = ['RAMMED!', 'BOOM!', 'PUSH!', 'SMACK!'];
                 A.setEmotion('dash', 0.8, calls[Math.floor(Math.random() * calls.length)], '💥');
@@ -1957,7 +1981,7 @@ class BumperGameEngine {
               // Player is ramming A!
               bRecoil = 0.32;
               aRecoil = 1.18;
-              A.knockbackTimer = B.isDashing ? 0.36 : 0.22;
+              A.knockbackTimer = isHeavyHit ? (B.isDashing ? 0.36 : 0.22) : 0;
               if (B.setEmotion && Math.random() < 0.4) {
                 const calls = ['RAMMED!', 'BOOM!', 'PUSH!', 'SMACK!'];
                 B.setEmotion('dash', 0.8, calls[Math.floor(Math.random() * calls.length)], '💥');
@@ -1967,15 +1991,15 @@ class BumperGameEngine {
               if (A.isPlayer) {
                 aRecoil = 0.72; // Hardcore bot ram! Player genuinely feels the shove!
                 bRecoil = 0.88;
-                A.knockbackTimer = B.isDashing ? 0.32 : 0.20;
+                A.knockbackTimer = isHeavyHit ? (B.isDashing ? 0.32 : 0.20) : 0;
               } else if (B.isPlayer) {
                 bRecoil = 0.72;
                 aRecoil = 0.88;
-                B.knockbackTimer = A.isDashing ? 0.32 : 0.20;
+                B.knockbackTimer = isHeavyHit ? (A.isDashing ? 0.32 : 0.20) : 0;
               } else {
                 // Bot vs Bot: High-energy robotic clash!
-                A.knockbackTimer = 0.30;
-                B.knockbackTimer = 0.30;
+                A.knockbackTimer = isHeavyHit ? 0.28 : 0;
+                B.knockbackTimer = isHeavyHit ? 0.28 : 0;
               }
             }
 
