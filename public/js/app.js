@@ -782,8 +782,11 @@
     });
 
     s.off('arena_reset');
-    s.on('arena_reset', () => {
-      showScreen('hud');
+    s.on('arena_reset', (data) => {
+      const mySpawn = data && data.players ? data.players.find(p => p.id === s.id) : null;
+      if (mySpawn) {
+        showScreen('hud');
+      }
       if (killFeed) killFeed.innerHTML = '';
       if (arenaAlert) arenaAlert.classList.add('hidden');
     });

@@ -338,9 +338,8 @@ class AIBumperBot {
       const dist = Math.hypot(dx, dz);
       const rivalDistCenter = Math.hypot(c.x, c.z);
 
-      // Natural Free-For-All sumo targeting: all rivals evaluated fairly by proximity and tactical opportunity!
-      // Closer rivals are prime targets for sumo clashes
-      let score = 28.0 - dist * 1.5;
+      // Distance scoring: closer targets are easier to reach
+      let score = 30.0 - dist * 1.2;
 
       // Bonus if rival is near the edge (prime opportunity to push off!)
       if (rivalDistCenter > safeZoneRadius - 3.0) {
@@ -357,10 +356,13 @@ class AIBumperBot {
       if (c.isGlitchSlow) score += 6.0;
       if (c.isJammed) score += 6.0;
 
-      // Human rival gets natural balanced weight (no 2v1 spawn-camping gang-up)
+      // PRIME DIRECTIVE: HUMAN PILOTS ARE THE PRIMARY TARGET!
       const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
       if (isHumanRival) {
-        score += 2.0;
+        score += 35.0; // Major priority: Bots focus the human player!
+      } else {
+        // Other bots: bots do NOT fight amongst themselves when a human is alive
+        score -= 25.0;
       }
 
       // Target persistence bonus: stick to current duel rather than whipping around every tick
@@ -368,8 +370,8 @@ class AIBumperBot {
         score += 5.0;
       }
 
-      // Strongly avoid attacking shielded crafts (Spawn Shield or Aegis Shield)
-      if (c.hasShield) score -= 35.0;
+      // If target has active shield (Spawn Shield or Aegis Shield), approach cautiously
+      if (c.hasShield) score -= 15.0;
 
       if (score > bestScore) {
         bestScore = score;
