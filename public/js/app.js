@@ -204,15 +204,19 @@
 
   const updateTrackDisplay = (track) => {
     if (!track) return;
-    const title = `${track.icon || '🎵'} ${track.name}`;
+    const displayText = track.artist ? `${track.icon || '🎵'} ${track.artist} - ${track.name}` : `${track.icon || '🎵'} ${track.name}`;
+    const fullTitle = `${track.artist ? track.artist + ' - ' : ''}${track.name} [${track.genre || 'NCS'}] - Click or Press N to skip`;
     [menuTrackName, hudTrackName].forEach(el => {
       if (el) {
-        el.textContent = title;
+        el.textContent = displayText;
+        el.title = fullTitle;
         el.classList.remove('track-changed-flash');
         void el.offsetWidth;
         el.classList.add('track-changed-flash');
       }
     });
+    if (menuMusicPill) menuMusicPill.title = fullTitle;
+    if (hudMusicPill) hudMusicPill.title = fullTitle;
   };
 
   const handleSkipTrack = (e) => {

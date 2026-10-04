@@ -8,9 +8,10 @@ const HexAudio = (() => {
   let masterGain = null;
   let sfxGain = null;
   let musicGain = null;
-  let bgmInterval = null;
-  let bgmStep = 0;
   let isMuted = false;
+  let currentAudio = null;
+  let currentTrackIdx = 0;
+  let musicVolume = 0.70;
 
   function init() {
     if (ctx) return;
@@ -50,6 +51,9 @@ const HexAudio = (() => {
     const unlockAudio = () => {
       if (!ctx) init();
       resumeCtx();
+      if (currentAudio && currentAudio.paused && !isMuted) {
+        currentAudio.play().catch(() => {});
+      }
       if (ctx && ctx.state === 'running') {
         ['click', 'keydown', 'touchstart', 'mousedown', 'pointerdown'].forEach(ev => {
           window.removeEventListener(ev, unlockAudio, true);
@@ -72,16 +76,24 @@ const HexAudio = (() => {
     if (masterGain && ctx) {
       masterGain.gain.setTargetAtTime(isMuted ? 0 : 0.85, ctx.currentTime, 0.05);
     }
-    if (!isMuted && !bgmInterval) {
+    if (currentAudio) {
+      currentAudio.volume = isMuted ? 0 : musicVolume;
+      if (!isMuted && currentAudio.paused) {
+        currentAudio.play().catch(() => {});
+      }
+    } else if (!isMuted) {
       startMusic(currentTrackIdx);
     }
     return !isMuted;
   }
 
   function setMusicVolume(val) {
+    musicVolume = Math.max(0, Math.min(1.0, val));
+    if (currentAudio) {
+      currentAudio.volume = isMuted ? 0 : musicVolume;
+    }
     if (musicGain && ctx) {
-      const v = Math.max(0, Math.min(1.0, val));
-      musicGain.gain.setTargetAtTime(v, ctx.currentTime, 0.05);
+      musicGain.gain.setTargetAtTime(musicVolume, ctx.currentTime, 0.05);
     }
   }
 
@@ -427,199 +439,90 @@ const HexAudio = (() => {
   }
 
   // ============================================================
-  // NCS GAMING SOUNDTRACK PLAYLIST (5 High-Octane Cyber Tracks)
-  // Multi-Voice Layered Electronic Synthesis:
-  // Drum Channel (Kick, Snare, Hi-Hats) + Bass Channel + Lead Arpeggios
+  // AUTHENTIC NCS (NoCopyrightSounds) GAMING RADIO PLAYLIST
+  // Real YouTube Gaming Anthems (Alan Walker, Elektronomia, Tobu, etc.)
+  // High-fidelity local MP3 playback with instant seek & skip
   // ============================================================
   const NCS_TRACKS = [
     {
-      id: 'cyber_drift',
-      name: 'CYBER DRIFT',
-      genre: 'NCS Drum & Bass',
+      id: 'alan_walker_fade',
+      name: 'Fade',
+      artist: 'Alan Walker',
+      genre: 'Electro House',
       icon: '⚡',
-      bpm: 150,
-      chords: [
-        { bass: 55.00,  arp: [220.00, 261.63, 329.63, 440.00, 329.63, 261.63] },   // Am
-        { bass: 43.65,  arp: [174.61, 220.00, 261.63, 349.23, 261.63, 220.00] },   // F
-        { bass: 65.41,  arp: [261.63, 329.63, 392.00, 523.25, 392.00, 329.63] },   // C
-        { bass: 49.00,  arp: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94] }    // G
-      ],
-      groove: 'dnb'
+      src: '/assets/music/01-alan-walker-fade.mp3'
     },
     {
-      id: 'neon_horizon',
-      name: 'NEON HORIZON',
-      genre: 'Melodic Electro',
-      icon: '🏟️',
-      bpm: 128,
-      chords: [
-        { bass: 46.25,  arp: [185.00, 220.00, 277.18, 369.99, 277.18, 220.00] },   // F#m
-        { bass: 73.42,  arp: [293.66, 369.99, 440.00, 587.33, 440.00, 369.99] },   // D
-        { bass: 55.00,  arp: [220.00, 277.18, 329.63, 440.00, 329.63, 277.18] },   // A
-        { bass: 82.41,  arp: [329.63, 415.30, 493.88, 659.25, 493.88, 415.30] }    // E
-      ],
-      groove: 'electro'
-    },
-    {
-      id: 'inferno_overdrive',
-      name: 'INFERNO OVERDRIVE',
-      genre: 'Cyber Phonk',
-      icon: '🌋',
-      bpm: 142,
-      chords: [
-        { bass: 36.71,  arp: [146.83, 174.61, 220.00, 293.66, 220.00, 174.61] },   // Dm (808 sub)
-        { bass: 32.70,  arp: [130.81, 164.81, 196.00, 261.63, 196.00, 164.81] },   // C
-        { bass: 58.27,  arp: [233.08, 293.66, 349.23, 466.16, 349.23, 293.66] },   // Bb
-        { bass: 43.65,  arp: [174.61, 220.00, 261.63, 349.23, 261.63, 220.00] }    // F
-      ],
-      groove: 'phonk'
-    },
-    {
-      id: 'glacier_pulse',
-      name: 'GLACIER PULSE',
-      genre: 'Future Bass',
-      icon: '❄️',
-      bpm: 134,
-      chords: [
-        { bass: 65.41,  arp: [261.63, 311.13, 392.00, 523.25, 392.00, 311.13] },   // Cm
-        { bass: 51.91,  arp: [207.65, 261.63, 311.13, 415.30, 311.13, 261.63] },   // Ab
-        { bass: 77.78,  arp: [311.13, 392.00, 466.16, 622.25, 466.16, 392.00] },   // Eb
-        { bass: 58.27,  arp: [233.08, 293.66, 349.23, 466.16, 349.23, 293.66] }    // Bb
-      ],
-      groove: 'future'
-    },
-    {
-      id: 'hyper_clash',
-      name: 'HYPER CLASH',
-      genre: 'Breakbeat Overdrive',
+      id: 'elektronomia_sky_high',
+      name: 'Sky High',
+      artist: 'Elektronomia',
+      genre: 'Progressive House',
       icon: '🚀',
-      bpm: 160,
-      chords: [
-        { bass: 41.20,  arp: [164.81, 196.00, 246.94, 329.63, 246.94, 196.00] },   // Em
-        { bass: 65.41,  arp: [261.63, 329.63, 392.00, 523.25, 392.00, 329.63] },   // C
-        { bass: 49.00,  arp: [196.00, 246.94, 293.66, 392.00, 293.66, 246.94] },   // G
-        { bass: 73.42,  arp: [293.66, 369.99, 440.00, 587.33, 440.00, 369.99] }    // D
-      ],
-      groove: 'breakbeat'
+      src: '/assets/music/02-elektronomia-sky-high.mp3'
+    },
+    {
+      id: 'cartoon_on_and_on',
+      name: 'On & On',
+      artist: 'Cartoon ft. Daniel Levi',
+      genre: 'Drum & Bass',
+      icon: '✨',
+      src: '/assets/music/03-cartoon-on-and-on.mp3'
+    },
+    {
+      id: 'different_heaven_my_heart',
+      name: 'My Heart',
+      artist: 'Different Heaven & EH!DE',
+      genre: 'Dubstep',
+      icon: '❤️',
+      src: '/assets/music/04-different-heaven-my-heart.mp3'
+    },
+    {
+      id: 'disfigure_blank',
+      name: 'Blank',
+      artist: 'Disfigure',
+      genre: 'Melodic Dubstep',
+      icon: '🌌',
+      src: '/assets/music/05-disfigure-blank.mp3'
+    },
+    {
+      id: 'tobu_candyland',
+      name: 'Candyland',
+      artist: 'Tobu',
+      genre: 'Melodic Bounce',
+      icon: '🍭',
+      src: '/assets/music/06-tobu-candyland.mp3'
+    },
+    {
+      id: 'deaf_kev_invincible',
+      name: 'Invincible',
+      artist: 'DEAF KEV',
+      genre: 'Glitch Hop',
+      icon: '🛡️',
+      src: '/assets/music/07-deaf-kev-invincible.mp3'
+    },
+    {
+      id: 'warriyo_mortals',
+      name: 'Mortals',
+      artist: 'Warriyo ft. Laura Brehm',
+      genre: 'Future Trap',
+      icon: '🌋',
+      src: '/assets/music/08-warriyo-mortals.mp3'
     }
   ];
 
-  let currentTrackIdx = 0;
-  const BARS_PER_TRACK = 16; // 16 bars (~40-60s per track rotation)
-
-  // Music Kick (punchy electronic kick)
-  function playMusicKick(time) {
-    if (!ctx || isMuted) return;
-    try {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(140, time);
-      osc.frequency.exponentialRampToValueAtTime(38, time + 0.10);
-      g.gain.setValueAtTime(0.70, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.14);
-      osc.connect(g);
-      g.connect(musicGain);
-      osc.start(time);
-      osc.stop(time + 0.14);
-    } catch (_) {}
-  }
-
-  // Music Snare (highpass noise snap + body)
-  function playMusicSnare(time) {
-    if (!ctx || isMuted) return;
-    try {
-      const bufSize = Math.floor(ctx.sampleRate * 0.12);
-      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(900, time);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.42, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
-      src.connect(filter);
-      filter.connect(g);
-      g.connect(musicGain);
-      src.start(time);
-
-      const osc = ctx.createOscillator();
-      const tg = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(200, time);
-      osc.frequency.exponentialRampToValueAtTime(100, time + 0.08);
-      tg.gain.setValueAtTime(0.32, time);
-      tg.gain.exponentialRampToValueAtTime(0.001, time + 0.09);
-      osc.connect(tg);
-      tg.connect(musicGain);
-      osc.start(time);
-      osc.stop(time + 0.09);
-    } catch (_) {}
-  }
-
-  // Music Hi-Hat (crisp metallic tick)
-  function playMusicHiHat(time, vol = 0.20) {
-    if (!ctx || isMuted) return;
-    try {
-      const bufSize = Math.floor(ctx.sampleRate * 0.045);
-      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(6500, time);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(vol, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
-      src.connect(filter);
-      filter.connect(g);
-      g.connect(musicGain);
-      src.start(time);
-    } catch (_) {}
-  }
-
-  // Music Bass (420Hz resonant lowpass fat sawtooth)
-  function playMusicBass(freq, duration, time) {
-    if (!ctx || isMuted) return;
-    try {
-      const osc = ctx.createOscillator();
-      const filter = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, time);
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(420, time);
-      filter.Q.setValueAtTime(3.5, time);
-      g.gain.setValueAtTime(0.65, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + duration);
-      osc.connect(filter);
-      filter.connect(g);
-      g.connect(musicGain);
-      osc.start(time);
-      osc.stop(time + duration);
-    } catch (_) {}
-  }
-
-  // Music Lead Melody Arpeggio (uplifting NCS synth pluck)
-  function playMusicArp(freq, duration, time) {
-    if (!ctx || isMuted) return;
-    try {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, time);
-      g.gain.setValueAtTime(0.48, time);
-      g.gain.exponentialRampToValueAtTime(0.001, time + duration);
-      osc.connect(g);
-      g.connect(musicGain);
-      osc.start(time);
-      osc.stop(time + duration);
-    } catch (_) {}
+  function _getAudioElement() {
+    if (!currentAudio && typeof Audio !== 'undefined') {
+      currentAudio = new Audio();
+      currentAudio.preload = 'auto';
+      currentAudio.addEventListener('ended', () => {
+        nextTrack();
+      });
+      currentAudio.addEventListener('error', (e) => {
+        console.warn('[HexAudio] Track error, auto-advancing:', e);
+        nextTrack();
+      });
+    }
+    return currentAudio;
   }
 
   function startMusic(trackSelect = null, forceRestart = false) {
@@ -628,95 +531,67 @@ const HexAudio = (() => {
 
     if (typeof trackSelect === 'string') {
       const lower = trackSelect.toLowerCase();
-      if (lower === 'inferno') currentTrackIdx = 2; // Inferno Overdrive
-      else if (lower === 'cryo') currentTrackIdx = 3; // Glacier Pulse
-      else if (lower === 'neon') currentTrackIdx = 0; // Cyber Drift
+      if (lower === 'inferno') currentTrackIdx = 7; // Warriyo Mortals
+      else if (lower === 'cryo') currentTrackIdx = 4; // Disfigure Blank
+      else if (lower === 'neon') currentTrackIdx = 0; // Alan Walker Fade
       else {
-        const found = NCS_TRACKS.findIndex(t => t.id === lower);
+        const found = NCS_TRACKS.findIndex(t =>
+          t.id === lower ||
+          t.name.toLowerCase().includes(lower) ||
+          t.artist.toLowerCase().includes(lower)
+        );
         if (found !== -1) currentTrackIdx = found;
       }
     } else if (typeof trackSelect === 'number') {
       currentTrackIdx = Math.max(0, Math.min(NCS_TRACKS.length - 1, trackSelect));
     }
 
-    // If music is already playing and no track change or forceRestart was requested, continue smoothly
-    if (bgmInterval && !forceRestart && trackSelect === null) {
-      return NCS_TRACKS[currentTrackIdx];
-    }
+    const audio = _getAudioElement();
+    if (!audio) return NCS_TRACKS[currentTrackIdx];
 
     const track = NCS_TRACKS[currentTrackIdx];
-    bgmStep = 0;
 
-    if (bgmInterval) {
-      clearInterval(bgmInterval);
-      bgmInterval = null;
+    // If already playing this track and not force-restarted, just make sure volume and play state are active
+    if (!forceRestart && audio.src && audio.src.includes(track.src) && !audio.paused) {
+      audio.volume = isMuted ? 0 : musicVolume;
+      return track;
     }
 
-    // 16th-note step interval in milliseconds
-    const stepMs = Math.round((60000 / (track.bpm * 4)));
+    try {
+      audio.src = track.src;
+      audio.volume = isMuted ? 0 : musicVolume;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Unlocks automatically on first user click/touch
+        });
+      }
+    } catch (_) {}
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ncs-track-changed', { detail: track }));
     }
 
-    bgmInterval = setInterval(() => {
-      if (isMuted || !ctx) return;
-      const t = ctx.currentTime;
-      const stepInBar = bgmStep % 16;
-      const bar = Math.floor(bgmStep / 16);
-      const chord = track.chords[bar % track.chords.length];
-
-      // 1. Drums per groove
-      if (track.groove === 'dnb') {
-        if (stepInBar === 0 || stepInBar === 10) playMusicKick(t);
-        if (stepInBar === 4 || stepInBar === 12) playMusicSnare(t);
-        if (stepInBar % 2 === 0) playMusicHiHat(t, 0.22);
-        if (stepInBar === 7 || stepInBar === 15) playMusicHiHat(t, 0.14);
-      } else if (track.groove === 'electro') {
-        if (stepInBar % 4 === 0) playMusicKick(t);
-        if (stepInBar === 4 || stepInBar === 12) playMusicSnare(t);
-        if (stepInBar % 4 === 2) playMusicHiHat(t, 0.25);
-      } else if (track.groove === 'phonk') {
-        if (stepInBar === 0 || stepInBar === 6 || stepInBar === 10) playMusicKick(t);
-        if (stepInBar === 4 || stepInBar === 12) playMusicSnare(t);
-        if (stepInBar % 2 === 0 || stepInBar >= 12) playMusicHiHat(t, 0.20);
-      } else if (track.groove === 'future') {
-        if (stepInBar === 0) playMusicKick(t);
-        if (stepInBar === 8) playMusicSnare(t);
-        if (stepInBar % 2 === 0) playMusicHiHat(t, 0.20);
-      } else {
-        // breakbeat
-        if (stepInBar === 0 || stepInBar === 6 || stepInBar === 11) playMusicKick(t);
-        if (stepInBar === 4 || stepInBar === 12) playMusicSnare(t);
-        if (stepInBar % 2 === 0) playMusicHiHat(t, 0.22);
-      }
-
-      // 2. Bassline
-      if (stepInBar === 0 || stepInBar === 3 || stepInBar === 6 || stepInBar === 8 || stepInBar === 10 || stepInBar === 12) {
-        const bassFreq = (stepInBar === 6 || stepInBar === 14) ? chord.bass * 1.5 : chord.bass;
-        playMusicBass(bassFreq, (stepMs / 1000) * 1.4, t);
-      }
-
-      // 3. Melodic Arpeggio / Lead Pluck
-      const arpNotes = chord.arp;
-      const arpFreq = arpNotes[bgmStep % arpNotes.length];
-      playMusicArp(arpFreq, (stepMs / 1000) * 0.9, t);
-
-      bgmStep++;
-
-      // Auto-advance to next track after 16 bars (~40-50s)
-      if (bgmStep >= 16 * BARS_PER_TRACK) {
-        nextTrack();
-      }
-    }, stepMs);
-
     return track;
   }
 
   function stopMusic() {
-    if (bgmInterval) {
-      clearInterval(bgmInterval);
-      bgmInterval = null;
+    if (currentAudio) {
+      currentAudio.pause();
+    }
+  }
+
+  function pauseMusic() {
+    if (currentAudio) {
+      currentAudio.pause();
+    }
+  }
+
+  function resumeMusic() {
+    if (currentAudio && !isMuted) {
+      currentAudio.play().catch(() => {});
+    } else {
+      startMusic(currentTrackIdx);
     }
   }
 
