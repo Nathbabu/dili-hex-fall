@@ -78,7 +78,7 @@ class AIBumperBot {
     this.steerZ += (this.targetSteerZ - this.steerZ) * steerLerpRate;
 
     // 4. Apply Steer & Physics
-    this.craft.update(dt, this.steerX, this.steerZ, arena || arenaRadius);
+    this.craft.update(dt, this.steerX, this.steerZ, arena || arenaRadius, (window.engine ? window.engine.camera : null));
   }
 
   _think(allCrafts, arenaRadius, arena = null) {

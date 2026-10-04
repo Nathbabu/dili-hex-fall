@@ -12,57 +12,182 @@
 // 3D Shoulder Armor Caps, Dynamic Action Poses & 360° Real Turning!
 // ===================================================================
 // ===================================================================
-// AUTHENTIC DLICOM DILI ARCADE CHARACTER (CLEAN, SHARP & GORGEOUS)
-// 100% Authentic Official Dlicom Artwork — Zero Glitches, Zero Snowman!
-// Camera-Aligned Arcade Sprite with Smooth Left/Right Directional Turning,
-// Dynamic Bank Leaning, Action Poses, and Grounded Hover Cockpit Ring!
 // ===================================================================
+// AUTHENTIC DLICOM DILI ARCADE CHARACTER (HEROIC, VISIBLE & CAMERA-ALIGNED)
+// 100% Guaranteed Visibility: Camera-Facing Cylindrical Billboarding,
+// Global Texture & Material Cache, Instant Canvas Fallback, Zero Edge-On Flattening!
+// ===================================================================
+
+const DILI_TEXTURE_CACHE = {};
+const DILI_MATERIAL_CACHE = {};
+
+// Fallback Canvas Texture Generator: Instant stylized Dili mascot if PNG is ever slow or loading
+function createDiliFallbackTexture(suitKey = 'mint', suitColor = 0x00FFC6) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  const hexCol = (typeof suitColor === 'number')
+    ? '#' + suitColor.toString(16).padStart(6, '0')
+    : (suitColor || '#00FFC6');
+
+  ctx.clearRect(0, 0, 256, 256);
+
+  // Bunny Ears
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.ellipse(96, 50, 16, 42, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(160, 50, 16, 42, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner ear suit tint
+  ctx.fillStyle = hexCol;
+  ctx.beginPath();
+  ctx.ellipse(96, 54, 8, 28, -0.2, 0, Math.PI * 2);
+  ctx.ellipse(160, 54, 8, 28, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bunny Head (White)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(128, 118, 52, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cute Glowing Anime Visor / Eyes
+  ctx.fillStyle = hexCol;
+  ctx.shadowColor = hexCol;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.roundRect(102, 104, 52, 24, 10);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Cyber Pilot Body Armor
+  ctx.fillStyle = '#141E30';
+  ctx.beginPath();
+  ctx.roundRect(98, 172, 60, 54, 12);
+  ctx.fill();
+
+  // Suit Chest Plate
+  ctx.fillStyle = hexCol;
+  ctx.beginPath();
+  ctx.arc(128, 196, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Boxing Gloves / Hands
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(84, 192, 14, 0, Math.PI * 2);
+  ctx.arc(172, 192, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  return tex;
+}
+
+function getDiliTexture(pose = 'fight', suitKey = 'mint', suitColor = 0x00FFC6) {
+  const normSuit = (suitKey === 'cobalt') ? 'blue' : suitKey;
+  const cacheKey = `${normSuit}_${pose}`;
+  if (DILI_TEXTURE_CACHE[cacheKey]) {
+    return DILI_TEXTURE_CACHE[cacheKey];
+  }
+
+  // Create texture with instant fallback first so it's NEVER blank for even 1 frame
+  const fallbackTex = createDiliFallbackTexture(normSuit, suitColor);
+  DILI_TEXTURE_CACHE[cacheKey] = fallbackTex;
+
+  // Asynchronously load the official high-res cutout PNG
+  const loader = new THREE.TextureLoader();
+  const url = `/assets/characters/dili-${pose}-cutout-${normSuit}.png`;
+  loader.load(
+    url,
+    (loadedTex) => {
+      loadedTex.generateMipmaps = false;
+      loadedTex.minFilter = THREE.LinearFilter;
+      loadedTex.magFilter = THREE.LinearFilter;
+      fallbackTex.image = loadedTex.image;
+      fallbackTex.generateMipmaps = false;
+      fallbackTex.minFilter = THREE.LinearFilter;
+      fallbackTex.magFilter = THREE.LinearFilter;
+      fallbackTex.needsUpdate = true;
+    },
+    undefined,
+    () => {
+      // Fallback to mint if this suit pose failed to load
+      if (normSuit !== 'mint') {
+        loader.load(`/assets/characters/dili-${pose}-cutout-mint.png`, (mintTex) => {
+          mintTex.generateMipmaps = false;
+          mintTex.minFilter = THREE.LinearFilter;
+          mintTex.magFilter = THREE.LinearFilter;
+          fallbackTex.image = mintTex.image;
+          fallbackTex.generateMipmaps = false;
+          fallbackTex.minFilter = THREE.LinearFilter;
+          fallbackTex.magFilter = THREE.LinearFilter;
+          fallbackTex.needsUpdate = true;
+        });
+      }
+    }
+  );
+
+  return fallbackTex;
+}
+
+function getDiliMaterial(pose = 'fight', suitKey = 'mint', suitColor = 0x00FFC6) {
+  const normSuit = (suitKey === 'cobalt') ? 'blue' : suitKey;
+  const matKey = `${normSuit}_${pose}`;
+  if (DILI_MATERIAL_CACHE[matKey]) {
+    return DILI_MATERIAL_CACHE[matKey];
+  }
+  const tex = getDiliTexture(pose, normSuit, suitColor);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    alphaTest: 0.02,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide
+  });
+  DILI_MATERIAL_CACHE[matKey] = mat;
+  return mat;
+}
+
 class DiliCharacter3D {
   constructor(suitKey = 'mint', suitColor = 0x00FFC6) {
-    this.suitKey = suitKey;
+    this.suitKey = (suitKey === 'cobalt') ? 'blue' : suitKey;
     this.suitColor = suitColor;
     this.group = new THREE.Group();
     this.currentPose = 'fight';
     this.animTime = 0;
     this.currentFlipX = 1;
     this.targetFlipX = 1;
+    this._reusableWorldPos = new THREE.Vector3();
 
     this.suitCol = new THREE.Color(suitColor);
 
-    // Preload and cache all 5 authentic official Dlicom pose textures
-    this.textures = {};
+    // Retrieve pre-cached materials for all 5 official poses
     this.materials = {};
-    const loader = new THREE.TextureLoader();
-
     const poses = ['fight', 'ram', 'hit', 'victory', 'fall'];
     poses.forEach(pose => {
-      const url = `/assets/characters/dili-${pose}-cutout-${suitKey}.png`;
-      const tex = loader.load(url);
-      tex.generateMipmaps = true;
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      this.textures[pose] = tex;
-
-      // Pure, vibrant, uncorrupted official artwork (full brightness, transparent cutouts)
-      this.materials[pose] = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        alphaTest: 0.12,
-        side: THREE.DoubleSide
-      });
+      this.materials[pose] = getDiliMaterial(pose, this.suitKey, this.suitColor);
     });
 
     this._buildCleanModel();
   }
 
   _buildCleanModel() {
-    // 1. Heroic Arcade Character Scale (Bigger, bolder & highly visible)
-    const W = 2.15;
-    const H = 2.65;
+    // 1. Heroic Arcade Character Scale (Bigger, bolder & 100% visible)
+    const W = 2.25;
+    const H = 2.75;
     const planeGeo = new THREE.PlaneGeometry(W, H);
 
-    this.baseY = H * 0.5 + 0.02; // ~1.345
+    this.baseY = H * 0.5 + 0.02; // ~1.395
     this.mesh = new THREE.Mesh(planeGeo, this.materials.fight);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 10; // Always render on top of saucer platform
     // Grounded right on the saucer platform, centered vertically
     this.mesh.position.set(0, this.baseY, 0);
     this.group.add(this.mesh);
@@ -94,36 +219,49 @@ class DiliCharacter3D {
     }
   }
 
-  update(dt, isMoving = false, isDashing = false, grounded = true, vx = 0, vz = 0) {
+  update(dt, isMoving = false, isDashing = false, grounded = true, vx = 0, vz = 0, camera = null) {
     this.animTime += dt;
 
-    // 1. Directional Turning (Left vs Right Facing Flip)
+    // 1. Dynamic Camera Cylindrical Billboarding: ALWAYS face camera full-width!
+    const activeCamera = camera || (window.engine ? window.engine.camera : null);
+    if (activeCamera && activeCamera.position) {
+      this.group.getWorldPosition(this._reusableWorldPos);
+      const dx = activeCamera.position.x - this._reusableWorldPos.x;
+      const dz = activeCamera.position.z - this._reusableWorldPos.z;
+      if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+        this.group.rotation.y = Math.atan2(dx, dz);
+      }
+    }
+
+    // 2. Directional Turning (Left vs Right Facing Flip)
     // The official Dili cutout naturally faces LEFT (scale.x = 1).
-    // When moving RIGHT (vx > 0.25), flip to -1 so Dili faces RIGHT!
-    // When moving LEFT (vx < -0.25), set to +1 so Dili faces LEFT!
-    if (vx > 0.25) {
+    // When moving RIGHT (vx > 0.3), flip to -1 so Dili faces RIGHT!
+    // When moving LEFT (vx < -0.3), set to +1 so Dili faces LEFT!
+    if (vx > 0.3) {
       this.targetFlipX = -1; // Moving Right -> Face Right!
-    } else if (vx < -0.25) {
+    } else if (vx < -0.3) {
       this.targetFlipX = 1;  // Moving Left -> Face Left!
     }
 
-    // Smooth flip interpolation so the character turns naturally
-    this.currentFlipX += (this.targetFlipX - this.currentFlipX) * Math.min(1, 16 * dt);
-    const safeFlip = Math.abs(this.currentFlipX) < 0.15 ? 0.15 * Math.sign(this.targetFlipX) : this.currentFlipX;
+    // Snappy flip transition that never squashes width below 0.75
+    this.currentFlipX += (this.targetFlipX - this.currentFlipX) * Math.min(1, 22 * dt);
+    const safeFlip = Math.abs(this.currentFlipX) < 0.75
+      ? (0.75 * Math.sign(this.targetFlipX || 1))
+      : this.currentFlipX;
     this.mesh.scale.x = safeFlip;
 
-    const basePosY = this.baseY || 1.345;
+    const basePosY = this.baseY || 1.395;
 
-    // 2. Action Animations & Dynamic Leaning
+    // 3. Action Animations & Dynamic Leaning
     if (isDashing) {
       // Aggressive forward punch ram lean
-      this.mesh.rotation.x = 0.22;
+      this.mesh.rotation.x = 0.18;
       this.mesh.rotation.z = -vx * 0.025;
       this.mesh.position.y = basePosY;
     } else if (isMoving) {
       // Running stride & lean into motion
       const stride = Math.sin(this.animTime * 14);
-      this.mesh.rotation.x = 0.08;
+      this.mesh.rotation.x = 0.06;
       this.mesh.rotation.z = -vx * 0.02 + stride * 0.035;
       this.mesh.position.y = basePosY + Math.abs(Math.sin(this.animTime * 14)) * 0.05;
     } else {
@@ -644,10 +782,12 @@ class BumperCraft {
       emissiveIntensity: 0.95,
       transparent: true,
       opacity: 0.38,
-      wireframe: true
+      wireframe: true,
+      depthWrite: false
     });
     this.shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
     this.shieldMesh.position.y = 1.1;
+    this.shieldMesh.renderOrder = 20;
     this.shieldMesh.visible = false;
     this.group.add(this.shieldMesh);
 
@@ -978,7 +1118,7 @@ class BumperCraft {
     this.setEmotion('idle', 1.2, txt, '😏');
   }
 
-  update(dt, inputX = 0, inputZ = 0, arenaInfo = 21) {
+  update(dt, inputX = 0, inputZ = 0, arenaInfo = 21, camera = null) {
     let currentRadius = 21;
     let upperFloorY = 0.85;
 
@@ -1204,7 +1344,7 @@ class BumperCraft {
     // Update Full 3D Volumetric Dili Character
     const isMoving = Math.abs(this.vx) > 0.3 || Math.abs(this.vz) > 0.3;
     if (this.dili3D) {
-      this.dili3D.update(dt, isMoving, this.isDashing, this.grounded, this.vx, this.vz);
+      this.dili3D.update(dt, isMoving, this.isDashing, this.grounded, this.vx, this.vz, camera);
       this.dili3D.group.rotation.z = this.wobbleAngle;
       this.dili3D.group.scale.set(this.squashX, this.squashY, 1.0);
       if (this.grounded && !this.isDashing) {
@@ -1415,8 +1555,23 @@ class BumperCraft {
 
 if (typeof window !== 'undefined') {
   window.BumperCraft = BumperCraft;
+  window.DiliCharacter3D = DiliCharacter3D;
+  window.getDiliTexture = getDiliTexture;
+  window.getDiliMaterial = getDiliMaterial;
+
+  // Immediately warm the global cache with all 5 suit cutouts
+  try {
+    ['mint', 'pink', 'gold', 'blue', 'crimson'].forEach(suit => {
+      ['fight', 'ram', 'hit', 'victory', 'fall'].forEach(pose => {
+        getDiliTexture(pose, suit);
+      });
+    });
+  } catch (e) {
+    console.warn('Dili texture preload notice:', e);
+  }
 }
 if (typeof globalThis !== 'undefined') {
   globalThis.BumperCraft = BumperCraft;
+  globalThis.DiliCharacter3D = DiliCharacter3D;
 }
 

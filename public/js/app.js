@@ -357,6 +357,7 @@
   function getEngine() {
     if (!engine) {
       engine = new BumperGameEngine('gameCanvas');
+      window.engine = engine;
 
       // Live HUD updates
       engine.onUpdate = (data) => {

@@ -5,6 +5,7 @@ class BumperGameEngine {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
     this.state = 'idle'; // idle, countdown, playing, paused, gameover
+    window.engine = this;
 
     this.renderer = null;
     this.scene = null;
@@ -1494,7 +1495,7 @@ class BumperGameEngine {
     // 2. Player Input & Physics (only when actively playing and alive)
     if (this.state === 'playing' && this.player && this.player.alive) {
       const inp = this._getInputVector();
-      this.player.update(dt, inp.x, inp.z, this.arena);
+      this.player.update(dt, inp.x, inp.z, this.arena, this.camera);
 
       // Track Max Speed in km/h
       const currentSpeed = Math.sqrt(this.player.vx * this.player.vx + this.player.vz * this.player.vz);
@@ -1613,7 +1614,7 @@ class BumperGameEngine {
           rc.dili3D.targetFlipX = rc.targetFlipX || 1;
           if (rc.targetPose) rc.dili3D.setEmotion(rc.targetPose);
           const moving = Math.hypot(rc.vx, rc.vz) > 0.4;
-          rc.dili3D.update(dt, moving, rc.isDashing, rc.grounded, rc.vx, rc.vz);
+          rc.dili3D.update(dt, moving, rc.isDashing, rc.grounded, rc.vx, rc.vz, this.camera);
         }
         if (rc.driftTrail) {
           if (!rc.alive || !rc.grounded || rc.y < -1) {
