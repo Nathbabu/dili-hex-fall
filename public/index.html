@@ -5,11 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>HEX FALL | 3D Cyber Bumper Survival Arena</title>
   <meta name="description" content="HEX FALL — 3D Cyber Bumper Survival Arena by Dlicom. Smash rival pilots off the collapsing arena in high-speed combat!"/>
-  <meta name="theme-color" content="#050810"/>
+  <meta name="theme-color" content="#040814"/>
+
+  <!-- Favicon & Brand Icons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="manifest" href="/manifest.json"/>
+
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/game.css?v=v53-lb-fixes"/>
+  <link rel="stylesheet" href="css/game.css?v=v58-brand-logo-update"/>
 </head>
 <body>
   <!-- 3D WebGL Canvas -->
@@ -54,9 +63,9 @@
         <div class="title-panel-left">
           <!-- Top Brand & Live Server Status -->
           <div class="top-status-bar">
-            <div class="brand-badge">
-              <img src="assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo" onerror="this.style.display='none'"/>
-              <span class="brand-text">DLICOM 3D ACTION JAM</span>
+            <div class="brand-badge" title="Official Dlicom Production">
+              <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-logo"/>
+              <span class="brand-text">DLICOM ORIGINAL</span>
             </div>
             <div class="live-server-pill" title="24/7 Persistent Server Running">
               <span class="pulse-green-dot"></span>
@@ -64,13 +73,23 @@
             </div>
           </div>
 
-          <!-- Hero Game Title -->
-          <div class="logo-glow">
-            <h1 class="game-title">HEX<span class="title-dash"> </span>FALL</h1>
-            <div class="tagline-wrap">
-              <span class="tagline-spark">⚡</span>
-              <span class="tagline-text">3D CYBER BUMPER SURVIVAL ARENA</span>
-              <span class="tagline-spark">⚡</span>
+          <!-- Hero Game Logo & Title Branding -->
+          <div class="game-brand-hero">
+            <div class="game-emblem-wrap" title="Dili Cyber Orbit Emblem">
+              <img src="/assets/dili-manifest-logo.png" alt="Hex Fall Official Emblem" class="game-hero-orb"/>
+              <div class="emblem-halo-ring"></div>
+            </div>
+            <div class="game-titles-column">
+              <div class="publisher-line">
+                <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="dlicom-publisher-mark"/>
+                <span class="publisher-text">DLICOM STUDIOS PRESENTS</span>
+              </div>
+              <h1 class="game-title">HEX<span class="title-dash"> </span>FALL</h1>
+              <div class="tagline-wrap">
+                <span class="tagline-spark">⚡</span>
+                <span class="tagline-text">3D CYBER BUMPER SURVIVAL ARENA</span>
+                <span class="tagline-spark">⚡</span>
+              </div>
             </div>
           </div>
 
@@ -220,6 +239,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Dlicom Global Footer -->
+      <div class="title-dlicom-footer">
+        <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="footer-dlicom-mark"/>
+        <span>© 2026 <b>DLICOM ENTERTAINMENT</b> • 3D ACTION JAM • ALL RIGHTS RESERVED</span>
+      </div>
     </div>
   </div>
 
@@ -321,6 +346,10 @@
     <div id="speedLines" class="speed-lines"></div>
     <div class="hud-top-bar">
       <div class="hud-top">
+        <div class="hud-stat hud-dlicom-badge" title="Official Dlicom Arena">
+          <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="hud-dlicom-logo"/>
+          <span class="hud-dlicom-text">DLICOM</span>
+        </div>
         <div class="hud-stat">
           <span class="hud-label">TIME</span>
           <span class="hud-value" id="hudTime">00:00</span>
@@ -509,6 +538,10 @@
   <!-- GAME OVER / VICTORY OVERLAY -->
   <div id="gameOverScreen" class="screen overlay">
     <div class="overlay-card game-over-card">
+      <div class="go-dlicom-header">
+        <img src="/assets/dlicom-logo-transparent.png" alt="Dlicom" class="go-dlicom-logo"/>
+        <span>DLICOM CYBER ACTION LEAGUE</span>
+      </div>
       <div id="goHeaderGlow" class="go-header-glow">
         <h2 id="goTitle">ELIMINATED</h2>
         <p id="goSubtitle" class="go-sub">Knocked out of the colosseum!</p>
@@ -622,11 +655,11 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <!-- Game Scripts -->
-  <script src="js/audio.js?v=v57-prime-target-no-autorespawn"></script>
-  <script src="js/arena.js?v=v57-prime-target-no-autorespawn"></script>
-  <script src="js/bumper-craft.js?v=v57-prime-target-no-autorespawn"></script>
-  <script src="js/ai-opponents.js?v=v57-prime-target-no-autorespawn"></script>
-  <script src="js/game-engine.js?v=v57-prime-target-no-autorespawn"></script>
-  <script src="js/app.js?v=v57-prime-target-no-autorespawn"></script>
+  <script src="js/audio.js?v=v58-branding-logo-favicon"></script>
+  <script src="js/arena.js?v=v58-branding-logo-favicon"></script>
+  <script src="js/bumper-craft.js?v=v58-branding-logo-favicon"></script>
+  <script src="js/ai-opponents.js?v=v58-branding-logo-favicon"></script>
+  <script src="js/game-engine.js?v=v58-branding-logo-favicon"></script>
+  <script src="js/app.js?v=v58-branding-logo-favicon"></script>
 </body>
 </html>

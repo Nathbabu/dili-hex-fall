@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <radialGradient id="cyberGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.9"/>
+      <stop offset="60%" stop-color="#0055FF" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#050814" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00FFFF"/>
+      <stop offset="50%" stop-color="#0088FF"/>
+      <stop offset="100%" stop-color="#00E5FF"/>
+    </linearGradient>
+    <filter id="neonBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Background Glow & Base Hex -->
+  <circle cx="64" cy="64" r="62" fill="#040814"/>
+  <circle cx="64" cy="64" r="54" fill="url(#cyberGlow)"/>
+  
+  <!-- Outer Neon Ring with Cyber Notches -->
+  <circle cx="64" cy="64" r="54" fill="none" stroke="url(#ringGrad)" stroke-width="4.5" filter="url(#neonBlur)"/>
+  <circle cx="64" cy="64" r="44" fill="none" stroke="#00E5FF" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.8"/>
+  
+  <!-- Inner Cyber Hex Shield -->
+  <polygon points="64,22 98,42 98,86 64,106 30,86 30,42" fill="#06122c" stroke="#00E5FF" stroke-width="2" opacity="0.95"/>
+  
+  <!-- Dili Mascot Cyber Orb in Center -->
+  <ellipse cx="64" cy="64" rx="26" ry="24" fill="#0077FF"/>
+  <ellipse cx="64" cy="62" rx="23" ry="21" fill="#00E5FF" filter="url(#neonBlur)" opacity="0.6"/>
+  <circle cx="64" cy="64" r="21" fill="#0055FF"/>
+  
+  <!-- Diamond Cyber Eyes (Iconic Dili expression) -->
+  <rect x="50" y="55" width="7" height="7" transform="rotate(45 53.5 58.5)" fill="#FFFFFF"/>
+  <rect x="69" y="55" width="7" height="7" transform="rotate(45 72.5 58.5)" fill="#FFFFFF"/>
+  <rect x="52" y="57" width="3.5" height="3.5" transform="rotate(45 53.7 58.7)" fill="#040814"/>
+  <rect x="71" y="57" width="3.5" height="3.5" transform="rotate(45 72.7 58.7)" fill="#040814"/>
+  
+  <!-- Smile -->
+  <path d="M 60 71 Q 64 75 68 71" fill="none" stroke="#040814" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Tech Accent Particles -->
+  <rect x="22" y="24" width="4" height="4" fill="#00E5FF"/>
+  <rect x="102" y="24" width="4" height="4" fill="#00E5FF"/>
+  <rect x="18" y="62" width="4" height="4" fill="#00FFC6"/>
+  <rect x="106" y="62" width="4" height="4" fill="#00FFC6"/>
+</svg>

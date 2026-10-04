@@ -277,6 +277,9 @@ class ArenaColosseum {
     // Ambient floating particles (volcanic embers, arctic frost, cyber sparks)
     this._buildAmbientParticles();
 
+    // Floating Holographic Dlicom Stadium Banners
+    this._buildDlicomStadiumBanners();
+
     // Spawning Initial Tactical Power-Ups
     if (this.theme === 'inferno') {
       this._spawnPowerUp('rocket', 0, 11.5);
@@ -1701,6 +1704,145 @@ class ArenaColosseum {
     this.scene.add(this.ambientParticlePoints);
   }
 
+  // ------------------------------------------------------------
+  // 3D FLOATING HOLOGRAPHIC DLICOM STADIUM BANNERS
+  // ------------------------------------------------------------
+  _buildDlicomStadiumBanners() {
+    this.dlicomBanners = [];
+    const bannerGroup = new THREE.Group();
+    const count = 4;
+    const radius = 26.5;
+    const cfg = this.themeConfig || ARENA_THEMES.neon;
+    const themeColorHex = (cfg.pillarRingColor !== undefined) ? cfg.pillarRingColor : 0x00E5FF;
+    const themeColorCss = '#' + themeColorHex.toString(16).padStart(6, '0');
+
+    // Create High-Tech Canvas Texture for Banners
+    let texture = null;
+    if (typeof document !== 'undefined') {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 140;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Cyberpunk gradient background
+          const bgGrad = ctx.createLinearGradient(0, 0, 512, 140);
+          bgGrad.addColorStop(0, 'rgba(4, 10, 26, 0.94)');
+          bgGrad.addColorStop(0.5, 'rgba(8, 22, 50, 0.90)');
+          bgGrad.addColorStop(1, 'rgba(4, 10, 26, 0.94)');
+          ctx.fillStyle = bgGrad;
+          ctx.fillRect(0, 0, 512, 140);
+
+          // Glowing border
+          ctx.strokeStyle = themeColorCss;
+          ctx.lineWidth = 4;
+          ctx.strokeRect(6, 6, 500, 128);
+
+          // Corner cyber brackets
+          ctx.fillStyle = themeColorCss;
+          ctx.fillRect(6, 6, 24, 6);
+          ctx.fillRect(6, 6, 6, 24);
+          ctx.fillRect(482, 6, 24, 6);
+          ctx.fillRect(500, 6, 6, 24);
+          ctx.fillRect(6, 128, 24, 6);
+          ctx.fillRect(6, 110, 6, 24);
+          ctx.fillRect(482, 128, 24, 6);
+          ctx.fillRect(500, 110, 6, 24);
+
+          // Official Dlicom Logo Icon (Rhombus S)
+          ctx.save();
+          ctx.translate(65, 70);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.moveTo(-28, -5);
+          ctx.bezierCurveTo(-28, -32, 10, -32, 22, -18);
+          ctx.lineTo(22, -5);
+          ctx.bezierCurveTo(5, -18, -14, -18, -14, -5);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(28, 5);
+          ctx.bezierCurveTo(28, 32, -10, 32, -22, 18);
+          ctx.lineTo(-22, 5);
+          ctx.bezierCurveTo(-5, 18, 14, 18, 14, 5);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.rotate(Math.PI / 4);
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 3.5;
+          ctx.strokeRect(-11, -11, 22, 22);
+          ctx.restore();
+
+          // Brand Titles
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '900 36px Orbitron, sans-serif';
+          ctx.fillText('DLICOM', 130, 65);
+
+          ctx.fillStyle = themeColorCss;
+          ctx.font = '700 20px Orbitron, sans-serif';
+          ctx.fillText('HEX FALL COLOSSEUM', 130, 105);
+
+          texture = new THREE.CanvasTexture(canvas);
+        }
+      } catch (e) {
+        console.warn('Dlicom banner canvas generation fallback', e);
+      }
+    }
+
+    const bannerMat = texture ? new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.88,
+      side: THREE.DoubleSide
+    }) : new THREE.MeshBasicMaterial({
+      color: themeColorHex,
+      wireframe: true,
+      side: THREE.DoubleSide
+    });
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + (Math.PI / 4);
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      const bannerItem = new THREE.Group();
+      bannerItem.position.set(x, 5.2, z);
+      bannerItem.lookAt(0, 4.0, 0); // Face inward to arena center
+
+      // Screen plane
+      const planeGeo = new THREE.PlaneGeometry(8.5, 2.4);
+      const screenMesh = new THREE.Mesh(planeGeo, bannerMat);
+      bannerItem.add(screenMesh);
+
+      // Back frame
+      const frameGeo = new THREE.BoxGeometry(8.7, 2.6, 0.2);
+      const frameMat = new THREE.MeshStandardMaterial({
+        color: 0x050a14,
+        metalness: 0.85,
+        roughness: 0.3
+      });
+      const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+      frameMesh.position.z = -0.12;
+      bannerItem.add(frameMesh);
+
+      // Top glowing antenna / pylon
+      const pylonGeo = new THREE.CylinderGeometry(0.08, 0.08, 2.0);
+      const pylonMat = new THREE.MeshStandardMaterial({ color: themeColorHex, emissive: themeColorHex, emissiveIntensity: 1.5 });
+      const pylon = new THREE.Mesh(pylonGeo, pylonMat);
+      pylon.position.set(0, 2.2, -0.12);
+      bannerItem.add(pylon);
+
+      bannerItem.baseY = 5.2;
+      bannerItem.phase = i * (Math.PI / 2);
+      bannerGroup.add(bannerItem);
+      this.dlicomBanners.push(bannerItem);
+    }
+
+    this.scene.add(bannerGroup);
+    this.dlicomBannerGroup = bannerGroup;
+  }
+
   _updateAmbientParticles(dt) {
     if (!this.ambientParticlePoints || !this.ambientParticleData) return;
     const positions = this.ambientParticlePoints.geometry.attributes.position.array;
@@ -1876,6 +2018,11 @@ class ArenaColosseum {
     }
 
     this._updateAmbientParticles(dt);
+    if (this.dlicomBanners) {
+      this.dlicomBanners.forEach(b => {
+        b.position.y = b.baseY + Math.sin(this.elapsedTime * 1.5 + b.phase) * 0.25;
+      });
+    }
 
     const matrix = this._reusableMatrix;
     const pos = this._reusablePos;
@@ -2061,6 +2208,12 @@ class ArenaColosseum {
       this.ambientParticlePoints.material.dispose();
       this.ambientParticlePoints = null;
     }
+
+    if (this.dlicomBannerGroup && this.dlicomBannerGroup.parent) {
+      this.scene.remove(this.dlicomBannerGroup);
+      this.dlicomBannerGroup = null;
+    }
+    this.dlicomBanners = [];
 
     this.rings = [];
     this.powerUps = [];

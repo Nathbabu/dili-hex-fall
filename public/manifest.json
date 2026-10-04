@@ -1,0 +1,27 @@
+{
+  "name": "HEX FALL | 3D Cyber Bumper Survival Arena",
+  "short_name": "HEX FALL",
+  "description": "3D Cyber Bumper Survival Arena by Dlicom. Smash rival pilots off the collapsing arena!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#040814",
+  "theme_color": "#00E5FF",
+  "icons": [
+    {
+      "src": "/assets/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/dili-manifest-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
