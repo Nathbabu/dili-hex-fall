@@ -535,21 +535,21 @@ function removePlayerFromArena(socketId) {
   }
 }
 
-// 4-Second Inactivity / Lock Screen Heartbeat Check across all active arenas
+// 45-Second Inactivity Heartbeat Check across all active arenas (Generous for cloud network jitter)
 setInterval(() => {
   const now = Date.now();
   publicArenas.forEach(arena => {
     let changed = false;
     arena.players.forEach(p => {
-      if (p.isAlive && (now - p.lastActivity > 4000)) {
-        console.log(`[PublicArena:${arena.id}] ${p.pilotName} (${p.id}) timed out / AFK.`);
+      if (p.isAlive && (now - p.lastActivity > 45000)) {
+        console.log(`[PublicArena:${arena.id}] ${p.pilotName} (${p.id}) timed out (45s AFK).`);
         p.isAlive = false;
         changed = true;
         io.to(arena.id).emit('player_eliminated', {
           victimId: p.id,
           victimName: p.pilotName,
           killerId: null,
-          killerName: 'Connection Timeout (AFK)'
+          killerName: 'AFK Timeout (45s)'
         });
       }
     });
@@ -558,7 +558,7 @@ setInterval(() => {
       arena.checkWinConditions();
     }
   });
-}, 1500);
+}, 5000);
 
 io.on('connection', (socket) => {
   // Join Persistent Public Arena (Dynamic Matchmaking: Max 6 Humans per Room)
@@ -702,24 +702,14 @@ io.on('connection', (socket) => {
     removePlayerFromArena(socket.id);
   });
 
-  // Mobile screen lock / Tab hidden listener
+  // Mobile screen lock / Tab hidden listener (informational only — no false kills!)
   socket.on('player_visibility', (data) => {
     const arena = getArenaForSocket(socket.id);
     if (!arena) return;
 
     const p = arena.players.get(socket.id);
-    if (p && !data.visible) {
-      console.log(`[PublicArena:${arena.id}] ${p.pilotName} (${socket.id}) screen locked / hidden.`);
-      if (p.isAlive) {
-        p.isAlive = false;
-        io.to(arena.id).emit('player_eliminated', {
-          victimId: socket.id,
-          victimName: p.pilotName,
-          killerId: null,
-          killerName: 'Screen Locked (AFK)'
-        });
-        arena.checkWinConditions();
-      }
+    if (p) {
+      p.isTabHidden = !data.visible;
     }
   });
 

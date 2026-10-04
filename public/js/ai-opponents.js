@@ -338,43 +338,38 @@ class AIBumperBot {
       const dist = Math.hypot(dx, dz);
       const rivalDistCenter = Math.hypot(c.x, c.z);
 
-      // Distance scoring: closer targets are easier to disrupt
-      let score = 32.0 - dist * 1.3;
+      // Natural Free-For-All sumo targeting: all rivals evaluated fairly by proximity and tactical opportunity!
+      // Closer rivals are prime targets for sumo clashes
+      let score = 28.0 - dist * 1.5;
 
-      // HUMAN DISRUPTOR FOCUS:
+      // Bonus if rival is near the edge (prime opportunity to push off!)
+      if (rivalDistCenter > safeZoneRadius - 3.0) {
+        score += 15.0 * (this.personality.disruptSkill || 0.80);
+      }
+
+      // Bonus if rival is trapped on a warning collapsing ring
+      if (warningDropStage && rivalDistCenter >= warningDropStage.radiusMin) {
+        score += 14.0 * (this.personality.disruptSkill || 0.80);
+      }
+
+      // Vulnerability states (staggered, slowed, jammed)
+      if (c.knockbackTimer > 0) score += 8.0;
+      if (c.isGlitchSlow) score += 6.0;
+      if (c.isJammed) score += 6.0;
+
+      // Human rival gets natural balanced weight (no 2v1 spawn-camping gang-up)
       const isHumanRival = c.isPlayer || (c.isRemote && !c.pilotName.startsWith('[BOT]'));
       if (isHumanRival) {
-        // Base priority for human disruption (ramps smoothly from early exploration to intense battle)
-        const isEarlyMatch = this.lifetime < 7.0;
-        score += isEarlyMatch ? 12.0 : 38.0;
-
-        // SMART DISRUPTION OPPORTUNITY BONUSES:
-        // 1. Edge Vulnerability: If human is near the boundary, prime target to shove off!
-        if (rivalDistCenter > safeZoneRadius - 3.2) {
-          score += 26.0 * (this.personality.disruptSkill || 0.85);
-        }
-
-        // 2. Trapped in collapsing ring: Gatekeep them and don't let them back in!
-        if (warningDropStage && rivalDistCenter >= warningDropStage.radiusMin) {
-          score += 22.0 * (this.personality.disruptSkill || 0.85);
-        }
-
-        // 3. Vulnerability states: in knockback, slowed, or jammed
-        if (c.knockbackTimer > 0) score += 14.0;
-        if (c.isGlitchSlow) score += 12.0;
-        if (c.isJammed) score += 10.0;
-      } else {
-        // Other bots: only target if very close or already teetering on edge
-        if (rivalDistCenter > safeZoneRadius - 2.0) score += 12.0;
-        if (c.knockbackTimer > 0) score += 8.0;
+        score += 2.0;
       }
 
       // Target persistence bonus: stick to current duel rather than whipping around every tick
       if (c === this.targetCraft && isCurrentTargetValid) {
-        score += 6.0;
+        score += 5.0;
       }
 
-      if (c.hasShield) score -= 14.0;
+      // Strongly avoid attacking shielded crafts (Spawn Shield or Aegis Shield)
+      if (c.hasShield) score -= 35.0;
 
       if (score > bestScore) {
         bestScore = score;
@@ -495,10 +490,13 @@ class AIBumperBot {
     const forwardX = Math.sin(this.craft.facing);
     const forwardZ = Math.cos(this.craft.facing);
 
+    // Initial 2.5s pacing delay upon match/bot start: no sudden insta-dashes at spawn!
+    if (this.lifetime < 2.5) return;
+
     // 1. TACTICAL EMP SHOCKWAVE FINISHER:
-    // When human is in blast range (< 7.0m) and near the edge, blast them outward!
-    if (this.craft.empCooldown <= 0 && this.craft.grounded && !this.craft.isJammed) {
-      if (isHuman && directDist < 7.0 && targetCenterDist > (safeZoneRadius - 4.2)) {
+    // When rival is in blast range (< 7.0m), unshielded, and near the edge, blast them outward!
+    if (this.craft.empCooldown <= 0 && this.craft.grounded && !this.craft.isJammed && !bestTarget.hasShield) {
+      if (directDist < 6.5 && targetCenterDist > (safeZoneRadius - 4.0)) {
         const blastDx = (bestTarget.x - this.craft.x) / (directDist || 1);
         const blastDz = (bestTarget.z - this.craft.z) / (directDist || 1);
         const blastOutwardDot = blastDx * outDirX + blastDz * outDirZ;
@@ -515,7 +513,7 @@ class AIBumperBot {
     }
 
     // 2. CONTROLLED TACTICAL DASH RAM:
-    // Only dash when it knocks the rival OUTWARD and the bot won't slide into the void!
+    // Only dash when it knocks an unshielded rival OUTWARD and the bot won't slide into the void!
     const predStopDist = Math.hypot(this.craft.x + forwardX * 4.2, this.craft.z + forwardZ * 4.2);
     const isDashSafeForBot = predStopDist < (safeZoneRadius - 0.4);
     const dashTowardsVoid = (forwardX * outDirX + forwardZ * outDirZ) > 0.38;
@@ -525,7 +523,7 @@ class AIBumperBot {
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    if (directDist >= 1.6 && directDist <= 5.2 && this.craft.dashCooldown <= 0 && isDashSafeForBot && dashTowardsVoid) {
+    if (!bestTarget.hasShield && directDist >= 1.6 && directDist <= 5.2 && this.craft.dashCooldown <= 0 && isDashSafeForBot && dashTowardsVoid) {
       if (Math.abs(angleDiff) < 0.42 && Math.random() < this.personality.dashSkill) {
         this.craft.triggerDash();
         this.craft.dashCooldown = 3.6 + Math.random() * 1.5;

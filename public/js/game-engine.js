@@ -730,7 +730,9 @@ class BumperGameEngine {
     const sX = arenaData.mySpawn ? arenaData.mySpawn.spawnX : 0;
     const sZ = arenaData.mySpawn ? arenaData.mySpawn.spawnZ : 10.5;
     this.player.reset(sX, sZ);
+    if (this.player.activateSpawnShield) this.player.activateSpawnShield(3.5);
     this._spawnSparks(sX, sZ, 0x00FFC6, 2.0);
+    if (this.onAlert) this.onAlert('🛡️ SPAWN SHIELD ACTIVE (3.5s)!');
 
     // Spawn existing remote human players
     if (arenaData.existingPlayers) {
@@ -1036,6 +1038,7 @@ class BumperGameEngine {
         const sX = mySpawn.spawnX || 0;
         const sZ = mySpawn.spawnZ || 10.0;
         this.player.reset(sX, sZ);
+        if (this.player.activateSpawnShield) this.player.activateSpawnShield(3.5);
         const themeCfg = (typeof ARENA_THEMES !== 'undefined' && ARENA_THEMES[newTheme]) || {};
         this.player.drag = themeCfg.drag || 0.93;
         this.player.baseSpeed = themeCfg.baseSpeed || 12.0;
@@ -1101,6 +1104,7 @@ class BumperGameEngine {
         this.player.baseSpeed = themeCfg.baseSpeed || 12.0;
         this.player.accel = themeCfg.accel || 44.0;
         this.player.reset(data.mySpawn.spawnX, data.mySpawn.spawnZ);
+        if (this.player.activateSpawnShield) this.player.activateSpawnShield(3.5);
         if (!this.player.group.parent) this.scene.add(this.player.group);
         this.player.group.visible = true;
         this.player.alive = true;
@@ -2001,6 +2005,18 @@ class BumperGameEngine {
                 A.knockbackTimer = isHeavyHit ? 0.28 : 0;
                 B.knockbackTimer = isHeavyHit ? 0.28 : 0;
               }
+            }
+
+            // Aegis Force Shield & Spawn Shield: 85% kinetic absorption & powerful deflection!
+            if (A.hasShield) {
+              aRecoil *= 0.15;
+              bRecoil *= 1.85;
+              A.knockbackTimer = 0;
+            }
+            if (B.hasShield) {
+              bRecoil *= 0.15;
+              aRecoil *= 1.85;
+              B.knockbackTimer = 0;
             }
 
             A.vx -= ((impulseMag * aRecoil) / A.mass) * nx;

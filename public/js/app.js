@@ -563,10 +563,41 @@
             goTotalScore.textContent = careerPts.toLocaleString() + ' PTS';
           }
         });
+
+        // 3-Second Quick / Auto-Respawn Countdown in Public Arena (Never stranded on game over!)
+        if (isMp && !data.win) {
+          let respawnSec = 3;
+          const retryTxt = btnRetry.querySelector('.btn-text');
+          if (retryTxt) retryTxt.textContent = `RESPAWN IN ${respawnSec}s (SPACE / TAP)`;
+          if (window._respawnTimer) clearInterval(window._respawnTimer);
+          window._respawnTimer = setInterval(() => {
+            respawnSec--;
+            if (respawnSec > 0) {
+              const txt = btnRetry.querySelector('.btn-text');
+              if (txt) txt.textContent = `RESPAWN IN ${respawnSec}s (SPACE / TAP)`;
+            } else {
+              clearInterval(window._respawnTimer);
+              window._respawnTimer = null;
+              const txt = btnRetry.querySelector('.btn-text');
+              if (txt) txt.textContent = 'RESPAWN NOW';
+              btnRetry.click();
+            }
+          }, 1000);
+        } else {
+          if (window._respawnTimer) {
+            clearInterval(window._respawnTimer);
+            window._respawnTimer = null;
+          }
+          const retryTxt = btnRetry.querySelector('.btn-text');
+          if (retryTxt) retryTxt.textContent = data.win ? 'NEXT BATTLE' : 'REMATCH NOW';
+        }
       };
 
-    }
-          engine.onRespawnSuccess = () => {
+      engine.onRespawnSuccess = () => {
+        if (window._respawnTimer) {
+          clearInterval(window._respawnTimer);
+          window._respawnTimer = null;
+        }
         showScreen('hud');
         if (spectatorBar) spectatorBar.classList.add('hidden');
       };
@@ -601,6 +632,7 @@
         }
       };
 
+      }
       return engine;
   }
 
@@ -951,6 +983,11 @@
     if (spectatorBar) spectatorBar.classList.add('hidden');
     if (eg) eg.stopSpectating();
 
+    if (window._respawnTimer) {
+      clearInterval(window._respawnTimer);
+      window._respawnTimer = null;
+    }
+
     if (isMp) {
       console.log('[Rematch] Respawning in Persistent Arena...');
       eg.requestRespawn();
@@ -962,6 +999,17 @@
 
   btnRetry.addEventListener('click', handleRematch);
   btnRetry.addEventListener('touchend', handleRematch);
+
+  // Spacebar or Enter to instantly respawn/rematch from Game Over screen
+  window.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      const goScreen = document.getElementById('gameOverScreen');
+      if (goScreen && window.getComputedStyle(goScreen).display !== 'none') {
+        e.preventDefault();
+        handleRematch();
+      }
+    }
+  });
 
   // How to play
   btnHowToPlay.addEventListener('click', () => { showScreen('howToPlayModal'); });

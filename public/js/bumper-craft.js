@@ -1111,6 +1111,12 @@ class BumperCraft {
     }
   }
 
+  activateSpawnShield(duration = 3.5) {
+    this.hasShield = true;
+    this.shieldTimer = duration;
+    if (this.shieldMesh) this.shieldMesh.visible = true;
+  }
+
   triggerBanter() {
     if (this.currentEmotion !== 'idle' || !this.alive || !this.grounded) return;
     const banter = ['WHO\'S NEXT?', 'LOCKED ON!', 'CAN\'T CATCH ME!', 'BRING IT ON!'];
