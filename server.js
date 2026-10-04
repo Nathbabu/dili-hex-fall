@@ -19,6 +19,11 @@ const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || 'gQAAAA
 app.use(cors());
 app.use(express.json());
 
+// Lightweight Keep-Alive / Health Endpoint (for UptimeRobot / cron pingers)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: Date.now() });
+});
+
 // Explicit Static Asset Handlers
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
