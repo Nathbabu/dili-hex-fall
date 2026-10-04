@@ -1,7 +1,7 @@
 {
   "name": "dili-hex-fall",
   "version": "1.0.0",
-  "description": "DILI: HEX-FALL - 3D Cyber Hexagon Survival Arena for Dlicom AI Game Jam",
+  "description": "HEX FALL - 3D Cyber Bumper Survival Arena for Dlicom AI Game Jam",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
